@@ -1,0 +1,9 @@
+diskpart
+list disk
+select disk <richtige nummer auswählen>
+clean
+create partition primary
+select partition 1
+active
+format fs=fat32 QUICK
+assign
