@@ -1,0 +1,15 @@
+% Starting Situation
+%
+\label{sec:txtAufgabenstellung}
+This project has been done for the company Aeroscout GmbH. Aeroscout specialized in the development of drones for various needs. \\
+With unmanned aerial vehicles, the communication between on-board and off-board devices is essential and a reliable connection for data transmission is necessary. While the drone is within sight of the control device, data can be transmitted over a wireless connection. With increasing distances, other means of transmission have to be selected such as GPRS or even satellite.\\
+So far, the switching between different transmission technologies could not be handled automatically. The data stream was directly connected to a modem and transmitted to the corresponding receiver with no way to switch to an other transmission technology in case of data transmission failure. A visualization of this set up can be seen in \autoref{fig:picOldSetup}\\
+\spicH{PreviousHwSetup.png}{Previous system setup for data transmission}{\label{fig:picOldSetup}}%
+The aim of this project is to provide a solution that provides the needed flexibility. The finished product should act as a serial switch with multiple input/output interfaces for connecting devices and sensors and multiple interfaces for connecting transmitters. When one transmission technology fails to successfully transmit data, the application should automatically switch to an other transmission technology for the next send attempt. Also, multiple sensors or input streams should be able to send out data over the same wireless connection. A visualization of this set up can be seen in \autoref{fig:picNewSetup}\\
+\spicH{NewHwSetup.png}{New system setup for data transmission}{\label{fig:picNewSetup}}%
+There are various types of information exchanged between drone and control device such as state of charge of the battery, exact location of the drone, control commandos etc. Some information such as the exact location of the drone should be prioritized over battery status information when data transmission becomes unreliable. The finished product should therefore take data priority into account. \\
+Encryption should be configurable individually for each modem interface in case sensitive data is exchanged over a connection. \\
+The finished product should have a hardware debugging interface such as SWD and a shell/command line interface. During run time, the software should log system data and any other relevant information to a file saved on an SD card. The SD card should also contain a configuration file so the behavior of the hardware can be changed easily. \\
+Also, the Free RTOS should go into low power mode during idle state and software performance and memory leaks should be detected with Free RTOS Trace.\\
+Optionally, the application should encrypt sensitive data and use the concept of interleaving to possibly recover data on receiving side in case of package loss during unreliable transmission.\\
+A detailed description of all the requirements can be taken from appendix \autoref{app:Aufgabenstellung}.

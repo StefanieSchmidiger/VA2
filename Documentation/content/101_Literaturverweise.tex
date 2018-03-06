@@ -1,0 +1,57 @@
+% Literaturverweise
+%
+\section{Bibliography und Zotero}%
+%
+Die Einträge im Bibliography-File können mit Zotero erstellt werden. Wenn die entsprechende Literatur dort bereits eingetragen ist, kann sie einfach per Drag-and-Drop in das BibLaTex"=Literaturfile gezogen werden. Als Alternative kann per Rechtsklick auf die Datei über den Befehl "'ausgewählten Eintrag exportieren"' ein neues BibLaTex-File mit dem Eintrag erstellt werden. Dies funktioniert auch, wenn mehrere Dateien angewählt sind.\\%
+%
+Bei MSE-Berichten sind sämtliche Literaturstellen in der Zotero-Datenbank abzulegen. Zum Eintragen der benötigten Attribute (Titel, Autor etc.) kann Tabelle \ref{tabLiteraturstellen} konsultiert werden. Folgende sind Punkte zu beachten:%
+%
+\begin{itemize}%
+\item \textbf{Bevor man bei Zotero eine Literaturstelle hinzufügt, ist zu prüfen, ob diese bereits existiert.} Allfällig bemerkte doppelte Einträge werden fusioniert.%
+\item Der Name der heraufgeladenen PDF-Datei soll dem Schema \as{Jahr - Autor - Titel} folgen. Also zum Beispiel \as{2009 - Seelhofer - Ebener Spannungszustand im Betonbau.pdf}. Bei MSE"=Dokumenten schreibt man zusätzlich die das Modul dazu, also beispielsweise: \as{2013 - Stenz - VM2 - Kontinuierliche Spannungsfeldmodelle.pdf}.%
+\item Beim Eintrag einer Literaturstelle in Zotero ist unter \as{Datum} immer nur das Jahr einzutragen, Ausnahme: Zeitschriftenartikel (dort wenn vorhanden den Monat auch berücksichtigen).%
+\item Bei Vertiefungsmodulen ist unter \as{Art des Berichtes} der Eintrag \as{Bericht Vertiefungsmodul 2} zu machen. Der Zusatz \as{Bericht} wird im Hinblick auf die Zitierung in \LaTeX{} der Verständlichkeit halber benötigt.%
+\item Beim Literaturtyp \as{Bericht} werden in Zotero \as{Seiten} (von-bis) und nicht die \as{Anzahl der Seiten} verlangt. Meistens soll im Literaturverweis aber \as{123 S.} (Seitenanzahl) und nicht \as{S. 123-127} (gewisse Seiten eines Dokuments) stehen. Die erste Darstellung kann erzwungen werden, wenn in Zotero im Feld \as{Seiten} der Eintrag \as{123 S.} und nicht nur \as{123} gemacht wird. Letzterer Eintrag würde zur meist unerwünschten Darstellung  \as{S. 123} im Literaturverzeichnis führen.%
+\item Um in \LaTeX{} auf eine aus Zotero exportierte Literaturstelle zu verweisen, wird im Argument des \textbackslash cite-Befehl folgendes Muster verlangt: \as{Autor}\_ \as{1.Wort des Titels } \_ \as{Jahr} . Beispiel: Auf \as{Ebener Spannungszustand im Betonbau} von Seelhofer (2009) wird mit \as{\textbackslash cite\{seelhofer\_ ebener\_ 2009\}} zitiert.%
+\item Achtung: In Zotero zusätzlich eingegebene Informationen (übrige, unbenutzte Felder) können unter Umständen auch in \LaTeX{} im Literaturverzeichnis erscheinen (z.B. wenn bei einem Buch der ISBN eingegeben wird, wird dieser am Ende des Verweises im Literaturverzeichnis aufgeführt).%
+\item Die Argumente \as{@keywords} und \as{@file} in BibLaTex-Literaturdatenbanken entstehen automatisch beim Export aus Zotero und haben keinen Einfluss auf den Output im Literaturverzeichnis. Sie können also in der Datenbank belassen werden.%
+\item Bei Zeitschriftenartikeln muss bei Verweisen keine Seitenangabe gemacht werden, z.B. \cite{rusch_researches_1960}. In allen anderen Fällen muss die Seitenzahl, von der die Information aus der Quelle entnommen wurde, angegeben werden, z.B. \cite[S. 34]{seelhofer_ebener_2009} mit \as{\textbackslash cite$[$S. 34$]$\{seelhofer\_ ebener\_ 2009\}}%
+\end{itemize}%
+%
+%
+%
+%
+%
+%
+\begin{sidewaystable}
+\setlength{\tabcolsep}{2.5pt}
+\begin{table} [H]
+\begin{center}
+{\fontsize{7}{9}\selectfont
+\begin{tabularx}{230 mm}{ l l l | c c c c c c c c c c c c c c l  c }
+\hline 
+Literaturtyp&Typ Zotero&Typ \LaTeX &\multicolumn{15}{ c }{Attribute} \\
+&&& {\footnotesize Titel}&Autor&Nr. Bericht&Art Bericht&Ort&Institution&Seiten&Anz. Seiten&Datum&Verlag&Name Konf.&Band&Ausgabe&Publikation\\
+&&&{\tiny title } &{\tiny author } & {\tiny number } & {\tiny type } & {\tiny location } & {\tiny institution } & {\tiny pages } & {\tiny pagetotal } & {\tiny year } & {\tiny publisher } & {\tiny eventtitle }& {\tiny volume } & {\tiny issue /number } & {\tiny journaltitle } \\
+\hline 
+Bericht \cite{grob_ermudung_1977} &Bericht&report&X&X&Nr. 75& {\tiny Bericht} &X&X&000 S.&&Jahr&&&\\
+Buch \cite{wehnert_beitrag_2006} &Buch&book&X&X&&&&&&000&Jahr&X&&&&\\
+Dissertation \cite{seelhofer_ebener_2009} &Dissertation&thesis&X&X&&&X&X&&000&Jahr&&&\\
+Diskussionsbericht \cite{haller_schwinden_1940}&Bericht&report&X&X&Nr. 124& {\tiny Diskussionsbericht} &X&X&000 S.&&Jahr&&&\\
+Konferenz-Paper, -bericht \cite{szepe_bemessung_1956} &Konferenz-Paper&{\tiny inproceedings} &X&X&&&&&00-00&&Jahr&&X&X&\\
+MSE Master-Thesis \cite{amsler_bemessung_2013} &Bericht&report&X&X&&{\tiny Master-Thesis } &X&X&000 S.&&Jahr&&&&\\
+MSE Bericht VM1, VM2 \cite{amsler_verstarkung_2012} &Bericht&report&X&X&& {\tiny Bericht Vertiefungsmodul 1} &X&X&000 S.&&Jahr&&&&&\\
+Norm \cite{eurocode2} \cite{_model_2010} \cite{_sia_2013} &Bericht&report&X&&&&X&X&000 S.&&Jahr&&&&&&\\
+Norm Dokumentation \cite{siadoku0192} &Bericht&report&X&&&&X&X&000 S.&&Jahr&&&&&\\
+Anleitung / Manual \cite{teschl_matlab_2001} &Bericht&report&X&X&& {\tiny Anleitung  (o.ä.) } &X&&000 S.&&Jahr&&&&&\\
+Versuchsbericht \cite{amsler_durchstanzversuch_2013} \cite{muttoni_bemessen_1988} &Bericht&report&X&X&& {\tiny Versuchsbericht }&X&X&000 S.&&Jahr&&&&&\\
+Vorlesungsskript \cite{menn_langzeit-vorgange_1977} &Manuskript&report&X&X&& {\tiny Vorlesungsskript } &X&X&000 S.&&Jahr&&&&&\\
+Zeitschriftenartikel \cite{rusch_researches_1960} \cite{trost_auswirkungen_1967} &Zeitschriftenart.&article&X&X&&&&&00-00&&Monat.Jahr&&& {\tiny V. 00 oder 00 } & {\tiny No. 00 oder 00 } &X\\
+\hline
+\end{tabularx}
+}
+\end{center}   
+\stabcaption{Für die Literaturverweise benötigte Informationen beim Heraufladen auf Zotero und Zitieren in \LaTeX}
+\label{tabLiteraturstellen}
+\end{table}
+\end{sidewaystable}

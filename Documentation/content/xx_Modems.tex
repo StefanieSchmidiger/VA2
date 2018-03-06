@@ -1,0 +1,44 @@
+% 023_Introduction
+%
+\section{RF686x RFD900x}%
+The RF686x is a long distance radio modem to be integrated into custom projects.\\
+Its features include: \begin{itemize}
+    \item 3.3V UART interface
+    \item The RTS and CTS pins are available to the user
+    \item 5V power supply, also via USB
+    \item Default serial port settings: 57600 baud, no parity, 8 data bits, 1 stop bit
+    \item MAVLink radio status reporting available (RSSI, remote RSSI, local noise, remote noise)
+    \item The RFD900x has two antenna ports and firmware which supports diversity operation of antennas. During the receive sequence the modem will check both antennas and select the antenna with the best receive signal.
+    \item There are three different communication architectures and node topologies selectable: Peer-to-peer, multipoint network and asynchronous non-hopping mesh.
+    \item The RFD900x Radio Modem is compatible with many configuration methods like the AT Commands and APM Planner.
+    \item Golay error correcting code can be enabled (doubles the over-the-air data usage)
+    \item MAVLink framing and reporting can be turned on and off.
+    \item Encryption level either off or 128bit 
+\end{itemize}
+The 128bit AES data encryption may be set by AT command. The encryption key can be any 32 character hexadecimal string and less and must be set to the same value on both receiving and sending modems. 
+%
+%
+\subsection{Peer to peer network}
+Abb: P2P\\
+Peer to peer network is a straight forward connection between any two nodes. Whenever  two  nodes  have compatible  parameters  and  are within range, communication will succeed after they synchronize. If your setup requires more than one pair of radios within the same physical pace, you are required to set different  network ID’s to each pair. 
+%
+%
+\subsection{Asynchronous non-hopping mesh}
+It is a straight foreward connection between two and more nodes. As long as all the nodes are within range and have compatible parameters, communication between them will succeed.
+%
+%
+\subsection{Multipoint network}
+Abb: P2MP, PTMP or PMP\\
+In a multipoint connection, the link is between a sender and multiple receivers. 
+%
+%
+\subsection{MAVLink}
+MAVLink or Micro Air Vehicle Link is a protocol for communicating with small unmanned vehicle. It is designed as a header-only message marshaling library. It is used mostly for communication between a Ground Control Station (GCS) and Unmanned vehicles, and in the inter-communication of the subsystem of the vehicle. It can be used to transmit the orientation of the vehicle, its GPS location and speed.
+%
+%
+\subsection{SiK}
+A SiK Telemetry Radio is a small, light and inexpensive open source radio platform that typically allows ranges of better than 300m “out of the box” (the range can be extended to several kilometres with the use of a patch antenna on the ground). The radio uses open source firmware which has been specially designed to work well with MAVLink packets and to be integrated with the Mission Planner, Copter, Rover and Plane.\\
+SiK radio is a collection of firmware and tools for telemetry radios.\\
+Hardware for the SiK radio can be obtained from various manufacturers/stores in variants that support different range and form factors. Typically you will need a pair of devices - one for the vehicle and one for the ground station. \\
+A SiK Telemetry Radio is one of the easiest ways to setup a telemetry connection between your APM/Pixhawk and a ground station.\\
+You can use the MAVLink support in the SiK Radios to monitor the link quality while flying, if your ground station supports it

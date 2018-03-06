@@ -1,0 +1,13 @@
+% outsource_TOC
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\clearpage
+\frontmatter      % Beginn der römischen Seitenzahlen
+\pagestyle{fancy}       % Für nachfolgende Seiten
+\markboth{Inhaltsverzeichnis}{}
+\chapter*{Table of Contents} 
+\pdfbookmark[1]{Inhaltsverzeichnis}{Inhaltsverzeichnis}
+\vspace{-12.8mm}
+\makeatletter
+\@starttoc{toc}    % Generieren des Inhaltsverzeichnisses
+\makeatother
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -1,0 +1,179 @@
+\documentclass[a4paper,fleqn,english]{book}
+%
+%---------------------------------------------------------------
+%  LaTeX - Template, Grundlagen, Tipps, Vorlagen (Version 09)
+%  (c) April 2016, Manuel Wipfli, Stefan Lisibach
+%  Hochschule Luzern - Technik und Architektur
+%  Abteilung Bautechnik
+%---------------------------------------------------------------
+%
+%
+%
+%--------------------------------------------------------------------------------------------------------------------
+% PREAMBLE
+%--------------------------------------------------------------------------------------------------------------------
+
+\usepackage{corefiles/hsluBTmaster13}
+
+\hypersetup{%
+pdfcreator={pdflatex},
+pdfproducer={LaTeX},
+pdftitle={UAV Serial Switch},             %%% Titel der Arbeit UNBEDINGT ANPASSEN!
+pdfsubject={VA1},                         %%% Thema (subject) UNBEDINGT ANPASSEN!
+pdfauthor={Stefanie Schmidiger},          %%% Autor UNBEDINGT ANPASSEN!
+pdfkeywords={Aeroscout},                  %%% Stichwörter UNBEDINGT ANPASSEN!
+bookmarksnumbered=true,                   %%% Nummerierte Bookmarks
+bookmarksopen=true,                       %%% Bookmarks bei PDF-öffnen bereits geöffnet?
+colorlinks=false,                         %%% Farbig markierte Links
+plainpages=false,                         %%% zur korrekten Erstellung der Bookmarks
+bookmarksopenlevel=1,												 %%% Bookmarks nur bis Hierarchiestufe Section geöffnet
+pdfpagelabels,                            %%% zur korrekten Erstellung der Bookmarks
+hidelinks,                                %%% Links verstecken
+pdfpagelayout=TwoPageRight                %%% Voreingestellte Ansicht im PDF-Editor (z.B. Acrobat)
+}%
+
+\graphicspath{{pictures/}}                %%% Pfad, wo die Bilder abgelegt werden
+\bibliography{corefiles/literaturDocumentation}        %%% Datei für die Literaturquellen
+
+%\watermark{truefirstpage} % Wasserzeichen "Entwurf": (trueall, truefirstpage,false)
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% DOKUMENT
+%--------------------------------------------------------------------------------------------------------------------
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+\begin{document}													% Nicht editieren!
+\lsstyle                               % Ab hier Zeichenabstand +10 (Nicht editieren!)
+\fontsize{10.5}{13.7}\selectfont       % In nachfolgenden Seiten Font 10.5pt (Nicht editieren!)
+\pagenumbering{alph}                   % Nötig für Richtigkeit von backref-Verweisen (Nicht editieren!)
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% TITELBLATT, VERSIONSTABELLE UND SELBSTSTÄNDIGKEITSERKLÄRUNG
+%--------------------------------------------------------------------------------------------------------------------
+
+\prestuffmastershort                                 % Funkt. die TB, Versionstab. und Selbstst.-Erkl. generiert
+{                                                    % 1. Input kann auch selber noch angepasst werden
+%\huge\textbf{\LaTeX}\\                               %%% Titel der Arbeit 1. Zeile 
+%\vspace{2mm}
+\huge\textbf{UAV Serial Switch\\Documentation}\\     			     %%% Titel der Arbeit 2. Zeile
+%\vspace{8mm}
+%\Large\textbf{bla} %%% Untertitel der Arbeit
+}
+{Vertiefungsmodul I}                         	       %%% Art der Arbeit
+{Stefanie Schmidiger}          	      		 			%%% Autor
+{Prof. Erich Styger}                          	       		%%% Advisor
+{Dr. Christian Vetterli}                                   		%%% Experte
+{Horw}                                          		 	%%% Ort
+{2018}                                         		 		%%% Jahr XXXX
+{10.01.}                                       		 		%%% Tag und Monat der Selbstständigkeitserklärung XX.XX.
+{Version 0 & Initial Document & 10.01.18 & Stefanie Schmidiger}    	%%% Änderungsverzeichnis, für neue linie \\
+
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% VORWORT
+%--------------------------------------------------------------------------------------------------------------------
+
+\vorwort%
+{true} % ist Vorwort vorhanden? (true,false)
+{\input{content/01_Abstract}} % Text des Vorworts
+{Horw, January 2017} % Ort, Datum
+{Stefanie Schmidiger} % Verfasser des Vorworts
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% ZUSAMMENFASSUNG
+%--------------------------------------------------------------------------------------------------------------------
+
+\zusammenfassung%
+{truedeutsch} % Ist Abstract vorhanden?(truebothsamepage, truebothseparatepages, truedeutsch, false)
+{\input{content/02_Summary}} % Text der Kurzfassung in Deutsch
+{} % Text der Kurzfassung in Englisch
+
+%--------------------------------------------------------------------------------------------------------------------
+% INHALTSVERZEICHNIS (automatisch generiert)
+%--------------------------------------------------------------------------------------------------------------------
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+\input{corefiles/outsource_TOC} 	% Nicht editieren!
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% BEGINN DER NUMMERIERTEN KAPITEL
+%--------------------------------------------------------------------------------------------------------------------
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+\mainmatter%         	% Nicht editieren!
+\pagestyle{fancy}%	% Nicht editieren!
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+\chapter{Introduction}
+\input{content/03_Introduction}
+%
+\chapter{Task Description}%
+\input{content/03_TaskDescription}%
+%
+\chapter{Modems}%
+\input{content/xx_Modems}%
+%
+\chapter{Conclusion} \label{sec:txtConclusion}%
+\input{content/08_Conclusion}%
+%
+%
+%--------------------------------------------------------------------------------------------------------------------
+% LITERATURVERZEICHNIS
+%--------------------------------------------------------------------------------------------------------------------
+
+\literaturverzeichnis%
+{true} % LIteraturverzeichnis anzeigen? (true=ja, false=nein)
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% BEZEICHNUNGEN
+%--------------------------------------------------------------------------------------------------------------------
+
+\bezeichnungenChapter%
+{true} % Bezeichnungen anzeigen? (true=ja, false=nein)
+{\input{content/103_Bezeichnungen}}
+
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% ANHANG
+%--------------------------------------------------------------------------------------------------------------------
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+\input{corefiles/outsource_startAppendix} % Nicht editieren!
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+\anhangstuff % Generiert den Anhang-Titel und ändert Spezifikationen
+{true} % ist Anhang vorhanden? (true=ja, false=nein)
+{
+\input{content/102_Anhang}%
+}
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+\input{corefiles/outsource_endAppendix} % Nicht editieren!
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+%--------------------------------------------------------------------------------------------------------------------
+% LEBENSLAUF (nur in Masterthesis)
+%--------------------------------------------------------------------------------------------------------------------
+%
+%
+\input{content/104_Lebenslauf}%
+%
+%
+%--------------------------------------------------------------------------------------------------------------------
+% TODO's (nur für Vorabzüge)
+%--------------------------------------------------------------------------------------------------------------------
+
+%\listoftodos%     % Bei der definitiven Ausgabe des Dokuments auskommentieren
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
+\end{document} % Nicht editieren!
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 

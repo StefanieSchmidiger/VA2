@@ -1,0 +1,1185 @@
+%---------------------------------------------------------------
+% Stylefile HSLU BT Master (Version 13)
+%---------------------------------------------------------------
+%  (c) April 2016, Manuel Wipfli, Stefan Lisibach
+%  Hochschule Luzern - Technik und Architektur
+%  Abteilung Bautechnik
+%---------------------------------------------------------------
+%  
+%
+%  ACHTUNG:
+%  Bei der Anwendung dieses Stylefiles sind die Punkte im 
+%  hsluBT-LaTex-Vorlagenfile zu beachten. Es wird empfohlen, 
+%  sämtliche Berichte auf dieser Vorlage aufzubauen. Eingriffe 
+%  in dieses File werden nicht empfohlen. Allfällige 
+%  Anpassungen sollten im Preamble des jeweiligen Dokuments 
+%  vorgenommen werden.
+%
+%
+%
+% ---------------------------------------------------------------------------------------------------------
+% ÄNDERUNGSVERZEICHNIS
+% ---------------------------------------------------------------------------------------------------------
+%
+%
+% v13
+%			- Lebenslauf-Command
+%			- Löschung des alten "\bezeichnungen"-Commands
+%				
+% v12 
+%			- lstlist-Setup-Command für Codestellen
+%			- Erleichterung Markierung Code in PDF
+%			- TodoList Funktion
+%			- Abstand-Text-Abstand Funktion in Gleichungen "\tr"
+%			- Watermark Funktion
+%
+% v11
+%			- Umgebung "borli" wurde ausgelagert, wird von nun in separatem Stylefile definiert 
+%			   (Verkleinerung Datenmenge), Filename: "hsluBTborli01.sty"
+%			- Command "\bezeichnungen" wird in die folgenden Commands aufgeteilt:
+%				- "\bezeichnungenChapter"
+%				- "\bezeichnungenSection"
+%				Die Handhabung dieser Commands geschieht wie im Vorlagenfile (ab Version 7) verdeutlicht.
+%			- Zweite Spalte in der Funktion "\bezeichnungen" (wo die Bezeichnung eingefügt wird) 
+%			   lässt neu Zeilenumbrüche zu (funktioniert auch bei allen Befehlen der neuen Commands 
+%			   "\bezeichnungenEditierbar" etc.)
+%			- Das Literaturverzeichnis (\literaturverzeichnis) lässt sich nun mit dem Attribut "false" 
+%			  ausblenden (analog Anhang)
+%			- Verkürzter prestuffMaster-Befehl verfügbar (\prestuffmastershort), braucht eine Seite weniger 
+%			   (Selbstständigkeitserklärung und Versionentabelle auf der gleichen Seite)
+%         	- Neuer Befehl "\jj" zur Korrektur des falschen Abstandes vor dem "j" bei Times New Roman
+%         	- Neuer befehl "\gf" für Gänsefüsschen
+%         	- \captionsetup ist nun für tabellen und Bilder global definiert
+%			- \fontsize{10.5}{13.7}\selectfont für den Standardfont ist ab Vorlagefile 07 konsequenter definiert 
+%			   (auch bei fehlendem \prestuffmaster ist die Definition vorhanden, vgl. File "Vorlagen_07.tex", 
+% 		    direkt nach \begin{document}
+%
+% v10
+%			- Änderung der Funktion \anhangstuff, neu sind Anhangkapitel als \chapter und nicht \section 
+%			  und unterkapitel als \section und nicht als \subsection einzufügen.
+%			- Bessere Zentrierung von Advisor und Experte auf dem Titelblatt
+%
+% v09	 
+%			- Itemize-Symbol ist jetz global als [--] definiert, ohne dass man es jedesmal ändert
+%			- Trennsymbole in Literaturverzeichnis angepasst (Kommas anstatt Punkte, 
+%			  zusätzliches Komma nach Autoren)
+%			- Korrektur Positionierung Experte, Advisor auf Titelblatt (Eingemittet)
+%			- Anpassung Abstände um Bilder und Tabellen herum
+%			- borli-Umgebung zur Markerung von Beispielen mit einem grauen Balken
+% 			- SIA-Randverweise mit \borte (in Kombination mit der borli-Umgebung)
+%			- Neuer Befehl \ee für Einheiten in Formeln (werden somit nicht kursiv und mit einem 
+%			  Abstand zur Zahl geschrieben)
+%			- Neuer Befehl \as für Anführungs- und Schlusszeichen
+%			- Neuer Befehl \gc für " °C "
+%			- Laden des Pakets "xfrac" das Brüche im Text sauber darstellt (Befehl \sfrac)
+%			- Globale Definition für itemize-Elemente-Abstand
+%
+% v08	
+%			- Bei Bilder-Commands spic, spicH, spicv, spicvH Label muss jetzt das Label als {\label{test}} 
+%			  und nicht nur {test} hinzugefügt werden (damit das Label in Texmaker in den Vorschlägen erscheint)
+%
+%
+% ---------------------------------------------------------------------------------------------------------
+% MANUAL
+% ---------------------------------------------------------------------------------------------------------
+%
+% - Für eine angenehme Darstellung dieses Stylefiles die Schrift Courier wählen, Fenster breit machen Befehle
+% - Sämtliche anwendungsbezogenen Befehle dieses Stylefiles sind unten erklärt. (Nummerierung = Inputs)
+%
+%  \spic
+%  - - - - - - - - - - - - - - - 
+%  Für ein Bild mit Brete 150mm, beliebiger Höhe, inkl. Captiontext, 
+%  Platzierung automatisch je nach Platzverhältnissen 
+%  1  Name der Bilddatei
+%  2  Caption-Text
+%  3  Label für \ref-Verweise (geschrieben in der Form "\label{Input}" )
+%  
+%  \spicH
+%  - - - - - - - - - - - - - - - 
+%  Für ein Bild mit Brete 150mm, beliebiger Höhe, inkl. Captiontext, wird an genau 
+%  der Stelle im Dokument eingesetzt, wo es im Code eingefügt wird.
+%  1  Name der Bilddatei
+%  2  Caption-Text
+%  3  Label für \ref-Verweise (geschrieben in der Form "\label{Input}" )
+%  
+%  \spicv
+%  - - - - - - - - - - - - - - - 
+%  Für ein Bild frei wählbarer Breite, beliebiger Höhe, inkl. Captiontext, 
+%  Platzierung automatisch je nach Platzverhältnissen
+%  1  Name der Bilddatei
+%  2  Caption-Text
+%  3  Label für \ref-Verweise (geschrieben in der Form "\label{Input}" )
+%  4  Breite des Bildes in mm (nur Zahl schreiben ohne Einheit)
+%  
+%  \spicvH
+%  - - - - - - - - - - - - - - - 
+%  Für ein Bild frei wählbarer Breite, beliebiger Höhe, inkl. Captiontext, 
+%  wird an genau der Stelle im Dokument eingesetzt, wo es im Code eingefügt wird.
+%  1  Name der Bilddatei
+%  2  Caption-Text
+%  3  Label für \ref-Verweise (geschrieben in der Form "\label{Input}" )
+%  4  Breite des Bildes in mm (nur Zahl schreiben ohne Einheit)
+%  
+%  \vorwort
+%  - - - - - - - - - - - - - - - 
+%  Generiert automatisch das Vorwort mit Unterzeichnung
+%  1  Ist Vorwort vorhanden (ausblenden)? (true, false)
+%  2  Vorwort-Text (wird am besten über \input-Befehl eingefügt)
+%  3  Ort, Datum (unten links)
+%  4  Name (unten rechts)
+%  
+%  \zusammenfassung
+%  - - - - - - - - - - - - - - - 
+%  Generiert automatisch die Zusammenfassung.
+%  1  Ist Abstract vorhanden (ausblenden)?
+%         truebothsamepage   		 Vorhanden, De/En, beide auf gleicher Seite
+%         truebothseparatepages  Vorhanden, De/En, beide auf separater Seite
+%         truenurdeutsch         Vorhanden, nur De
+%         false                  Nicht vorhanden
+%  2  Deutsche Zusammenfassung
+%  3  Englische Zusammenfassung
+%  
+%  \anhangstuff
+%  - - - - - - - - - - - - - - - 
+%  Generiert den Anhang.
+%  1  Anhang vorhanden (ausblenden)? (true, false)
+%  2  Anhänge (am besten mit \input-Befehl eingefügt)
+%
+%  \literaturverzeichnis
+%  - - - - - - - - - - - - - - - 
+%  Generiert das Literaturverzeichnis
+%  1  Literaturverzeichnis vorhanden (ausblenden)? (true, false)
+%  
+%	 "\bezeichnungenChapter" (neuer Befehl)
+%  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% Zum generieren des Bezeichnungen-Kapitels
+%	 1  Bezeichnungen vorhanden? (true, false)
+%	 2  Inhalt des Bezeichnungen-Kapitels (mit Befehl "\bezeichnungenSection")
+%
+%	 "\bezeichnungenSection" (neuer Befehl)
+%  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% Zum generieren der Bezeichnungen-Unterkapitel
+%	 1 Bezeichnungen unterkapitel vorhanden (ausblenden)? (true, false)
+%	 2 Titel der Bezeichnungen
+%	 3 Beziechnungen in Tabellenform
+%  Verlange Form des Inputs (3) (pro Zeile): $f_{c}$  & Betondruckfestigkeit \\
+%  (Zeilenumbruch bei letzter Zeile weglassen)
+%
+%  \titlepagehsluBT
+%  - - - - - - - - - - - - - - - 
+%  Generiert eine allgemeine HSLU Titelseite
+%  1  Titel und Untertitel
+%  2  Namenszeile 1
+%  3  Namenszeile 2
+%  4  Namenszeile 3
+%  5  Beschriebungszeile 1 (z.B. "Laborbericht" etc.)
+%  6  Beschriebungszeile 1
+%  7  Beschriebungszeile 1
+%  8  Ort
+%  9  Datum (Meist nur Jahr)
+%  Verlange Form des Inputs bei Punk 1: (Beispiel)
+%      \huge\textbf{1. Zeile Titel}\\ 
+%      \vspace{2mm}
+%      \huge\textbf{2. Zeile Titel}\
+%      \vspace{8mm}
+%      \Large\textbf{Untertitel} 
+%  
+%  \prestuffmastershort
+%  - - - - - - - - - - - - - - - 
+%  Generiert Titelseite (Masterarbeit-Style), Versionstabelle und Selbstständigkeitserklärung automatisch.
+%  1  Titel und Untertitel
+%  2   Art der Arbeit
+%  3   Autor
+%  4   Advisor
+%  5   Experte
+%  6   Ort
+%  7   Jahr XXXX
+%  8   Tag und Monat der Selbstständigkeitserklärung XX.XX.
+%  9   Versionstabellen-Inhalt
+%  Verlange Form des Inputs bei Punkt 9 (pro Zeile):
+%      {Version 0 & Vorabzug & 01.09.14 & Peter Muster\\}
+%  (Zeilenumbruch bei letzter Zeile weglassen)
+% 
+%	 \stabcaption
+%  - - - - - - - - - - - - - - - 
+%	 Definition eines Caption-Texts für eine Tabelle
+%	 1	 Caption Text
+%
+%  \lebenslauf
+%  - - - - - - - - - - - - - - - 
+%	 Generiert den Lebenslauf in der Masterthesis
+%  1  Personalien
+%  2   Personalien
+%  3   Ausbildung
+%  4   Berufliche Tätigkeit
+%
+%  \watermark
+%  - - - - - - - - - - - - - - - 
+%  Generiert ein Wasserzeichen auf der ersten oder auf allen Seiten.
+%	 1	Einstellung der Seiten mit Wasserzeichen (trueall, truefirstpage,false)
+%
+%  \lstsethslu
+%  - - - - - - - - - - - - - - - 
+%	Setzt die Parameter für eine Quellcode-Darstellung im Bericht
+%	 1	 Programmiersprache
+%	 2  Caption text
+%	 3	 Label
+%
+%
+%  - - - - - - - - - - - - - - - - - - - -  
+%  Diverse weitere Commands:
+%  - - - - - - - - - - - - - - - - - - - - 
+%  \ee   -  Einheit in Formel mit richtiger Formatierung und Abstand zur Zahl (Input:  Einheit)
+%  \as   -  Anführungszeichen und Schlusszeichen (Input: Text innerhalb der Zeichen)
+%  \gf    -  Gänsefüsschen
+%  \gc   -  Grad Celsius °C (kein Input)
+%  \ii     -  Index hinter einer Einheit (Input: Index)
+%  \jj     -  Zur Korrektur des falschen Abstandes vor dem "j" bei Times New Roman
+%	 \tr   	 - Für Text zwischen zwei Gleichungen mit grösseren Abständen
+%
+% ---------------------------------------------------------------------------------------------------------
+% PAKETE LADEN
+% ---------------------------------------------------------------------------------------------------------
+
+\usepackage{amsmath}                      % Für Mathematische bestandteile (mehr Möglichkeiten)
+\usepackage{comment}                      % Um Kommentare einfügen zu können (begin/end comment)
+\usepackage[a4paper]{geometry} % Für Einstellung der Seitenränder %,margin=1in
+\usepackage[ngerman]{babel}               % Silbentrennung nach neuer deutsche Rechtschreibung, äöü
+\usepackage[utf8]{inputenc}               % Codierung der Schriftzeichen
+\usepackage[T1]{fontenc}                  % Umlaute
+\usepackage{graphicx}                     % Für Bildimport
+\usepackage[bf]{caption}                  % Für Unterschriften (Bilder, Tabellen)
+\usepackage{txfonts}                      % Schriftart New Roman (ohne weitere Definition)
+\usepackage{fancyhdr}                     % Um spezielle Anpassungen am Header vornehmen zu können
+\usepackage{titlesec}                     % Anpassung des Umgangs mit Makros im Bereich Titles/Headers
+\usepackage{lipsum}                       % Braucht es für Anpassung der Kapitelnummerierung
+\usepackage{tocloft}                      % Killen der Punkte im TOC und Bearbeitung Abstände, Fontsize
+\usepackage{blindtext}                    % Für Beispieltexte
+\usepackage{here} 						  % Um Bilder an Ort und Stelle zu halten
+\usepackage[letterspace=10]{microtype}    % Längerer Abstand zwischen Zeichen (Befehl \lsstyle)
+\usepackage{chngcntr}                     % Damit Gleichungsnummerierung immer wieder bei 1 anfängt (auch Anhang) 
+\usepackage{emptypage}                    % Killt Header auf Füllseiten
+\usepackage[hang,flushmargin]{footmisc}   % Damit Fussnote linksbündig wird.
+\usepackage{verbatim}                     % Damit man auskommentieren kann (begin comment, end comment)
+\usepackage{mathptm}                      % Times für equations
+\usepackage{color}                        % Für farbigen Text
+\usepackage[section]{placeins}            % Floatbarrier Befehl                     
+\usepackage{float} 						% Für [H] Befehl bei Bildern
+% Change float parameters, see http://people.cs.uu.nl/piet/floats/node1.html
+\renewcommand{\textfraction}{0.05}        %min fraction of page for text, default 0.2
+\renewcommand{\topfraction}{0.95}         %max fraction of page for floats on top, default 0.7
+\renewcommand{\bottomfraction}{0.95}      %max fraction of page for floats at bottom, default 0.3
+\renewcommand{\floatpagefraction}{0.80}   %min fraction of floatpage that should have floats, default 0.5
+\setcounter{topnumber}{4}                                                                                                           %max number of floats on top of a page, default 2
+\setcounter{bottomnumber}{4}                                                                                                 %max number of floats on bottom of a page, default 1
+\setcounter{totalnumber}{8}                                                                                                      %max number of floats on a page, default 3
+
+\usepackage{tabularx}                     % Für spezielle Tabellen 
+\usepackage{longtable}                    % Tabellen über mehr als eine Seite
+\usepackage{wasysym}              %Promillzeichen
+\usepackage{etoolbox}                  % Für If-Statements in Commands
+\usepackage[backend=bibtex, backref=true, style=numeric, firstinits]{biblatex}   % Literaturverzeichnis 
+\usepackage{mathtools}                % Für Cases bei Formeln (geschwungene Klammer)
+\usepackage[figuresright]{rotating}  % Tabellen 90° drehen, figuresright > GUZS
+\usepackage{xfrac}								% Ermöglicht u.A. sfrac, für saubere Brüche im Text
+\usepackage{enumitem}                   % Für globale Definition für itemize-Elemente-Abstand 
+\usepackage[titletoc]{appendix}        % Für das Generieren des Anhangs
+\usepackage{upgreek}                       %damit mu auch nicht-kursiv geschrieben werden kann
+\usepackage{listings}                          %Code Umgebung (für Matlab Code in Bericht)
+\lstset{ %
+                language=C,                     % choose the language of the code
+                %basicstyle=\ttfamily, 
+                basicstyle=\footnotesize \ttfamily, 
+                %basicstyle=\footnotesize,      % the size of the fonts that are used for the code
+                keywordstyle=\color{red!50!black}\ttfamily,
+                stringstyle=\color{blue}\ttfamily,
+                commentstyle=\color{green!50!black}\ttfamily,
+                numbers=left,                   % where to put the line-numbers
+                numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+                stepnumber=1,                   % the step between two line-numbers. If it's 1 each line 
+                                                % will be numbered
+                numbersep=5pt,                  % how far the line-numbers are from the code
+                backgroundcolor=\color{black!5},  % choose the background color. You must add \usepackage{color}
+                showspaces=false,               % show spaces adding particular underscores
+                showstringspaces=false,         % underline spaces within strings
+                showtabs=false,                 % show tabs within strings adding particular underscores
+                frame=single,                    % adds a frame around the code
+                tabsize=2,                               % sets default tabsize to 2 spaces
+                breaklines=true,                % sets automatic line breaking
+                breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+                aboveskip=4pt,                  % define the space above displayed listings
+                belowskip=-6pt,                 % define the space below displayed listings
+                framextopmargin=0pt,            % top margin inside the frame box
+                framexbottommargin=0pt,         % bottom margin inside the frame box
+                title=\lstname,                 % show the filename of files included with \lstinputlisting;
+                                                % also try caption instead of title
+                captionpos=b,                   % sets the caption-position to bottom
+%            abovecaptionskip=\smallskipamount, % default \smallskipamount, space above the top caption
+%            belowcaptionskip=\smallskipamount, % default \smallskipamount, space below caption
+%            aboveskip=\smallskipamount,        % default \medskipamount, try \vspace*{2ex}
+%            belowskip=\smallskipamount,        % default \medskipamount, try \smallskipamount
+%            escapeinside={\%*}{*)},         % if you want to add a comment within your code
+                keywords=[2]{\#if,\#endif,\#else,\#ifdef},
+   morekeywords={bool,true,false,size_t,__asm,uint8_t,int8_t,uint16_t,int16_t,uint32_t,int32_t,uint64_t,int64_t,*,...},            % if you want to add more keywords to the set
+                alsoother={\#},
+                otherkeywords={\#define,\#pragma,\#define,\#ifdef,\#ifndef,\#include,\#endif,\#else}, % so they work with spaces in front
+}
+% \mode<presentation>{\lstinputlisting[basicstyle=\tiny,numberstyle=\tiny]{./src/FunctionsPointers.c}}  % or use \scriptsize 
+% \vspace*{-2ex}
+\lstloadlanguages{C,C++} % load languages used
+\usepackage{beramono}                   %Schriftart in der Code-Umgebung (für Matlab Code in Bericht)
+\usepackage{tabto}						% Für einfaches Tabbing
+\usepackage{multirow}               % Multi-Zeilen bei Tabellen
+\usepackage{colortbl}					% Farbige Zellen bei Tabellen
+\usepackage{pdfpages}				% Um PDF Seiten einzufügen
+\usepackage{accsupp}			   % Zur Erstellung von nicht selektierbarem Text (für lstlisting Codeselektion)
+\usepackage[colorinlistoftodos,obeyFinal]{todonotes} % TODO Notes
+\usepackage{tikz}
+%-----------------------------------------------------
+\usepackage{hyperref}            %%% Doppelseiten Layout beim öffnen  ALS LETZTES ZU LADEN
+%
+%
+%
+% ---------------------------------------------------------------------------------------------------------
+% ANPASSUNGEN
+% ---------------------------------------------------------------------------------------------------------
+%
+\DeclareRobustCommand\squelch[1]{\BeginAccSupp{method=plain,ActualText={}}#1\EndAccSupp{}}%
+%
+% Definitonen MathOperators
+% ---------------------------------------------------------------------------------------------------------
+%
+\DeclareMathOperator{\arccot}{arccot}%      %Arkuskotangens als math. Funktion definieren
+\DeclareMathOperator{\atan2}{atan2}%       %Arkustangens als math. Funktion definieren
+%
+%
+% Farbdefinitionen Grautöne Matlab Code
+% ---------------------------------------------------------------------------------------------------------
+%
+\definecolor{grey1}{RGB}{252,252,252}%      %Farben definieren, die später benutzt werden  (bei Codes und Tab)
+\definecolor{grey2}{RGB}{190,190,190}%
+\definecolor{grey3}{RGB}{115,115,115}%
+%
+%
+%
+% Globale Definition für itemize-Elemente-Abstand (=0, kleiner als standard)
+% ---------------------------------------------------------------------------------------------------------
+%
+\setlist[1]{itemsep=0pt}%
+%
+%
+% Trennsymbole in Literaturverzeichnis anpassen
+% ---------------------------------------------------------------------------------------------------------
+%
+\renewcommand{\newunitpunct}{\addcomma\space}%
+\renewcommand{\newblockpunct}{\addcomma\space}%
+%
+%
+% Item Symbol global festlegen
+% ---------------------------------------------------------------------------------------------------------
+%
+\renewcommand\labelitemi{--}%
+\def\checkmark{\tikz\fill[scale=0.4](0,.35) -- (.25,0) -- (1,.7) -- (.25,.15) -- cycle;} 
+%
+% Anpassen Bibliography, dass name= "Muster H." und nicht "H. Muster"
+% ---------------------------------------------------------------------------------------------------------
+%
+\DeclareNameAlias{sortname}{last-first}%
+\DeclareNameAlias{default}{last-first}%
+%
+%
+% Anpassen Bibliography, dass die Header stimmen
+% ---------------------------------------------------------------------------------------------------------
+%
+\defbibheading{bibliography}[\bibname]{%
+  \section*{#1}%
+  \markboth{Literaturverzeichnis}{}}%
+%
+% Anpassen der Kapitelnummerierungen
+% ---------------------------------------------------------------------------------------------------------
+%
+%% Anpassen der Chapter-Überschrift (Level 1.)
+%
+%    Damit die Kapitelüberschrift aussieht wie die tieferen Kapitel (1.1 1.1.1)
+%    und nicht in zwei Linien ist, inkl. Wort "Chapter" etc. wie im Standardlayout
+%
+\def\@makechapterhead#1{
+  %\vspace*{50\p@}                                   % Kein Abstand oberhalb des Kapiteltitels
+  {\parindent \z@ \raggedright \normalfont
+    \interlinepenalty\@M
+    \fontsize{16pt}{0pt}\bfseries \thechapter\quad #1\par\nobreak
+    \vskip 60\p@
+  }}%
+% 
+% 
+  \def\@makeschapterhead#1{
+  %\vspace*{50\p@}%                                  % Kein Abstand oberhalb des Kapiteltitels
+  {\parindent \z@ \raggedright
+    \normalfont
+    \interlinepenalty\@M
+    \fontsize{16pt}{0pt}\bfseries  #1\par\nobreak
+    \vskip 60\p@
+  }}%
+%
+%% Abstände um die Unterkapitel-Titel
+%
+\titlespacing{\section}{0pt}{22pt plus 0pt minus 0pt}{18pt plus 0pt minus 0pt}%
+\titlespacing{\subsection}{0pt}{24pt plus 0pt minus 0pt}{12pt plus 0pt minus 0pt}%
+%
+%
+%% Anpassung aller darunterliegenden Nummerierungen (Level 1.1 bis 1.1.1)
+%
+\renewcommand\thechapter{\arabic{chapter}} % Damit Nummerierung 1.1 nicht 1 und 1.1.1 nicht 1.1
+\renewcommand\thesection{\arabic{chapter}.\arabic{section}}%
+\renewcommand\thesubsection{\arabic{chapter}.\arabic{section}.\arabic{subsection}}%
+\renewcommand\thesubsubsection{\arabic{chapter}.\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}%
+%
+%
+% Diverse Anpassungen
+% ---------------------------------------------------------------------------------------------------------
+%
+\captionsetup{format=hang,indention=4mm,singlelinecheck=false}   % Regelt das Aussehen von Bildunterschriften
+%
+\setlength{\intextsep}{20pt}                     % Vertical space above & below [h] floats
+\setlength{\textfloatsep}{20pt} 						% Vertical space below (above) [t] ([b]) floats
+\setlength{\floatsep}{20pt}
+\setlength{\belowcaptionskip}{-\baselineskip}\addtolength{\belowcaptionskip}{5pt}%    % Abstand Bild zu Caption
+\captionsetup[table]{skip=5pt}                     % Apstand Caption bei Table (etwas näher an Tabelle)
+\def\arraystretch{1.15}                             % Abstand zwischen horizontalen Linien und Text bei table
+\allowdisplaybreaks                                 % Pagebreaks in align-ten Formeln
+%
+\geometry{bindingoffset=13mm,left=20mm,             % Seitenränder, marginparsep = Abstand Text Randnotiz, marginparwidth = Breite Marginnote
+     right=25mm,top=25mm,bottom=30mm,marginparwidth=13mm, marginparsep=5mm} %
+%       
+\renewcommand{\cftdot}{}                            % Unterdrücken der Punkte im Inhaltsverzeichnis
+\renewcommand\cftbeforesecskip{2mm}                 % Grössere Abstände bei Kapiteln im Inhaltsverzeichnis
+\renewcommand\cftbeforetoctitleskip{-4mm}           % Lücke vor dem Titel eliminieren
+\renewcommand\cftaftertoctitleskip{8mm}             % Lücke nach dem Titel 
+%
+\renewcommand{\cfttoctitlefont}                     % Titel Inhaltsverzeichnis 16pt und Fett
+{\fontsize{16pt}{12pt}\selectfont\bf}%            
+%
+%
+\addto\captionsngerman{%
+  \renewcommand{\tablename}{Table}                  % "Bild" statt "Abbildung"
+  \renewcommand{\figurename}{Figure}                  % "Bild" statt "Abbildung"
+  \renewcommand{\contentsname}{Table of Content}  % "Inhaltsverzeichnis" statt "Table of Cont.")
+}%
+%
+\renewcommand{\lstlistingname}{Code}   % Dass bei Code nicht "Listing" sondenr "Code" steht
+%
+\setlength{\mathindent}{13mm}                       % Seitlicher Einzug Gleichungen
+\setlength{\jot}{10pt}                              % Abstand zwischen 2 Zeilen innerhalb einer Gleichung
+%
+%\makeatletter
+\g@addto@macro\normalsize{
+  \setlength\abovedisplayskip{15pt}                 % Abstand um die Gleichungen herum definieren, vorher -10pt
+  \setlength\belowdisplayskip{15pt}
+  \setlength\abovedisplayshortskip{4pt}             
+  \setlength\belowdisplayshortskip{4pt} 
+}%
+%
+%% Headerdefinition für alle Seiten, wo KEIN neues Kapitel beginnt
+%
+\pagestyle{fancy}{                                  % Definition der Header und Footer
+\fancyhead[RO]{\rmfamily \fontsize{8pt}{12pt}  % rechts im Header / ungerade S. Name Kap. Ebene 1.1
+      \selectfont  \nouppercase \rightmark}%               
+\fancyhead[LE]{\rmfamily \fontsize{8pt}{12pt}     % links im Header / gerade S. Name Kap. Ebene 1.
+       \selectfont  \nouppercase \leftmark}%        
+  %       
+\fancyhead[LO]{}                                    % rechts im Header / ungerade Seiten > Leer
+\fancyhead[RE]{}                                    % links im Header / gerade Seiten    > Leer
+%
+\fancyfoot[RO]{\fontsize{8pt}{12pt}\selectfont      % rechts im Footer / ungerade Seiten > Seitennummer
+      \squelch{\thepage}}%              
+\fancyfoot[LE]{\fontsize{8pt}{12pt}\selectfont      % links im Footer / gerade Seiten > Seitennummer
+      \squelch{\thepage}}%              
+\fancyfoot[CO]{}                                    % mittig im Footer / ungerade Seiten > Leer
+\fancyfoot[CE]{}                                    % mittig im Footer / gerade Seiten > Leer
+\fancyfoot[LO]{}                                    % links im Footer / ungerade Seiten > Leer
+\fancyfoot[RE]{}                                    % rechts im Footer / gerade Seiten > Leer
+}%
+%
+%
+%% Headerdefinition für alle Seiten, wo ein neues Kapitel beginnt
+%
+\fancypagestyle{plain}{                             % Definition der Header und Footer
+\fancyhead[RO]{ \rmfamily \fontsize{8pt}{12pt}      % rechts im Header / ungerade S. Name Kap. Ebene 1.1
+     \selectfont \nouppercase \rightmark}%                              
+\fancyhead[LE]{ \rmfamily \fontsize{8pt}{12pt}      % links im Header / gerade S. Name Kap. Ebene 1.
+     \selectfont \nouppercase \leftmark}%                   
+   %                   
+\fancyhead[LO]{}                                    % rechts im Header / ungerade Seiten > Leer
+\fancyhead[RE]{}                                    % links im Header / gerade Seiten    > Leer
+%
+\fancyfoot[RO]{\fontsize{8pt}{12pt}                 % rechts im Footer / ungerade Seiten > Seitennummer
+\selectfont \squelch{\thepage}} %                              
+\fancyfoot[LE]{\fontsize{8pt}{12pt}                 % links im Footer / gerade Seiten > Seitennummer
+\selectfont \squelch{\thepage}}%                               
+\fancyfoot[CO]{}                                    % mittig im Footer / ungerade Seiten > Leer
+\fancyfoot[CE]{}                                    % mittig im Footer / gerade Seiten > Leer
+\fancyfoot[LO]{}                                    % links im Footer / ungerade Seiten > Leer
+\fancyfoot[RE]{}                                    % rechts im Footer / gerade Seiten > Leer
+}%
+%
+%% Anpassungen, welche kontrollieren, wie Bilder herumgeschoben werden (Float). 
+%
+\renewcommand{\topfraction}{.85}%
+\renewcommand{\bottomfraction}{.7}%
+\renewcommand{\textfraction}{.15}%
+\renewcommand{\floatpagefraction}{.66}%
+\renewcommand{\dbltopfraction}{.66}%
+\renewcommand{\dblfloatpagefraction}{.66}%
+\setcounter{topnumber}{9}%
+\setcounter{bottomnumber}{9}%
+\setcounter{totalnumber}{20}%
+\setcounter{dbltopnumber}{9}%
+%
+%% Anpassungen für tabularx
+%
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}} % linksbündig mit Breitenangabe
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}} % zentriert mit Breitenangabe
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}} % rechtsbündig mit Breitenangabe
+%
+\setlength\parindent{0pt}                           % Einzug am Anfang eines Abschnitts weglassen
+\renewcommand{\headrulewidth}{0pt}                  % Linie killen im Header
+%
+%% Diverses
+%
+\setlength{\footskip}{18mm}                         %  Abstand Footer (Seitenzahl) von Textblock
+\setlength{\topskip}{6mm}                           %  Abstand Header (Seitenzahl) von Textblock
+%
+\clubpenalty =10000%
+\widowpenalty =10000%
+\brokenpenalty =10000%
+\predisplaypenalty =10000%
+\postdisplaypenalty =10000%
+\displaywidowpenalty =10000%
+%
+\renewcommand{\sectionmark}[1]{\markright{\squelch{#1}}}      % Unterdrücken Nummer (1.1) im Header (ungerade S.)
+\renewcommand{\chaptermark}[1]{\markboth{\squelch{#1}}{}}     % Unterdrücken Nummer (1.) und das Wort "Chapter" im Header
+%
+\renewcommand{\captionfont}                         % Captiontexte generell 10.5
+{\fontsize{10.5}{13.7}\selectfont}%    
+%
+\raggedbottom                                       % Erlaubt, dass unten auf einer Seite leerer Platz ist und die auf 
+                                                    % der Seite vorhandenen Inhalte nicht vertikal "gestretched" werden.
+%                                                  
+\setlength{\skip\footins}{0.8cm}                    % Abstand Footnote zum Lauftext
+\setlength{\footnotesep}{0.3cm}                     % Abstand zwischen Footnotes
+\setlength{\footnotemargin}{2.5mm}                  % Abstand zwischen Footnote-Zahl und Footnote-Text
+%
+%
+% Killen des Literaturverzeichnis-Titels, so dass man ihn manuell einfügen kann (für Header-Problem nötig)
+% ---------------------------------------------------------------------------------------------------------
+%
+\renewenvironment{thebibliography}[1]%
+     {\@mkboth{\MakeUppercase\bibname}{\MakeUppercase\bibname}%
+      \list{\@biblabel{\@arabic\c@enumiv}}%
+           {\settowidth\labelwidth{\@biblabel{#1}}%
+            \leftmargin\labelwidth
+            \advance\leftmargin\labelsep
+            \@openbib@code
+            \usecounter{enumiv}%
+            \let\p@enumiv\@empty
+            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+      \sloppy
+      \clubpenalty4000
+      \@clubpenalty \clubpenalty
+      \widowpenalty4000%
+      \sfcode`\.\@m}
+     {\def\@noitemerr
+       {\@latex@warning{Empty `thebezeichnliography' environment}}%
+      \endlist}%
+%
+%
+% ------------------------------------------------------------
+% Autoref Definitionen
+% ------------------------------------------------------------
+%
+%
+% Begriffsdefinitionen für Autoref (Deutsch):
+%
+\addto\extrasngerman{\def\tableautorefname{Table}}%
+\addto\extrasngerman{\def\figureautorefname{Figure}}%
+\addto\extrasngerman{\def\sectionautorefname{Section}}%
+\addto\extrasngerman{\def\subsectionautorefname{Section}}%
+\addto\extrasngerman{\def\lstlistingautorefname{Code}% 
+\def\lstnumberautorefname{Zeile}}%
+%
+% Begriffsdefinitionen Backref
+%
+\DefineBibliographyStrings{ngerman}{
+backrefpage  = {Zitiert~auf~S\adddot},
+backrefpages = {Zitiert~auf~S\adddot},}%
+ % 
+% Zusätzliche Commands für Autoref im Anhang und für Gleichungen
+  %
+\newcommand{\aref}[1]{\hyperref[#1]{Anhang~\ref{#1}}}%
+\newcommand{\autoeqref}[1]{\hyperref[#1]{\equationautorefname~(\ref*{#1})}}%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+% ---------------------------------------------------------------------------------------------------------
+% COMMAND-DEFINITIONEN
+% ---------------------------------------------------------------------------------------------------------
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\spic" - Bild Einfügen mit Breite 150mm
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\spic}[3]{%
+\begin{figure}                                      % htb würde das Bild zwingen, an diesem Ort zu bleiben 
+\includegraphics[width=150mm]{#1}                   % Setzt die Grösse der Grafik auf 150mm
+\caption{\selectfont\hspace{4mm}{#2}                % Captiontext und Einzug (auf 1. Linie)
+#3}                                         % Gibt dem Bild das Label
+\end{figure}%
+}%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\spicH" - Bild Einfügen mit Breite 150mm, inkl. Zwang am Ort zu bleiben
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\spicH}[3]{%
+\begin{figure}[H]                                   % [H] zwingt das Bild, an diesem Ort zu bleiben 
+\includegraphics[width=150mm]{#1}                   % Setzt die Grösse der Grafik auf 150mm
+\caption{\selectfont\hspace{4mm}{#2}                % Captiontext und Einzug (auf 1. Linie)
+#3}                                         % Gibt dem Bild das Label
+\end{figure}}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\spicv" - Bild Einfügen mit beliebiger Breite, < 150mm
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\spicv}[4]{%
+\begin{figure}    %                                 
+\includegraphics[width=#4mm]{#1}                    % Setzt die Grösse der Grafik auf Input 4
+\centering%
+\caption{\selectfont\hspace{4mm}{#2}                % Captiontext und Einzug (auf 1. Linie)
+#3}                                         % Gibt dem Bild das Label
+\end{figure}}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\spicvH" - Bild Einfügen mit beliebiger Breite, < 150mm, inkl. Zwang am Ort zu bleiben
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\spicvH}[4]{%
+\begin{figure}[H]                                   % [H] zwingt das Bild, an diesem Ort zu bleiben
+\includegraphics[width=#4mm]{#1}                    % Setzt die Grösse der Grafik auf Input 4
+\centering%
+\caption{\selectfont\hspace{4mm}{#2}                % Captiontext und Einzug (auf 1. Linie)
+#3}                                         % Gibt dem Bild das Label
+\end{figure}}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\literturverzeichnis" - Generiert Literaturverzeichnis
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\literaturverzeichnis}[1]{%
+%
+\ifstrequal{#1}{true}{
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\clearpage
+\chapter*{References} 
+\addcontentsline{toc}{chapter}{References}%
+\vspace{-12.8mm}
+\renewcommand{\bibname}{}
+\printbibliography%[heading=bibintoc]
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   
+}{\ifstrequal{#1}{false}{}{\PackageError{literaturverzeichnis}{Undefined option to literaturverzeichnis command 1}{}}}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\vorwort" - Generieren eines optionalen Vorwortes
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\vorwort}[4]{%
+%
+    \ifstrequal{#1}{true}{       
+				\chapter*{Abstract}  
+				\pdfbookmark[1]{Vorwort}{Vorwort}
+				\thispagestyle{empty}  
+				\pagestyle{empty}  
+				\vspace{-9mm}
+%
+				#2 \\ \\ \\ \\     %%% Vorwort
+%
+				#3  \hfill #4                   %%% Grusszeile Vorwort
+			\thispagestyle{empty}  
+%
+    }{\ifstrequal{#1}{false}{}{\PackageError{vorwort}{Undefined option to vorwort command 1}{}}}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\zusammenfassung" -  Zusammenfassung 
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%(D/E oder nur D, auf gleicher oder separater Page)
+%
+\newcommand{\zusammenfassung}[3]{%
+%
+	\ifstrequal{#1}{truebothsamepage}{
+%
+\chapter*{Summary}
+\pdfbookmark[1]{Kurzfassung}{Kurzfassung}
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{-9mm}
+%
+#2 \\ \\ \\ \\ \\   %%% Durch die Kurzfassung ersetzen.
+%
+{\fontsize{16pt}{16pt}\selectfont \textbf{Abstract}}\\
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{7.2mm}  
+\\ #3	  %%% Durch das Abstract ersetzen.
+\thispagestyle{empty}%
+\pagestyle{empty}%
+%
+}{\ifstrequal{#1}{truebothseparatepages}{
+%
+		\thispagestyle{empty}
+		\pagestyle{empty}
+		\chapter*{Kurzfassung}
+		\pdfbookmark[1]{Kurzfassung}{Kurzfassung}
+		\thispagestyle{empty}
+		\pagestyle{empty}
+		\vspace{-9mm}
+%
+#2  %%% Durch die Kurzfassung ersetzen.
+%
+\newpage
+{\fontsize{16pt}{16pt}\selectfont \textbf{Abstract}}\\
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{7.2mm}  
+\\ #3	  %%% Durch das Abstract ersetzen.
+%
+ }{\ifstrequal{#1}{truedeutsch}{
+%
+\chapter*{Summary}
+\pdfbookmark[1]{Kurzfassung}{Kurzfassung}
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{-9mm}
+%
+#2  %%% Durch die Kurzfassung ersetzen.
+%
+\thispagestyle{empty}		
+%
+}{\ifstrequal{#1}{false}{}{\PackageError{zusammenfassung}{Undefined option to zusammenfassung command 1}{}}}}}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\einleitung" -  Einleitung 
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%(D/E oder nur D, auf gleicher oder separater Page)
+%
+\newcommand{\einleitung}[3]{%
+%
+	\ifstrequal{#1}{truebothsamepage}{
+%
+\chapter*{Introduction}
+\pdfbookmark[1]{Introduction}{Introduction}
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{-9mm}
+%
+#2 \\ \\ \\ \\ \\   %%% Durch die Kurzfassung ersetzen.
+%
+{\fontsize{16pt}{16pt}\selectfont \textbf{Abstract}}\\
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{7.2mm}  
+\\ #3	  %%% Durch das Abstract ersetzen.
+\thispagestyle{empty}%
+\pagestyle{empty}%
+%
+}{\ifstrequal{#1}{truebothseparatepages}{
+%
+		\thispagestyle{empty}
+		\pagestyle{empty}
+		\chapter*{Kurzfassung}
+		\pdfbookmark[1]{Kurzfassung}{Kurzfassung}
+		\thispagestyle{empty}
+		\pagestyle{empty}
+		\vspace{-9mm}
+%
+#2  %%% Durch die Kurzfassung ersetzen.
+%
+\newpage
+{\fontsize{16pt}{16pt}\selectfont \textbf{Abstract}}\\
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{7.2mm}  
+\\ #3	  %%% Durch das Abstract ersetzen.
+%
+ }{\ifstrequal{#1}{truedeutsch}{
+%
+\chapter*{Introduction}
+\pdfbookmark[1]{Introduction}{Introduction}
+\thispagestyle{empty}
+\pagestyle{empty}
+\vspace{-9mm}
+%
+#2  %%% Durch die Kurzfassung ersetzen.
+%
+\thispagestyle{empty}		
+%
+}{\ifstrequal{#1}{false}{}{\PackageError{zusammenfassung}{Undefined option to zusammenfassung command 1}{}}}}}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\anhangstuff" - Generieren eines optionalen Anhangs 
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ %
+\newcommand{\anhangstuff}[2]{%
+%
+\ifstrequal{#1}{true}{      
+%
+\begin{appendices}
+%
+\renewcommand\thesection{\Alph{chapter}.\arabic{section}}
+\renewcommand\thesubsection{\Alph{chapter}.\arabic{section}.\arabic{subsection}}
+\renewcommand*{\appendixname}{Appendix}
+%
+#2
+%
+\end{appendices}
+%
+}{\ifstrequal{#1}{false}{}{\PackageError{anhangstuff}{Undefined option to anhangstuff command 1}{}}}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\bezeichnungenChapter" - Kapitel für Bezeichnungen
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\bezeichnungenChapter}[2]{%
+		\ifstrequal{#1}{true}{
+		%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+		\chapter*{Abbrevations}
+		\addcontentsline{toc}{chapter}{Abbrevations}
+		\markboth{Abbrevations}{}
+		%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+		#2
+		}{\ifstrequal{#1}{false}{}{\PackageError{bezeichnungenNeu}{Undefined option to bezeichnungenNeu command}{}}}%
+}%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\bezeichnungenSection" - Unterkapitel in Bezeichnungen
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+%
+\newcommand{\bezeichnungenSection}[3]{%
+\ifstrequal{#1}{true}{
+		\subsection*{#2}
+		\setlength\tabcolsep{0pt}
+		\begin{longtable}[l]{p{25mm} p{125mm}}
+			#3
+		\end{longtable}
+		\vspace{7mm}
+		}{\ifstrequal{#2}{false}{}{\PackageError{bezeichnungenCustom}{Undefined option to bezeichnungenCustom command}{}}}
+ }%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\titlepagehsluBT" - Allgemeine Titelseite HSLU Bautechnik
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\titlepagehsluBT}[9]{%
+%
+\begin{titlepage}
+\pdfbookmark[1]{Titelseite}{titlepage}                     
+\newgeometry{left=10mm,bottom=10mm,top=10mm, right=10mm}
+\flushleft
+\hfill
+\includegraphics[width=45mm]{pictures/hslu_header.pdf}
+\vspace{35mm}
+\begin{center}
+%
+{#1}%
+%
+\vfill
+%
+\renewcommand{\baselinestretch}{0.7}\normalsize
+\normalsize\textbf{#2}\\[10.5pt]                           % Name des Autors 1
+\normalsize\textbf{#3}\\[10.5pt]                           % Name des Autors 2 
+\normalsize\textbf{#4}\\[10.5pt]                           % Name des Autors 3
+\renewcommand{\baselinestretch}{1.00}\normalsize
+%        
+\vspace{1cm}
+{#5}\\[5pt]                                                % Textzeile 1
+{#6}\\[5pt]                                                % Textzeile 2
+{#7}\\[5pt]                                                % Textzeile 3
+\end{center}
+%
+\vspace{59mm}
+%
+\begin{center}
+\small{#8, #9}                                             % Ort und Datum
+\end{center}
+\end{titlepage}
+%
+\restoregeometry
+\clearpage
+\clearpage
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\prestuffmastershort" Titelblatt/Selbstst.-eitserkl.  Masterberichte
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\prestuffmastershort}[9]{%
+\begin{titlepage}
+\pdfbookmark[1]{Titelseite}{titlepage}                     
+\newgeometry{left=30mm,bottom=10mm,top=10mm}
+\flushleft
+\hspace{2mm}\includegraphics[width=58mm]{pictures/mse_header.pdf}
+\hfill
+\includegraphics[width=45mm]{pictures/hslu_header.pdf}
+\vspace{35mm}
+\begin{center}
+%
+{#1}
+%
+\vfill
+%
+\normalsize\textbf{#3}\\[10.5pt]                           % Name des Autors
+%
+\vspace{2cm}
+MASTER OF SCIENCE IN ENGINEERING\\[5pt]
+{#2}\\[5pt]                                                % Modul / Art der Thesis
+\end{center}
+%
+\vspace{55mm}
+%
+\begin{center}
+\parbox{0cm}{
+\begin{tabbing}
+Advisor:\= \hspace{10mm} {#4}\\
+\vspace{2mm}\\
+Experte:\> \hspace{10mm} {#5} 
+\vspace{2mm}\\
+\end{tabbing}
+}
+\end{center}
+%
+\vspace{8mm}
+\begin{center}
+\small{#6, #7}                                             % Ort und Datum
+\end{center}
+\end{titlepage}
+%
+\restoregeometry
+\clearpage
+\thispagestyle{empty}
+\fontsize{10.5}{13.7}\selectfont                             % In nachfolgenden Seiten Font 10.5pt
+Hiermit erkläre ich, dass ich die vorliegende Arbeit selbstständig angefertigt und keine anderen als die angegebenen Hilfsmittel verwendet habe. Sämtliche verwendeten Textausschnitte, Zitate oder Inhalte anderer Verfasser wurden ausdrücklich als solche gekennzeichnet.\\
+\\ \\
+\ \\
+{#6}, {#8}{#7} \hfill {#3}                                   % Namen, Ort und Datum
+%
+\vspace*{\fill}
+%
+\begin{table}[H]
+\hspace{-8pt}
+\begin{tabularx}{156.2 mm}{ l X l r  }
+\underline{Versionen}\\\\
+#9 
+\end{tabularx}
+\end{table}
+\vspace{-7.5mm}
+%
+\clearpage
+\newpage
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\stabcaption" - Caption in einer Tabelle
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\stabcaption}[1]{\caption{\selectfont\hspace{4mm}{#1}}}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\watermark" - Watermark 
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\watermark}[1]{%
+\ifstrequal{#1}{trueall}{
+%
+\usepackage{draftwatermark}
+\SetWatermarkText{ENTWURF}
+\SetWatermarkLightness{0.9}%  default-Werte: 0.8
+\SetWatermarkScale{0.8}%                     1.2
+\SetWatermarkAngle{45}%                      45
+\SetWatermarkFontSize{5cm}%                  5cm
+%
+}{\ifstrequal{#1}{truefirstpage}{
+%
+\usepackage[firstpage]{draftwatermark}
+\SetWatermarkText{ENTWURF}
+\SetWatermarkLightness{0.9}%  default-Werte: 0.8
+\SetWatermarkScale{0.8}%                     1.2
+\SetWatermarkAngle{45}%                      45
+\SetWatermarkFontSize{5cm}%                  5cm
+%
+ }{\ifstrequal{#1}{false}{}{\PackageError{watermark}{Undefined option to watermark command 1}{}}}}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\lstsethslu" - Definition Parameter lstlisting
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\noncopynumber}[1]{\BeginAccSupp{method=escape,ActualText={}}#1\EndAccSupp{}}%
+\newcommand{\lstsethslu}[3]{%
+\lstset{%
+    escapeinside={(*@}{@*)},
+    numberstyle=\noncopynumber,
+    columns=flexible,
+    showspaces=false,
+    showtabs=false,
+    language={#1},
+    numbers=left,
+    backgroundcolor=\color{grey1},
+    frame=single,
+    showstringspaces=false,
+    basicstyle=\footnotesize\ttfamily,
+    keywordstyle=\bfseries\color{grey3},
+    commentstyle=\itshape\color{grey2},
+    captionpos=b,
+    caption={\selectfont\hspace{4mm}{#2}},
+    label={#3},
+    upquote=true,
+    literate=%
+    {Ö}{{\"O}}1
+    {Ä}{{\"A}}1
+    {Ü}{{\"U}}1
+    {ü}{{\"u}}1
+    {ä}{{\"a}}1
+    {ö}{{\"o}}1
+    {~}{{\textasciitilde}}1
+}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% "\lebenslauf" - Lebenslauf 
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+\newcommand{\lebenslauf}[4]{%
+%
+\ifstrequal{#1}{true}{%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\clearpage%
+\chapter*{Lebenslauf}%
+\subsubsection*{Personalien}%
+%
+\vspace{-2mm}%
+\setlength\tabcolsep{0mm}
+{\renewcommand*{\arraystretch}{1.4}%
+\begin{longtable}[l]{p{55mm} p{95mm}}%
+#2%
+\end{longtable}}%
+\vspace{5mm}%
+%
+\subsubsection*{Ausbildung}%
+%
+\vspace{-2mm}%
+{\renewcommand*{\arraystretch}{1.4}%
+\begin{longtable}[l]{p{55mm} p{95mm}}%
+#3%
+\end{longtable}}%
+\vspace{5mm}%
+%
+\subsubsection*{Berufliche Tätigkeit}%
+%
+\vspace{-2mm}%
+{\renewcommand*{\arraystretch}{1.4}%
+\begin{longtable}[l]{p{55mm} p{95mm}}%
+#4%
+\end{longtable}}%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -   
+}{\ifstrequal{#1}{false}{}{\PackageError{lebenslauf}{Undefined option to lebenslauf command 1}{}}}%
+}%
+%
+%
+%
+%
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+% Diverse Commands:
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%
+% "\ee" - Einheit und zugehöriger Abstand in Formel
+\newcommand{\ee}[1]{\,\textrm{#1}}%
+%
+% "\as" - Anführungs und Schlusszeichen
+\newcommand{\as}[1]{\glqq#1\grqq}%
+%
+% "\as" - Anführungs und Schlusszeichen
+\newcommand{\gf}[1]{\grqq#1\grqq}%
+%
+% "\gc" - Grad Celsius
+\newcommand{\gc}[0]{\,^{\circ}\mathrm{C}}%
+%
+% "\jj" - Index 
+\newcommand{\jj}[0]{\hspace{-0.3mm}j}%
+%
+% "\tr" - Abstand_Text_Abstand 
+\newcommand{\tr}[1]{\hspace{5mm}\textrm{#1}\hspace{5mm}}%
+%
+%
