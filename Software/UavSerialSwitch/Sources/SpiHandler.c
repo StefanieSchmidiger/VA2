@@ -42,7 +42,7 @@ void configureHwBufBaudrate(tSpiSlaves spiSlave, tUartNr uartNr, unsigned int ba
 void initSpiHandlerQueues(void);
 static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue);
 static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint8_t numOfBytesToWrite);
-
+static void generateDebugData(xQueueHandle queue);
 
 /*!
 * \fn void spiHandler_TaskEntry(void)
@@ -61,12 +61,17 @@ void spiHandler_TaskEntry(void* p)
 		for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 		{
 			/* read data from device spi interface */
-			readHwBufAndWriteToQueue(MAX_14830_DEVICE_SIDE, uartNr, RxDeviceBytes[uartNr]);
+			if(config.EnableStressTest)
+				generateDebugData(RxDeviceBytes[uartNr]);
+			else
+				readHwBufAndWriteToQueue(MAX_14830_DEVICE_SIDE, uartNr, RxDeviceBytes[uartNr]);
+
 			/* write data from queue to device spi interface */
 			if(config.TestHwLoopbackOnly)
 				readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, RxDeviceBytes[uartNr], HW_FIFO_SIZE);
 			else
 				readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, TxDeviceBytes[uartNr], HW_FIFO_SIZE);
+
 			/* read data from wireless spi interface */
 			readHwBufAndWriteToQueue(MAX_14830_WIRELESS_SIDE, uartNr, RxWirelessBytes[uartNr]);
 			/* write data from queue to wireless spi interface */
@@ -457,6 +462,20 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	}
 	return totalNumOfReadBytes;
 }
+
+/*!
+* \fn static void generateDebugData(xQueueHandle queue)
+* \brief Pushed 10 bytes of data onto the queue passed as an argument
+* \param queue: queue where debug data should be pushed to
+*/
+static void generateDebugData(xQueueHandle queue)
+{
+	for(char i='0'; i<='9'; i++)
+	{
+		xQueueSendToBack(queue, &i, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
+	}
+}
+
 
 
 

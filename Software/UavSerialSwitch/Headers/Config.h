@@ -30,6 +30,7 @@ typedef struct Configurations {
    tPackageNumbering PackNumberingProcessingMode[NUMBER_OF_UARTS];
    /* SoftwareConfiguration */
    bool TestHwLoopbackOnly;
+   bool EnableStressTest;
    bool GenerateDebugOutput;
    bool LoggingEnabled;
    int SpiHandlerTaskInterval; // [ms]

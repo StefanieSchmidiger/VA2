@@ -66,27 +66,6 @@ void logger_TaskEntry(void* p)
 		{
 			FAT1_sync(&fp[RECEIVED_PACKAGE][uartNr]);
 		}
-
-
-		pack.payloadSize = 3;
-		pack.payload = (uint8_t*) FRTOS_pvPortMalloc(pack.payloadSize*sizeof(int8_t));
-		if(pack.payload == NULL)
-			continue;
-		for(int i=0; i < pack.payloadSize; i++)
-			pack.payload[i] = i;
-		pushPackageToLoggerQueue(pack, SENT_PACKAGE, uartNr);
-		logPackages(queuePackagesToLog[SENT_PACKAGE][uartNr], &fp[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]);
-
-
-		pack.payloadSize = 3;
-		pack.payload = (uint8_t*) FRTOS_pvPortMalloc(pack.payloadSize*sizeof(int8_t));
-		if(pack.payload == NULL)
-			continue;
-		for(int i = 0; i < pack.payloadSize; i++)
-			pack.payload[i] = i;
-		pushPackageToLoggerQueue(pack, RECEIVED_PACKAGE, uartNr);
-		logPackages(queuePackagesToLog[RECEIVED_PACKAGE][uartNr], &fp[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]);
-
 	}
 
 
@@ -203,7 +182,7 @@ static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
 	{
 		packageToLogString(pack, singlePackLog, sizeof(singlePackLog)); /* generate string for this package */
 		strLen = (UTIL1_strlen(combinedLogString) + UTIL1_strlen(singlePackLog)) * sizeof(char);
-		if(strLen >= 512)
+		if(strLen >= 1024)
 			break;
 		tmpCombinedLogString = (char*) FRTOS_pvPortMalloc(strLen); /* allocate memory for combined log string */
 		if(tmpCombinedLogString == NULL)
@@ -314,7 +293,7 @@ static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry)
 */
 static bool writeLogHeader(FIL* filePointer, char* fileName)
 {
-	char logHeader[] = "\r\nPackageType;DeviceNumber;SessionNumber;SystemTime;PayloadSize;CRC8_Header;Payload;CRC16_Payload\r\n";
+	char logHeader[] = "\r\n\r\nPackageType;DeviceNumber;SessionNumber;SystemTime;PayloadSize;CRC8_Header;Payload;CRC16_Payload\r\n";
 	return writeToFile(filePointer, fileName, logHeader);
 }
 

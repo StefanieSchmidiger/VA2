@@ -228,6 +228,9 @@ bool readConfig(void)
   	/* TEST_HW_LOOPBACK_ONLY */
   	config.TestHwLoopbackOnly = MINI_ini_getbool("SoftwareConfiguration", "TEST_HW_LOOPBACK_ONLY",  DEFAULT_BOOL, "serialSwitch_Config.ini");
 
+  	/* TEST_HW_LOOPBACK_ONLY */
+  	config.EnableStressTest = MINI_ini_getbool("SoftwareConfiguration", "ENABLE_STRESS_TEST",  DEFAULT_BOOL, "serialSwitch_Config.ini");
+
   	/* GENERATE_DEBUG_OUTPUT */
   	config.GenerateDebugOutput = MINI_ini_getbool("SoftwareConfiguration", "GENERATE_DEBUG_OUTPUT",  DEFAULT_BOOL, "serialSwitch_Config.ini");
 
@@ -399,6 +402,9 @@ void setDefaultConfigValues(void)
 
   	/* GENERATE_DEBUG_OUTPUT */
   	config.GenerateDebugOutput = 0;
+
+  	/* ENABLE_STRESS_TEST */
+  	config.EnableStressTest = 0;
 
   	/* LOGGING_ENABLED */
   	config.LoggingEnabled = 0;
