@@ -262,7 +262,7 @@ static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry)
 			 return false;
   }
 
-	#if 0
+	#if 0 // ToDo: add timestamp to logging
 	  if (TmDt1_GetTime(&time)!=ERR_OK) /* get time */
 		  return false;
 	  timestamp[0] = '\0';
