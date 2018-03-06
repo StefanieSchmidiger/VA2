@@ -8,6 +8,7 @@
 #include "Blinky.h"
 #include "ThroughputPrintout.h"
 #include "Logger.h"
+#include "SysInit.h"
 
 /* prototypes for functions that are only within this file scope */
 bool createAllTasks(void);
@@ -44,6 +45,60 @@ bool createAllTasks(void)
 	packageHandler_TaskInit(); /* 2x4x(queueLength)x56B = 3kB */
 	networkHandler_TaskInit(); /* 2x4x(queueLength)x56B = 3kB */
 
+#if configSUPPORT_STATIC_ALLOCATION
+
+	/* Buffer that the task being created will use as its stack. */
+	static StackType_t puxStackBufferShell[SHELL_STACK_SIZE];
+	static StackType_t puxStackBufferSpiHandler[SPI_HANDLER_STACK_SIZE];
+	static StackType_t puxStackBufferPackageHandler[PACKAGE_HANDLER_STACK_SIZE];
+	static StackType_t puxStackBufferNetworkHandler[NETWORK_HANDLER_STACK_SIZE];
+	static StackType_t puxStackBufferThroughputPrintout[THROUGHPUT_PRINTOUT_STACK_SIZE];
+	static StackType_t puxStackBufferLogger[LOGGER_STACK_SIZE];
+	static StackType_t puxStackBufferBlinky[BLINKY_STACK_SIZE];
+
+	/* Structure that will hold the TCB of the task being created. */
+	static StaticTask_t pxTaskBufferShell;
+	static StaticTask_t pxTaskBufferSpiHandler;
+	static StaticTask_t pxTaskBufferPackageHandler;
+	static StaticTask_t pxTaskBufferNetworkHandler;
+	static StaticTask_t pxTaskBufferThroughputPrintout;
+	static StaticTask_t pxTaskBufferLogger;
+	static StaticTask_t pxTaskBufferBlinky;
+
+
+	/* create Shell task */
+	if (xTaskCreateStatic(Shell_TaskEntry, "Shell", SHELL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferShell, &pxTaskBufferShell) == NULL) {
+	  	    for(;;) {}} /* error */
+
+	/* create SPI handler task */
+	if (xTaskCreateStatic(spiHandler_TaskEntry, "SPI_Handler", SPI_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+3, puxStackBufferSpiHandler, &pxTaskBufferSpiHandler) == NULL) {
+	    for(;;) {}} /* error */
+
+
+	/* create package handler task */
+	if (xTaskCreateStatic(packageHandler_TaskEntry, "Package_Handler", PACKAGE_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferPackageHandler, &pxTaskBufferPackageHandler) == NULL) {
+		for(;;) {}} /* error */
+
+
+	/* create network handler task */
+	if (xTaskCreateStatic(networkHandler_TaskEntry, "Network_Handler", NETWORK_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferNetworkHandler, &pxTaskBufferNetworkHandler) == NULL) {
+		for(;;) {}} /* error */
+
+	/* create throughput printout task */
+	if(config.GenerateDebugOutput)
+		if (xTaskCreateStatic(throughputPrintout_TaskEntry, "Throughput_Printout", THROUGHPUT_PRINTOUT_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferThroughputPrintout, &pxTaskBufferThroughputPrintout) == NULL) {
+			for(;;) {}} /* error */
+
+	/* create logger task */
+	if(config.LoggingEnabled)
+		if (xTaskCreateStatic(logger_TaskEntry, "Logger", LOGGER_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferLogger, &pxTaskBufferLogger) == NULL) {
+			for(;;) {}} /* error */
+
+	/* create blinky task last to let user know that all init methods and mallocs were successful when LED blinks */
+	if (xTaskCreateStatic(blinky_TaskEntry, "Blinky", BLINKY_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferBlinky, &pxTaskBufferBlinky) == NULL) {
+	    for(;;) {}} /* error */
+
+#else
 	/* create Shell task */
 	if (xTaskCreate(Shell_TaskEntry, "Shell", 2000/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
 	  	    for(;;) {}} /* error */
@@ -76,6 +131,6 @@ bool createAllTasks(void)
 	/* create blinky task last to let user know that all init methods and mallocs were successful when LED blinks */
 	if (xTaskCreate(blinky_TaskEntry, "Blinky", 400/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1, NULL) != pdPASS) {
 	    for(;;) {}} /* error */
-
+#endif
 	return true;
 }

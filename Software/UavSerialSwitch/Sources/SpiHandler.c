@@ -173,21 +173,45 @@ void spiHandler_TaskInit(void)
 */
 void initSpiHandlerQueues(void)
 {
+
+#if configSUPPORT_STATIC_ALLOCATION
+	/* The variable used to hold the queue's data structure. */
+	static uint8_t xStaticQueueRxWlBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_WL_RX_QUEUE * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueTxWlBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueRxDevBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_WL_TX_QUEUE * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueTxDevBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE * sizeof(uint8_t) ];
+	/* The array to use as the queue's storage area. */
+	static StaticQueue_t ucQueueStorageRxWlBytes[NUMBER_OF_UARTS];
+	static StaticQueue_t ucQueueStorageRxDevBytes[NUMBER_OF_UARTS];
+	static StaticQueue_t ucQueueStorageTxWlBytes[NUMBER_OF_UARTS];
+	static StaticQueue_t ucQueueStorageTxDevBytes[NUMBER_OF_UARTS];
+#endif
+
 	for(int uartNr=0; uartNr<NUMBER_OF_UARTS; uartNr++)
 	{
+#if configSUPPORT_STATIC_ALLOCATION
+		RxWirelessBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_WL_RX_QUEUE, sizeof(uint8_t), xStaticQueueRxWlBytes[uartNr], &ucQueueStorageRxWlBytes[uartNr]); /* bytes received on wireless side */
+		RxDeviceBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE, sizeof(uint8_t), xStaticQueueRxDevBytes[uartNr], &ucQueueStorageRxDevBytes[uartNr]); /* bytes received on device side */
+		TxWirelessBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_WL_TX_QUEUE, sizeof(uint8_t), xStaticQueueTxWlBytes[uartNr], &ucQueueStorageTxWlBytes[uartNr]); /* bytes sent out on wireless side */
+		TxDeviceBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE, sizeof(uint8_t), xStaticQueueTxDevBytes[uartNr], &ucQueueStorageTxDevBytes[uartNr]); /* bytes sent out on device side */
+#else
 		RxWirelessBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_WL_RX_QUEUE, sizeof(uint8_t)); /* bytes received on wireless side */
+		RxDeviceBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE, sizeof(uint8_t)); /* bytes received on device side */
+		TxWirelessBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_WL_TX_QUEUE, sizeof(uint8_t)); /* bytes sent out on wireless side */
+		TxDeviceBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE, sizeof(uint8_t)); /* bytes sent out on device side */
+#endif
 		if(RxWirelessBytes[uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(RxWirelessBytes[uartNr], queueNameRxWirelessBytes[uartNr]);
-		RxDeviceBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE, sizeof(uint8_t)); /* bytes received on device side */
+
 		if(RxDeviceBytes[uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(RxDeviceBytes[uartNr], queueNameRxDeviceBytes[uartNr]);
-		TxWirelessBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_WL_TX_QUEUE, sizeof(uint8_t)); /* bytes sent out on wireless side */
+
 		if(TxWirelessBytes[uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(TxWirelessBytes[uartNr], queueNameTxWirelessBytes[uartNr]);
-		TxDeviceBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE, sizeof(uint8_t)); /* bytes sent out on device side */
+
 		if(TxDeviceBytes[uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(TxDeviceBytes[uartNr], queueNameTxDeviceBytes[uartNr]);

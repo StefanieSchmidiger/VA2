@@ -11,13 +11,11 @@
 #define FILENAME_ARRAY_SIZE (35)
 
 /* global variables, only used in this file */
-const char* queueNameReceivedPackages[] = {"ReceivedPackagesForLogging0", "ReceivedPackagesForLogging1", "ReceivedPackagesForLogging2", "ReceivedPackagesForLogging3"};
-const char* queueNameSentPackages[] = {"SentPackagesForLogging0", "SentPackagesForLogging1", "SentPackagesForLogging2", "SentPackagesForLogging3"};
-char filenameReceivedPackagesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
-char filenameSentPackagesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
+static const char* const queueNameReceivedPackages[] = {"ReceivedPackagesForLogging0", "ReceivedPackagesForLogging1", "ReceivedPackagesForLogging2", "ReceivedPackagesForLogging3"};
+static const char* const queueNameSentPackages[] = {"SentPackagesForLogging0", "SentPackagesForLogging1", "SentPackagesForLogging2", "SentPackagesForLogging3"};
+static char filenameReceivedPackagesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
+static char filenameSentPackagesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
 static xQueueHandle queuePackagesToLog[2][NUMBER_OF_UARTS];  /* queuePackagesToLog[0] = received packages, queuePackagesToLog[1] = sent packages */
-static FIL fp[2][NUMBER_OF_UARTS];
-static CLS1_StdIOType* io;
 static FAT1_FATFS fileSystemObject;
 
 /* prototypes */
@@ -31,7 +29,9 @@ static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename);
 void logger_TaskEntry(void* p)
 {
 	uint32_t timestampLastLog[2][NUMBER_OF_UARTS];
+	static FIL fp[2][NUMBER_OF_UARTS]; /* static because of its size */
 
+	(void) p; /* p not used -> no compiler warning */
 	/* open log files and write log header into all of them */
 	for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 	{
@@ -100,9 +100,14 @@ void logger_TaskEntry(void* p)
 
 void logger_TaskInit(void)
 {
-	io = CLS1_GetStdio();
+	const CLS1_StdIOType* io = CLS1_GetStdio();
 	tWirelessPackage pack;
 	bool cardMounted = 0;
+
+	if(io == NULL)
+	{
+		while(true){} /* no shell assigned */
+	}
 
 	if(config.LoggingEnabled)
 	{
@@ -139,14 +144,25 @@ void logger_TaskInit(void)
 */
 static void initLoggerQueues(void)
 {
+#if configSUPPORT_STATIC_ALLOCATION
+	static uint8_t xStaticQueueSentPacks[NUMBER_OF_UARTS][ QUEUE_NUM_OF_WL_PACK_RECEIVED * sizeof(tWirelessPackage) ]; /* The variable used to hold the queue's data structure. */
+	static uint8_t xStaticQueueRecPacks[NUMBER_OF_UARTS][ QUEUE_NUM_OF_WL_PACK_RECEIVED * sizeof(tWirelessPackage) ];
+	static StaticQueue_t ucQueueStorageSentPacks[NUMBER_OF_UARTS]; /* The array to use as the queue's storage area. */
+	static StaticQueue_t ucQueueStorageRecPacks[NUMBER_OF_UARTS];
+#endif
 	for(int uartNr = 0; uartNr<NUMBER_OF_UARTS; uartNr++)
 	{
+#if configSUPPORT_STATIC_ALLOCATION
+		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueSentPacks[uartNr], &ucQueueStorageSentPacks[uartNr]);
+		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueSentPacks[uartNr], &ucQueueStorageRecPacks[uartNr]);
+#else
 		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage));
+		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage));
+#endif
 		if(queuePackagesToLog[SENT_PACKAGE][uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(queuePackagesToLog[SENT_PACKAGE][uartNr], queueNameSentPackages[uartNr]);
 
-		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage));
 		if(queuePackagesToLog[RECEIVED_PACKAGE][uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(queuePackagesToLog[RECEIVED_PACKAGE][uartNr], queueNameReceivedPackages[uartNr]);
@@ -174,7 +190,9 @@ static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
 	singlePackLog[0] = 0;
 	combinedLogString = (char*) FRTOS_pvPortMalloc(sizeof(char)); /* so that strlen can be called in first while loop iteration */
 	if(combinedLogString == NULL)
+	{
 		return false; /* malloc failed */
+	}
 	combinedLogString[0] = 0; /* so that strlen() returns 0 on first while loop iteration */
 
 	/* concat string for all packages in queue */
@@ -183,7 +201,9 @@ static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
 		packageToLogString(pack, singlePackLog, sizeof(singlePackLog)); /* generate string for this package */
 		strLen = (UTIL1_strlen(combinedLogString) + UTIL1_strlen(singlePackLog)) * sizeof(char);
 		if(strLen >= 1024)
+		{
 			break;
+		}
 		tmpCombinedLogString = (char*) FRTOS_pvPortMalloc(strLen); /* allocate memory for combined log string */
 		if(tmpCombinedLogString == NULL)
 		{
@@ -228,6 +248,7 @@ static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry)
   uint8_t timestamp[FILENAME_ARRAY_SIZE];
   UINT bw;
   TIMEREC time;
+  const CLS1_StdIOType* io = CLS1_GetStdio();
 
 
   /* check file size */
@@ -356,7 +377,7 @@ static void packageToLogString(tWirelessPackage pack, char* logEntry, int logEnt
 */
 BaseType_t pushPackageToLoggerQueue(tWirelessPackage package, tRxTxPackage rxTxPackage, tUartNr wlConnNr)
 {
-	if((wlConnNr >= NUMBER_OF_UARTS) | (rxTxPackage > SENT_PACKAGE)) /* invalid arguments -> return immediately */
+	if((wlConnNr >= NUMBER_OF_UARTS) || (rxTxPackage > SENT_PACKAGE)) /* invalid arguments -> return immediately */
 	{
 		/* free memory before returning */
 		FRTOS_vPortFree(package.payload); /* free memory allocated when message was pushed into queue */

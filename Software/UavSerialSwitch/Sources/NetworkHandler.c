@@ -108,9 +108,17 @@ void networkHandler_TaskInit(void)
 */
 static void initNetworkHandlerQueues(void)
 {
+#if configSUPPORT_STATIC_ALLOCATION
+	static uint8_t xStaticQueue[NUMBER_OF_UARTS][ QUEUE_NUM_OF_WL_PACK_TO_SEND * sizeof(tWirelessPackage) ]; /* The variable used to hold the queue's data structure. */
+	static StaticQueue_t ucQueueStorage[NUMBER_OF_UARTS]; /* The array to use as the queue's storage area. */
+#endif
 	for(int uartNr=0; uartNr<NUMBER_OF_UARTS; uartNr++)
 	{
+#if configSUPPORT_STATIC_ALLOCATION
+		queuePackagesToSend[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_WL_PACK_TO_SEND, sizeof(tWirelessPackage), xStaticQueue[uartNr], &ucQueueStorage[uartNr]);
+#else
 		queuePackagesToSend[uartNr] = xQueueCreate( QUEUE_NUM_OF_WL_PACK_TO_SEND, sizeof(tWirelessPackage));
+#endif
 		if(queuePackagesToSend[uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(queuePackagesToSend[uartNr], queueName[uartNr]);

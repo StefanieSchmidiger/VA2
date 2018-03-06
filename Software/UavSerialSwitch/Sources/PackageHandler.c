@@ -111,9 +111,17 @@ void packageHandler_TaskInit(void)
 */
 void initPackageHandlerQueues(void)
 {
+#if configSUPPORT_STATIC_ALLOCATION
+	static uint8_t xStaticQueue[NUMBER_OF_UARTS][ QUEUE_NUM_OF_WL_PACK_RECEIVED * sizeof(tWirelessPackage) ]; /* The variable used to hold the queue's data structure. */
+	static StaticQueue_t ucQueueStorage[NUMBER_OF_UARTS]; /* The array to use as the queue's storage area. */
+#endif
 	for(int uartNr = 0; uartNr<NUMBER_OF_UARTS; uartNr++)
 	{
+#if configSUPPORT_STATIC_ALLOCATION
+		ReceivedPackages[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_WL_PACK_RECEIVED, sizeof(tWirelessPackage), xStaticQueue[uartNr], &ucQueueStorage[uartNr]);
+#else
 		ReceivedPackages[uartNr] = xQueueCreate( QUEUE_NUM_OF_WL_PACK_RECEIVED, sizeof(tWirelessPackage));
+#endif
 		if(ReceivedPackages[uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
 		vQueueAddToRegistry(ReceivedPackages[uartNr], queueName[uartNr]);
