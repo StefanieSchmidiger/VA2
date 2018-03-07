@@ -11,7 +11,8 @@
 typedef enum eRxTxPackage
 {
 	RECEIVED_PACKAGE,
-	SENT_PACKAGE
+	SENT_PACKAGE,
+	NOF_RXTX_PACK_TYPES /* needs to be last in the enum list */
 } tRxTxPackage;
 
 
@@ -27,7 +28,7 @@ void logger_TaskInit(void);
 * \param wlConnNr: wireless connection number over which package was received/sent
 * \return pdTRUE if successful, pdFAIL if unsuccessful:
 */
-BaseType_t pushPackageToLoggerQueue(tWirelessPackage package, tRxTxPackage rxTxPackage, tUartNr wlConnNr);
+BaseType_t pushPackageToLoggerQueue(tWirelessPackage* pPackage, tRxTxPackage rxTxPackage, tUartNr wlConnNr);
 
 
 /*! \def MAX_DELAY_LOGGER_MS

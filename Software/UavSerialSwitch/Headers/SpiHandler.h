@@ -119,7 +119,8 @@ typedef enum eUartNr
 typedef enum eSpiSlaves
 {
 	MAX_14830_WIRELESS_SIDE,
-	MAX_14830_DEVICE_SIDE
+	MAX_14830_DEVICE_SIDE,
+	NOF_SPI_SLAVES /* needs to be last in this enum list */
 } tSpiSlaves;
 
 

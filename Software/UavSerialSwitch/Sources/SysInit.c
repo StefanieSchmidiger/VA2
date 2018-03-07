@@ -9,9 +9,13 @@
 #include "ThroughputPrintout.h"
 #include "Logger.h"
 #include "SysInit.h"
+#include "LedGreen.h"
+#include "LedRed.h"
+#include "LedOrange.h"
 
 /* prototypes for functions that are only within this file scope */
-bool createAllTasks(void);
+static bool createAllTasks(void);
+static void ledInitSequence(void);
 
 /*!
 * \fn void SysInit_TaskEntry(void* param)
@@ -21,6 +25,7 @@ void SysInit_TaskEntry(void* param)
 {
   bool cardMounted = false;
   static FAT1_FATFS fileSystemObject;
+
 
   /* mount SD card so config file can be read */
   if(FAT1_Init() != 0)
@@ -36,7 +41,7 @@ void SysInit_TaskEntry(void* param)
 * \brief Initializes and creates all tasks for serial switch
 * \return true if all tasks were created successfully
 */
-bool createAllTasks(void)
+static bool createAllTasks(void)
 {
 	/* make sure all queues are initialized before being accessed from other tasks */
 	Shell_TaskInit(); /* 0.25kB */
@@ -133,4 +138,26 @@ bool createAllTasks(void)
 	    for(;;) {}} /* error */
 #endif
 	return true;
+}
+
+/*!
+* \fn static void ledInitSequence(void)
+* \brief Initialization sequence for LED
+*/
+static void ledInitSequence(void)
+{
+	LedRed_On();
+	LedOrange_On();
+	LedGreen_On();
+	WAIT1_Waitms(500);
+	LedGreen_Off();
+	LedOrange_Off();
+	LedRed_Off();
+	LedRed_On();
+	LedOrange_On();
+	LedGreen_On();
+	WAIT1_Waitms(500);
+	LedGreen_Off();
+	LedOrange_Off();
+	LedRed_Off();
 }

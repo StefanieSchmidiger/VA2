@@ -514,12 +514,23 @@ static void generateDebugData(xQueueHandle queue)
 */
 static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint8_t numOfBytesToWrite)
 {
+	static uint32_t throughputPerWlConn[NUMBER_OF_UARTS];
+	static uint32_t lastUpdateThroughput[NUMBER_OF_UARTS];
 	uint8_t buffer[HW_FIFO_SIZE+1];
 	uint16_t cnt = 1;
+
 	/* check how much space there is left in hardware buffer */
 	uint8_t spaceLeft = 0;
 	uint8_t spaceTaken = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_TX_FIFO_LVL);
 	spaceLeft = HW_FIFO_SIZE - spaceTaken;
+
+	/* reset throughput counter for WL slave every second */
+	if((spiSlave == MAX_14830_WIRELESS_SIDE) && (xTaskGetTickCount()-lastUpdateThroughput[uartNr] >= pdMS_TO_TICKS(1000))) /* has 1sec passed on WL side? */
+	{
+		lastUpdateThroughput[uartNr] = xTaskGetTickCount(); /* save time to calculate next update event */
+		throughputPerWlConn[uartNr] = 0;
+	}
+
 	/* check if there is enough space to write the number of bytes that should be written */
 	if (spaceLeft < numOfBytesToWrite)
 	{
@@ -537,11 +548,18 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		/* pop bytes from queue and store them in buffer array. cnt starts at 1 because buffer[0] needs to be empty for commando byte */
 		for (cnt = 1; cnt < numOfBytesToWrite+1; cnt++)
 		{
+			/* check if max throughput reached */
+			if((spiSlave == MAX_14830_WIRELESS_SIDE) && (config.MaxThroughputWirelessConn <= throughputPerWlConn[uartNr]))
+			{
+				break; /* max throughput reached for this second - leave for-loop without popping more data from queue */
+			}
+
+			/* try to pop data from queue */
 			if (xQueueReceive(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) == errQUEUE_EMPTY)
 			{
-				/* queue is empty, no data to read - leave for-loop without incrementing cnt */
-				break;
+				break; /* queue is empty, no data to read - leave for-loop without incrementing cnt */
 			}
+			throughputPerWlConn[uartNr]++;
 		}
 
 		/*
