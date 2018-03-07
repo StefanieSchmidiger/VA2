@@ -220,14 +220,20 @@ static bool processReceivedPackage(tUartNr wlConn)
 
 	/* if it is a data package -> check if there is enough space on byte queue of device side */
 	if(peekAtReceivedPackQueue(wlConn, &package) != pdTRUE) /* peek at package to find out payload size for space on Device Tx Bytes queue */
+	{
 		return false; /* peek not successful */
+	}
 	if((package.packType == PACK_TYPE_DATA_PACKAGE) &&
 			freeSpaceInTxByteQueue(MAX_14830_DEVICE_SIDE, package.devNum) < package.payloadSize) /* enough space to push device bytes down? */
+	{
 		return false; /* not enough space */
-	/* ToDo: check if ack queue full in case ack will be generated and needs to be pushed down */
+	}
+	/* ToDo: check if ack queue full before popping package, in case ack will be generated and needs to be pushed down */
 	/* pop package from queue to send it out */
 	if(popReceivedPackFromQueue(wlConn, &package) != pdTRUE) /* actually remove package from queue */
+	{
 		return false; /* coun't be removed */
+	}
 	if(package.packType == PACK_TYPE_DATA_PACKAGE) /* data package received */
 	{
 		/* check if data is valid */
@@ -236,73 +242,73 @@ static bool processReceivedPackage(tUartNr wlConn)
 		if(package.devNum > NUMBER_OF_UARTS)
 			package.devNum = NUMBER_OF_UARTS-1;
 		/* send data out at correct device side if packages received in order*/
-		switch((int) config.PackNumberingProcessingMode)
+		switch(config.PackNumberingProcessingMode[wlConn])
 		{
-		case PACKAGE_REORDERING:
-			if(recPackNumTracker[package.devNum] != package.sysTime + 1) /* package not received in order, saving to buffer needed */
-			{
-				uint8_t index = package.sysTime - recPackNumTracker[package.devNum]; /* new packNum - old packNum = ringbuffer index */
-				uint8_t cnt = reorderingPacksHeadPointer[package.devNum];
-				tWirelessPackage tmpPack;
-				unsigned char flagMinNumOfPacksDiscarded = 0;
-				if(index >= REORDERING_PACKAGES_BUFFER_SIZE) /* index out of range */
+			case PACKAGE_NUMBER_IGNORED:
+				pushPayloadOut(package);
+				recPackNumTracker[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
+				break;
+			case WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK:
+				pushPayloadOut(package);/* send out data stream right away because packages are in right order */
+				recPackNumTracker[package.devNum] = package.sysTime;
+				break;
+			case PACKAGE_REORDERING:
+				if(recPackNumTracker[package.devNum] != package.sysTime + 1) /* package not received in order, saving to buffer needed */
 				{
-					// Todo: discard old packages instead of discarding newest one
-					index = index % REORDERING_PACKAGES_BUFFER_SIZE;
+					uint8_t index = package.sysTime - recPackNumTracker[package.devNum]; /* new packNum - old packNum = ringbuffer index */
+					uint8_t cnt = reorderingPacksHeadPointer[package.devNum];
+					tWirelessPackage tmpPack;
+					unsigned char flagMinNumOfPacksDiscarded = 0;
+					if(index >= REORDERING_PACKAGES_BUFFER_SIZE) /* index out of range */
+					{
+						// Todo: discard old packages instead of discarding newest one
+						index = index % REORDERING_PACKAGES_BUFFER_SIZE;
+						do
+						{
+							if(cnt == index)
+								flagMinNumOfPacksDiscarded = 1;
+							tmpPack = reorderingPacks[package.devNum][cnt];
+							if(tmpPack.devNum != defaultPackage.devNum) /* package saved under this index */
+							{
+								pushPayloadOut(tmpPack); /* push out current package */
+								recPackNumTracker[tmpPack.devNum] = tmpPack.sysTime; /* update package number tracker */
+							}
+							if((++cnt) >= REORDERING_PACKAGES_BUFFER_SIZE) /* start over at beginning of array (ringbuffer) if index out of range */
+								cnt = 0;
+						} while((tmpPack.devNum != defaultPackage.devNum) && flagMinNumOfPacksDiscarded);
+					}
+					if(index + reorderingPacksHeadPointer[package.devNum] >= REORDERING_PACKAGES_BUFFER_SIZE) /* end reached -> start over at beginning of array */
+						index = index - (REORDERING_PACKAGES_BUFFER_SIZE - reorderingPacksHeadPointer[package.devNum]);
+					reorderingPacks[package.devNum][index] = package;
+				}
+				if(recPackNumTracker[package.devNum] == package.sysTime + 1) /* package received in order */
+				{
 					do
 					{
-						if(cnt == index)
-							flagMinNumOfPacksDiscarded = 1;
-						tmpPack = reorderingPacks[package.devNum][cnt];
-						if(tmpPack.devNum != defaultPackage.devNum) /* package saved under this index */
-						{
-							pushPayloadOut(tmpPack); /* push out current package */
-							recPackNumTracker[tmpPack.devNum] = tmpPack.sysTime; /* update package number tracker */
-						}
-						if((++cnt) >= REORDERING_PACKAGES_BUFFER_SIZE) /* start over at beginning of array (ringbuffer) if index out of range */
-							cnt = 0;
-					} while((tmpPack.devNum != defaultPackage.devNum) && flagMinNumOfPacksDiscarded);
+						pushPayloadOut(package); /* push out current package */
+						recPackNumTracker[package.devNum] = package.sysTime; /* update package number tracker */
+						/* update head pointer to received packages ringbuffer */
+						reorderingPacks[package.devNum][reorderingPacksHeadPointer[package.devNum]] = defaultPackage; /* needed if do-while loop is executed again with package popped from ringbuffer */
+						reorderingPacksHeadPointer[package.devNum]++;
+						if(reorderingPacksHeadPointer[package.devNum] >= REORDERING_PACKAGES_BUFFER_SIZE) /* start over at beginning of array (ringbuffer) if index out of range */
+							reorderingPacksHeadPointer[package.devNum] = 0;
+						package = reorderingPacks[package.devNum][reorderingPacksHeadPointer[package.devNum]]; /* pop next package from queue */
+					} while(package.devNum != defaultPackage.devNum); /* next stored ringbuffer element not empty? */
 				}
-				if(index + reorderingPacksHeadPointer[package.devNum] >= REORDERING_PACKAGES_BUFFER_SIZE) /* end reached -> start over at beginning of array */
-					index = index - (REORDERING_PACKAGES_BUFFER_SIZE - reorderingPacksHeadPointer[package.devNum]);
-				reorderingPacks[package.devNum][index] = package;
-			}
-			if(recPackNumTracker[package.devNum] == package.sysTime + 1) /* package received in order */
-			{
-				do
+				break;
+			case ONLY_SEND_OUT_NEW_PACKAGES:
+				if(recPackNumTracker[package.devNum] <= package.sysTime) /* package is newer than the last one pushed out */
 				{
-					pushPayloadOut(package); /* push out current package */
-					recPackNumTracker[package.devNum] = package.sysTime; /* update package number tracker */
-					/* update head pointer to received packages ringbuffer */
-					reorderingPacks[package.devNum][reorderingPacksHeadPointer[package.devNum]] = defaultPackage; /* needed if do-while loop is executed again with package popped from ringbuffer */
-					reorderingPacksHeadPointer[package.devNum]++;
-					if(reorderingPacksHeadPointer[package.devNum] >= REORDERING_PACKAGES_BUFFER_SIZE) /* start over at beginning of array (ringbuffer) if index out of range */
-						reorderingPacksHeadPointer[package.devNum] = 0;
-					package = reorderingPacks[package.devNum][reorderingPacksHeadPointer[package.devNum]]; /* pop next package from queue */
-				} while(package.devNum != defaultPackage.devNum); /* next stored ringbuffer element not empty? */
-			}
-			break;
-		case ONLY_SEND_OUT_NEW_PACKAGES:
-			if(recPackNumTracker[package.devNum] <= package.sysTime) /* package is newer than the last one pushed out */
-			{
+					pushPayloadOut(package);
+					recPackNumTracker[package.devNum] = package.sysTime;
+				}
+				break;
+			default:
+				UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Error: Wrong configuration for PACK_NUMBERING_PROCESSING_MODE, value not in range\r\n");
+				LedRed_On();
+				pushMsgToShellQueue(infoBuf);
 				pushPayloadOut(package);
-				recPackNumTracker[package.devNum] = package.sysTime;
-			}
-			break;
-		case WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK:
-			pushPayloadOut(package);/* send out data stream right away because packages are in right order */
-			recPackNumTracker[package.devNum] = package.sysTime;
-			break;
-		case PACKAGE_NUMBER_IGNORED:
-			pushPayloadOut(package);
-			recPackNumTracker[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
-			break;
-		default:
-			UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Error: Wrong configuration for PACK_NUMBERING_PROCESSING_MODE, value not in range\r\n");
-			LedRed_On();
-			pushMsgToShellQueue(infoBuf);
-			pushPayloadOut(package);
-			recPackNumTracker[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
+				recPackNumTracker[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
 		}
 
 
@@ -331,7 +337,7 @@ static bool processReceivedPackage(tUartNr wlConn)
 			numberOfAcksSent[wlConn]++;
 		}
 	}
-	else /* acknowledge package received */
+	else if(package.packType == PACK_TYPE_REC_ACKNOWLEDGE) /* acknowledge package received */
 	{
 		/* iterate though unacknowledged packages to find the corresponding one */
 		for(int index=0; index < MAX_NUMBER_OF_UNACK_PACKS_STORED; index++)
@@ -345,7 +351,7 @@ static bool processReceivedPackage(tUartNr wlConn)
 				sysTime |= (package.payload[3] << 24);
 				/* check if this is the package we got the acknowledge for */
 				if(		unacknowledgedPackages[index].devNum == package.devNum &&
-						unacknowledgedPackages[index].sysTime == package.sysTime   )
+						unacknowledgedPackages[index].sysTime == sysTime   )
 				{
 					/* free memory of saved package if we got ACK */
 					FRTOS_vPortFree(unacknowledgedPackages[index].payload);
@@ -364,6 +370,12 @@ static bool processReceivedPackage(tUartNr wlConn)
 		FRTOS_vPortFree(package.payload);
 		package.payload = NULL;
 		return false; /* found no matching data package for this acknowledge */
+	}
+	else
+	{
+		XF1_xsprintf(infoBuf, "Error: invalid package type received on wireless connection %u\r\n", wlConn);
+		pushMsgToShellQueue(infoBuf);
+		FRTOS_vPortFree(package.payload);
 	}
 	FRTOS_vPortFree(package.payload); /* free memory for package popped from queue */
 	package.payload = NULL;

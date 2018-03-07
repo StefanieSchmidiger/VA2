@@ -10,11 +10,6 @@
 */
 #define QUEUE_NUM_OF_WL_PACK_TO_SEND			20 /* about 550 bytes per wireless package, not including the dynamically allocated memory for payload */
 
-/*! \def QUEUE_NUM_OF_WL_PACK_RECEIVED
-*  \brief Number of wireless packages that should have find space within a single queue.
-*/
-#define QUEUE_NUM_OF_WL_PACK_RECEIVED			20 /* about 550 bytes per wireless package, not including the dynamically allocated memory for payload */
-
 /*! \def MAX_NUMBER_OF_UNACK_PACKS_STORED
 *  \brief Size of internal array for unacknowledged packages.
 */

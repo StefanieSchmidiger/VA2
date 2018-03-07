@@ -99,14 +99,17 @@ void Shell_TaskInit(void)
 {
   localConsole_buf[0] = '\0';
   CLS1_Init();
-  #if PL_HAS_SD_CARD
-  //FAT1_Init();
-  #endif
 
-  msgQueue = xQueueCreate( MAX_NUMBER_OF_MESSAGES_STORED, sizeof(char*));
-  if(msgQueue == NULL)
-	  for(;;){} /* malloc for queue failed */
-  vQueueAddToRegistry(msgQueue, "DebugMessageQueue");
+#if configSUPPORT_STATIC_ALLOCATION
+	static uint8_t xStaticQueue[ QUEUE_NUM_OF_CHARS_WL_RX_QUEUE * sizeof(uint8_t) ]; /* The variable used to hold the queue's data structure. */
+	static StaticQueue_t ucQueueStorage; /* The array to use as the queue's storage area. */
+	msgQueue = xQueueCreateStatic( MAX_NUMBER_OF_MESSAGES_STORED, sizeof(char*), xStaticQueue, &ucQueueStorage);
+#else
+	msgQueue = xQueueCreate( MAX_NUMBER_OF_MESSAGES_STORED, sizeof(char*));
+#endif
+	if(msgQueue == NULL)
+		for(;;){} /* malloc for queue failed */
+	vQueueAddToRegistry(msgQueue, "DebugMessageQueue");
 }
 
 
