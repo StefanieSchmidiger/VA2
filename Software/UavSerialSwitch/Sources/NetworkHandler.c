@@ -27,9 +27,11 @@ static tWirelessPackage unacknowledgedPackages[MAX_NUMBER_OF_UNACK_PACKS_STORED]
 static bool unacknowledgedPackagesOccupiedAtIndex[MAX_NUMBER_OF_UNACK_PACKS_STORED];
 static int numberOfUnacknowledgedPackages;
 static uint32_t sentPackNumTracker[NUMBER_OF_UARTS];
-static uint32_t recPackNumTracker[NUMBER_OF_UARTS];
+static uint32_t sysTimeLastPushedOutPack[NUMBER_OF_UARTS];
+static uint32_t minSysTimeOfStoredPackagesForReordering[NUMBER_OF_UARTS];
 static tWirelessPackage reorderingPacks[NUMBER_OF_UARTS][REORDERING_PACKAGES_BUFFER_SIZE];
-static int reorderingPacksHeadPointer[NUMBER_OF_UARTS];
+static bool reorderingPacksOccupiedAtIndex[NUMBER_OF_UARTS][REORDERING_PACKAGES_BUFFER_SIZE];
+static uint32_t nofReorderingPacksStored[NUMBER_OF_UARTS];
 static SemaphoreHandle_t ackReceived[NUMBER_OF_UARTS];
 
 /* prototypes of local functions */
@@ -44,7 +46,9 @@ static uint8_t getWlConnectionToUse(tUartNr uartNr, uint8_t desiredPrio);
 static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack);
 static void handleResendingOfUnacknowledgedPackages(void);
 BaseType_t pushToSentPackagesQueue(tUartNr wlConn, tWirelessPackage* pPackage);
-static void pushPayloadOut(tWirelessPackage package);
+static void pushPayloadOut(tWirelessPackage* package);
+static bool pushNextStoredPackOut(tUartNr uartNr);
+static bool pushOldestPackOutIfTimeout(tUartNr uartNr, bool forced);
 
 
 /*!
@@ -68,14 +72,27 @@ void networkHandler_TaskEntry(void* p)
 		{
 			/* generate packages from raw data bytes and send to correct packagesToSend queue */
 			if(generateDataPackage(deviceNr, &package, sessionNr)) /* generate package from raw device data bytes */
+			{
 				sendAndStoreGeneratedWlPackage(&package, deviceNr); /* send the generated package to the correct queue and store it internally if ACK is configured */
+			}
 
 			/* extract data from received packages, send ACK and send raw data to corresponding UART interface */
 			if(numberOfPacksInReceivedPacksQueue(deviceNr) > 0)
+			{
 				processReceivedPackage(deviceNr);
+			}
 
 			/* handle resend in case acknowledge not received */
 			handleResendingOfUnacknowledgedPackages();
+
+			/* check if there is a timeout on the package reordering */
+			if(config.PackNumberingProcessingMode[deviceNr] == PACKAGE_REORDERING) /* package reordering configured for this device? */
+			{
+				while(pushOldestPackOutIfTimeout(deviceNr, false)) /* a timeout occured for oldest saved package? */
+				{
+					while(pushNextStoredPackOut(deviceNr)); /* push next packages out that are in order */
+				}
+			}
 		}
 	}
 }
@@ -159,12 +176,14 @@ static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr r
 		if(wlConn >= NUMBER_OF_UARTS) /* maximum priority in config file reached */
 		{
 			numberOfDroppedPackages[UTIL1_constrain(getWlConnectionToUse(rawDataUartNr, UTIL1_constrain(prio-1, 1, NUMBER_OF_UARTS-1)), 1, NUMBER_OF_UARTS-1)]; /* make sure the prio for function call is within range */
-			XF1_xsprintf(infoBuf, "Warning: Couldn't push newly generated package from device %u to package queue\r\n", rawDataUartNr);
+			XF1_xsprintf(infoBuf, "%u: Warning: Couldn't push newly generated package from device %u to package queue\r\n", xTaskGetTickCount(), rawDataUartNr);
 			pushMsgToShellQueue(infoBuf);
 			return false;
 		}
 		if(pushToSentPackagesQueue(wlConn, pPackage) != pdTRUE)
+		{
 			continue; /* try next priority -> go though for-loop again */
+		}
 		/* update throughput printout */
 		numberOfPacksSent[wlConn]++;
 		numberOfPayloadBytesSent[wlConn] += pPackage->payloadSize;
@@ -184,7 +203,7 @@ static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr r
 
 	}
 	/* ToDo: handle failure of storeNewPackageInUnacknowledgedPackagesArray() */
-	XF1_xsprintf(infoBuf, "Warning: Unacknowledged packages array is full\r\n");
+	XF1_xsprintf(infoBuf, "%u: Warning: Unacknowledged packages array is full\r\n", xTaskGetTickCount());
 	pushMsgToShellQueue(infoBuf);
 	FRTOS_vPortFree(pPackage->payload); /* free memory since it wont be freed when popped from queue */
 	pPackage->payload = NULL;
@@ -213,10 +232,8 @@ static uint8_t getWlConnectionToUse(tUartNr uartNr, uint8_t desiredPrio)
 */
 static bool processReceivedPackage(tUartNr wlConn)
 {
-	static tWirelessPackage defaultPackage;
 	tWirelessPackage package;
-	char infoBuf[150];
-	defaultPackage.devNum = 44;
+	static char infoBuf[150];
 
 	/* if it is a data package -> check if there is enough space on byte queue of device side */
 	if(peekAtReceivedPackQueue(wlConn, &package) != pdTRUE) /* peek at package to find out payload size for space on Device Tx Bytes queue */
@@ -242,73 +259,64 @@ static bool processReceivedPackage(tUartNr wlConn)
 		if(package.devNum > NUMBER_OF_UARTS)
 			package.devNum = NUMBER_OF_UARTS-1;
 		/* send data out at correct device side if packages received in order*/
-		switch(config.PackNumberingProcessingMode[wlConn])
+		switch(config.PackNumberingProcessingMode[package.devNum])
 		{
 			case PACKAGE_NUMBER_IGNORED:
-				pushPayloadOut(package);
-				recPackNumTracker[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
+				pushPayloadOut(&package);
+				sysTimeLastPushedOutPack[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
 				break;
 			case WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK:
-				pushPayloadOut(package);/* send out data stream right away because packages are in right order */
-				recPackNumTracker[package.devNum] = package.sysTime;
+				pushPayloadOut(&package);/* send out data stream right away because packages are in right order */
+				sysTimeLastPushedOutPack[package.devNum] = package.sysTime;
+				FRTOS_xSemaphoreGive(ackReceived[package.devNum]);
 				break;
 			case PACKAGE_REORDERING:
-				if(recPackNumTracker[package.devNum] != package.sysTime + 1) /* package not received in order, saving to buffer needed */
+				if(sysTimeLastPushedOutPack[package.devNum] <= package.sysTime) /* old package received */
 				{
-					uint8_t index = package.sysTime - recPackNumTracker[package.devNum]; /* new packNum - old packNum = ringbuffer index */
-					uint8_t cnt = reorderingPacksHeadPointer[package.devNum];
-					tWirelessPackage tmpPack;
-					unsigned char flagMinNumOfPacksDiscarded = 0;
-					if(index >= REORDERING_PACKAGES_BUFFER_SIZE) /* index out of range */
-					{
-						// Todo: discard old packages instead of discarding newest one
-						index = index % REORDERING_PACKAGES_BUFFER_SIZE;
-						do
-						{
-							if(cnt == index)
-								flagMinNumOfPacksDiscarded = 1;
-							tmpPack = reorderingPacks[package.devNum][cnt];
-							if(tmpPack.devNum != defaultPackage.devNum) /* package saved under this index */
-							{
-								pushPayloadOut(tmpPack); /* push out current package */
-								recPackNumTracker[tmpPack.devNum] = tmpPack.sysTime; /* update package number tracker */
-							}
-							if((++cnt) >= REORDERING_PACKAGES_BUFFER_SIZE) /* start over at beginning of array (ringbuffer) if index out of range */
-								cnt = 0;
-						} while((tmpPack.devNum != defaultPackage.devNum) && flagMinNumOfPacksDiscarded);
-					}
-					if(index + reorderingPacksHeadPointer[package.devNum] >= REORDERING_PACKAGES_BUFFER_SIZE) /* end reached -> start over at beginning of array */
-						index = index - (REORDERING_PACKAGES_BUFFER_SIZE - reorderingPacksHeadPointer[package.devNum]);
-					reorderingPacks[package.devNum][index] = package;
+					break;
 				}
-				if(recPackNumTracker[package.devNum] == package.sysTime + 1) /* package received in order */
+				else if(sysTimeLastPushedOutPack[package.devNum] != package.sysTime + 1) /* package not received in order, saving to buffer needed */
 				{
-					do
+					tWirelessPackage nextPack;
+					/* package cant be stored, no empty space */
+					if(nofReorderingPacksStored[package.devNum] >= sizeof(reorderingPacksOccupiedAtIndex[package.devNum]))
 					{
-						pushPayloadOut(package); /* push out current package */
-						recPackNumTracker[package.devNum] = package.sysTime; /* update package number tracker */
-						/* update head pointer to received packages ringbuffer */
-						reorderingPacks[package.devNum][reorderingPacksHeadPointer[package.devNum]] = defaultPackage; /* needed if do-while loop is executed again with package popped from ringbuffer */
-						reorderingPacksHeadPointer[package.devNum]++;
-						if(reorderingPacksHeadPointer[package.devNum] >= REORDERING_PACKAGES_BUFFER_SIZE) /* start over at beginning of array (ringbuffer) if index out of range */
-							reorderingPacksHeadPointer[package.devNum] = 0;
-						package = reorderingPacks[package.devNum][reorderingPacksHeadPointer[package.devNum]]; /* pop next package from queue */
-					} while(package.devNum != defaultPackage.devNum); /* next stored ringbuffer element not empty? */
+						pushOldestPackOutIfTimeout(package.devNum, true); /* force oldest package to be pushed out */
+						while(pushNextStoredPackOut(package.devNum)); /* push any other packages out that are now stored in order */
+					}
+					/* iterate through array to find an empty spot and store package there */
+					for(int i=0; i<sizeof(reorderingPacks[package.devNum]); i++)
+					{
+						if(reorderingPacksOccupiedAtIndex[package.devNum][i] != 1) /* spot empty? */
+						{
+							reorderingPacks[package.devNum][i] = package; /* save package at new spot */
+							reorderingPacksOccupiedAtIndex[package.devNum][i] = 1; /*mark spot as occupied */
+							nofReorderingPacksStored[package.devNum] ++;
+							break; /* leave for loop */
+						}
+					}
+				}
+				else if(sysTimeLastPushedOutPack[package.devNum] == package.sysTime + 1) /* package received in order */
+				{
+					pushPayloadOut(&package); /* push out current package */
+					/* payload is freed at the end of this function */
+					sysTimeLastPushedOutPack[package.devNum] = package.sysTime; /* update package number tracker */
+					while(pushNextStoredPackOut(package.devNum));
 				}
 				break;
 			case ONLY_SEND_OUT_NEW_PACKAGES:
-				if(recPackNumTracker[package.devNum] <= package.sysTime) /* package is newer than the last one pushed out */
+				if(sysTimeLastPushedOutPack[package.devNum] <= package.sysTime) /* package is newer than the last one pushed out */
 				{
-					pushPayloadOut(package);
-					recPackNumTracker[package.devNum] = package.sysTime;
+					pushPayloadOut(&package);
+					sysTimeLastPushedOutPack[package.devNum] = package.sysTime;
 				}
 				break;
 			default:
 				UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Error: Wrong configuration for PACK_NUMBERING_PROCESSING_MODE, value not in range\r\n");
 				LedRed_On();
 				pushMsgToShellQueue(infoBuf);
-				pushPayloadOut(package);
-				recPackNumTracker[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
+				pushPayloadOut(&package);
+				sysTimeLastPushedOutPack[package.devNum] = package.sysTime; /* no need to keep track of package numbering, but done anyway here */
 		}
 
 
@@ -325,12 +333,12 @@ static bool processReceivedPackage(tUartNr wlConn)
 			}
 			if(pushToSentPackagesQueue(wlConn, &ackPackage) != pdTRUE) // ToDo: try sending ACK package out on wireless connection configured (just like data package, iterate through priorities) */
 			{
-				XF1_xsprintf(infoBuf, "Warning: ACK for wireless number %u could not be pushed to queue\r\n", wlConn);
+				XF1_xsprintf(infoBuf, "%u: Warning: ACK for wireless number %u could not be pushed to queue\r\n", xTaskGetTickCount(), wlConn);
 				pushMsgToShellQueue(infoBuf);
 				numberOfDroppedPackages[wlConn]++;
 				FRTOS_vPortFree(ackPackage.payload); /* free memory since it wont be done on popping from queue */
 				ackPackage.payload = NULL;
-				UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Warning: Acknowledge cannot be sent because package queue full\r\n");
+				XF1_xsprintf(infoBuf, "%u: Warning: Acknowledge cannot be sent because package queue full\r\n", xTaskGetTickCount());
 				pushMsgToShellQueue(infoBuf);
 			}
 			/* memory of ackPackage is freed after package in PackageHandler task, extracted and byte wise pushed to byte queue */
@@ -339,16 +347,23 @@ static bool processReceivedPackage(tUartNr wlConn)
 	}
 	else if(package.packType == PACK_TYPE_REC_ACKNOWLEDGE) /* acknowledge package received */
 	{
+		int tmpNumOfUnackPacks = numberOfUnacknowledgedPackages;
+		uint32_t sysTime = package.payload[0];
+		sysTime |= (package.payload[1] << 8);
+		sysTime |= (package.payload[2] << 16);
+		sysTime |= (package.payload[3] << 24);
 		/* iterate though unacknowledged packages to find the corresponding one */
 		for(int index=0; index < MAX_NUMBER_OF_UNACK_PACKS_STORED; index++)
 		{
+			if(tmpNumOfUnackPacks <= 0)
+			{
+				break; /* leave for loop instead of iterating over all packages */
+			}
 			/* check if this index holds an unacknowledged package */
 			if(unacknowledgedPackagesOccupiedAtIndex[index])
 			{
-				uint32_t sysTime = package.payload[0];
-				sysTime |= (package.payload[1] << 8);
-				sysTime |= (package.payload[2] << 16);
-				sysTime |= (package.payload[3] << 24);
+				tmpNumOfUnackPacks --;
+
 				/* check if this is the package we got the acknowledge for */
 				if(		unacknowledgedPackages[index].devNum == package.devNum &&
 						unacknowledgedPackages[index].sysTime == sysTime   )
@@ -356,7 +371,6 @@ static bool processReceivedPackage(tUartNr wlConn)
 					/* free memory of saved package if we got ACK */
 					FRTOS_vPortFree(unacknowledgedPackages[index].payload);
 					unacknowledgedPackages[index].payload = NULL;
-					numberOfDroppedAcks[wlConn]++;
 					unacknowledgedPackagesOccupiedAtIndex[index] = false;
 					numberOfUnacknowledgedPackages--;
 					FRTOS_vPortFree(package.payload); /* free memory for package popped from queue */
@@ -365,7 +379,7 @@ static bool processReceivedPackage(tUartNr wlConn)
 				}
 			}
 		}
-		XF1_xsprintf(infoBuf, "Warning: Got ACK on wireless connection %u but no saved package found -> check ACK configuration on both sides %u\r\n", wlConn);
+		XF1_xsprintf(infoBuf, "%u: Warning: Got ACK for sysTime %u on wireless connection %u but no saved package found -> check ACK configuration on both sides\r\n", xTaskGetTickCount(), sysTime, wlConn);
 		pushMsgToShellQueue(infoBuf);
 		FRTOS_vPortFree(package.payload);
 		package.payload = NULL;
@@ -373,7 +387,7 @@ static bool processReceivedPackage(tUartNr wlConn)
 	}
 	else
 	{
-		XF1_xsprintf(infoBuf, "Error: invalid package type received on wireless connection %u\r\n", wlConn);
+		XF1_xsprintf(infoBuf, "%u: Error: invalid package type received on wireless connection %u\r\n", xTaskGetTickCount(), wlConn);
 		pushMsgToShellQueue(infoBuf);
 		FRTOS_vPortFree(package.payload);
 	}
@@ -386,22 +400,113 @@ static bool processReceivedPackage(tUartNr wlConn)
 /*!
 * \fn static void pushPayloadOut(tWirelessPackage package)
 * \brief Pushes the payload of a wireless package out on the correct device
-* \param package: package to be pushed out
+* \param pPackage: pointer to package to be pushed out
 */
-static void pushPayloadOut(tWirelessPackage package)
+static void pushPayloadOut(tWirelessPackage* pPackage)
 {
 	static char infoBuf[80];
-	for(uint16_t cnt=0; cnt<package.payloadSize; cnt++)
+	for(uint16_t cnt=0; cnt<pPackage->payloadSize; cnt++)
 	{
-		if(pushToByteQueue(MAX_14830_DEVICE_SIDE, package.devNum, &package.payload[cnt]) == pdFAIL)
+		if(pushToByteQueue(MAX_14830_DEVICE_SIDE, pPackage->devNum, &pPackage->payload[cnt]) == pdFAIL)
 		{
-			XF1_xsprintf(infoBuf, "Warning: Push to device byte array for UART %u failed", package.devNum);
+			XF1_xsprintf(infoBuf, "%u: Warning: Push to device byte array for UART %u failed", xTaskGetTickCount(), pPackage->devNum);
 			pushMsgToShellQueue(infoBuf);
-			numberOfDroppedBytes[package.devNum]++;
+			numberOfDroppedBytes[pPackage->devNum]++;
 		}
 	}
 }
 
+
+/*!
+* \fn static void pushNextStoredPackOut(tUartNr uartNr)
+* \brief Iterates through the stored packages and pushes the next one out if it is the right order
+* \param uartNr: which device is affected
+*/
+static bool pushNextStoredPackOut(tUartNr uartNr)
+{
+	tWirelessPackage nextPack;
+	uint32_t nofReorderingPacksLeft = nofReorderingPacksStored[uartNr];
+	for(int i=0; i<sizeof(reorderingPacks[uartNr]); i++)
+	{
+		if(reorderingPacksOccupiedAtIndex[uartNr][i])
+		{
+			nofReorderingPacksLeft--;
+			nextPack = reorderingPacks[uartNr][i];
+			if(nextPack.sysTime == sysTimeLastPushedOutPack[uartNr]+1)
+			{
+				pushPayloadOut(&nextPack);
+				vPortFree(nextPack.payload);
+				reorderingPacksOccupiedAtIndex[uartNr][i] = 0;
+				nofReorderingPacksStored[uartNr]--;
+				sysTimeLastPushedOutPack[uartNr] = nextPack.sysTime;
+				return true;
+			}
+		}
+		if(nofReorderingPacksLeft <= 0)
+		{
+			/* no need to iterate over the entire array if we know that there are no more packages stored */
+			return false;
+		}
+	}
+	return false;
+}
+
+/*!
+* \fn static bool pushOldestPackOutIfTimeout(tUartNr uartNr, bool forced)
+* \brief Iterates through the receivedPackages array and pushes the package out with the
+* lowest sysTime if its timeout is done or if forced == true then the oldest package is pushed out
+* no matter if its timeout is done or not.
+* \param uartNr: specify which device side
+* \param forced: force oldest package out, no matter if timeout done or not -> freeing space
+*/
+static bool pushOldestPackOutIfTimeout(tUartNr uartNr, bool forced)
+{
+	tWirelessPackage oldestPack;
+	tWirelessPackage tmpPack;
+	bool firstIteration = true;
+	int oldestPackIndex = 0;
+
+	/* find package with the oldest timestamp (sysTime */
+	for(int i=0; i<sizeof(reorderingPacks[uartNr]); i++)
+	{
+		if(reorderingPacksOccupiedAtIndex[uartNr][i]) /* there is a package stored at this index */
+		{
+			tmpPack = reorderingPacks[uartNr][i];
+			if(firstIteration == true) /* on first iteration, initialize variable with any package */
+			{
+				oldestPack = tmpPack;
+				oldestPackIndex = i;
+				firstIteration = false; /* only initialize once */
+			}
+
+			if(tmpPack.sysTime < oldestPack.sysTime) /* found older package than the previous one */
+			{
+				oldestPack = tmpPack;
+				oldestPackIndex = i;
+			}
+		}
+	}
+
+	if(firstIteration == true) /* the array is empty, no package found */
+	{
+		return false;
+	}
+
+	if(forced || (oldestPack.timestampPackageReceived + config.PackReorderingTimeout[uartNr] > xTaskGetTickCount())) /* oldest package is timed out or needs to be pushed out */
+	{
+		pushPayloadOut(&oldestPack);
+		vPortFree(oldestPack.payload);
+		oldestPack.payload = NULL;
+		reorderingPacksOccupiedAtIndex[uartNr][oldestPackIndex] = false;
+		nofReorderingPacksStored[uartNr]--;
+		sysTimeLastPushedOutPack[uartNr] = oldestPack.sysTime;
+		return true;
+	}
+	else /* oldest package is not timed out */
+	{
+		return false;
+	}
+}
 
 /*!
 * \fn static void generateDataPackage(uint8_t deviceNumber, Queue* dataSource)
@@ -415,16 +520,20 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage, ui
 {
 	static uint32_t tickTimeSinceFirstCharReceived[NUMBER_OF_UARTS]; /* static variables are initialized as 0 by default */
 	static bool dataWaitingToBeSent[NUMBER_OF_UARTS];
-	static uint8_t packHeaderBuf[PACKAGE_HEADER_SIZE - 1] = { PACK_START, PACK_TYPE_DATA_PACKAGE, 0, 0, 0, 0, 0, 0, 0, 0 };
-	char infoBuf[50];
+	static const uint8_t packHeaderBuf[PACKAGE_HEADER_SIZE - 1] = { PACK_START, PACK_TYPE_DATA_PACKAGE, 0, 0, 0, 0, 0, 0, 0, 0 };
+	char infoBuf[60];
 
 	uint16_t numberOfBytesInRxQueue = (uint16_t) numberOfBytesInRxByteQueue(MAX_14830_DEVICE_SIDE, deviceNr);
 	uint32_t timeWaitedForPackFull = xTaskGetTickCount()-tickTimeSinceFirstCharReceived[deviceNr];
 
+	if((deviceNr >= NUMBER_OF_UARTS) || (pPackage == NULL)) /* check validity of function parameters */
+	{
+		return false;
+	}
 	/* check if enough data to fill package (when not configured to 0) or maximum wait time for full package done */
-	if (((numberOfBytesInRxQueue >= config.UsualPacketSizeDeviceConn[deviceNr]) && (0 != config.UsualPacketSizeDeviceConn[deviceNr])) ||
+	if( ( (numberOfBytesInRxQueue >= config.UsualPacketSizeDeviceConn[deviceNr]) && (0 != config.UsualPacketSizeDeviceConn[deviceNr]) ) ||
 		(numberOfBytesInRxQueue >= PACKAGE_MAX_PAYLOAD_SIZE) ||
-		((dataWaitingToBeSent[deviceNr] == true) && (timeWaitedForPackFull >= pdMS_TO_TICKS(config.PackageGenMaxTimeout[deviceNr]))))
+		( (dataWaitingToBeSent[deviceNr] == true) && (timeWaitedForPackFull >= pdMS_TO_TICKS(config.PackageGenMaxTimeout[deviceNr])) ) )
 	{
 		/* reached usual packet size or timeout, generate package
 		 * check if there is enough space to store package in queue before generating it
@@ -436,14 +545,23 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage, ui
 		{
 			wlConn = getWlConnectionToUse(deviceNr, prio);
 			if(wlConn >= NUMBER_OF_UARTS) /* check if this priority has been configured */
+			{
 				return false;
+			}
 			if(uxQueueMessagesWaiting(queuePackagesToSend[wlConn]) < QUEUE_NUM_OF_WL_PACK_TO_SEND) /* space left in the queue? */
+			{
 				break; /* found a wlConn where there is space to store package */
+			}
 		}
 		if(wlConn >= NUMBER_OF_UARTS) /* there is no queue with space for this package */
+		{
 			return false;
-		//ToDo: if((config.PackNumberingProcessingMode == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK) && (FRTOS_xSemaphoreTake(ackReceived[wlConn], 0) != pdTRUE))
-			//ToDo: return false; /* still waiting for an acknowledge on this connection
+		}
+		/* still waiting for an acknowledge on data from this device side? */
+		if((config.PackNumberingProcessingMode[deviceNr] == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK) && (FRTOS_xSemaphoreTake(ackReceived[wlConn], 0) != pdTRUE))
+		{
+			return false;
+		}
 		/* Put together package */
 		/* put together payload by allocating memory and copy data */
 		pPackage->payloadSize = numberOfBytesInRxQueue;
@@ -573,73 +691,79 @@ static void handleResendingOfUnacknowledgedPackages(void)
 {
 	int unackPackagesLeft = numberOfUnacknowledgedPackages;
 	static char infoBuf[128];
-	static tWirelessPackage package;
+	tWirelessPackage resendPack;
+
 	for (int index = 0; index < MAX_NUMBER_OF_UNACK_PACKS_STORED; index++)
 	{
 		if(unackPackagesLeft <= 0) /* leave iteration through array when there are no more packages in there */
 		{
 			return;
 		}
-		if(unacknowledgedPackagesOccupiedAtIndex[index] == 1) /* there is a package stored at this index */
+		if(unacknowledgedPackagesOccupiedAtIndex[index]) /* there is a package stored at this index */
 		{
+			tWirelessPackage* pPack = &unacknowledgedPackages[index];
 			unackPackagesLeft --;
 			int prio = 1;
 			while(prio <= NUMBER_OF_UARTS) /* iterate though all priorities (starting at highest priority) to see if resend is required */
 			{
-				int wlConn = getWlConnectionToUse(unacknowledgedPackages[index].devNum, prio);
-				/* max number of resends done for all connections or maximum delay in config reached for this package */
-				if((wlConn >= NUMBER_OF_UARTS) ||
-						(unacknowledgedPackages[index].timestampFirstSendAttempt + pdMS_TO_TICKS(config.DelayDismissOldPackagePerDev[unacknowledgedPackages[index].devNum]) < xTaskGetTickCount()) )
+				int wlConn = getWlConnectionToUse(pPack->devNum, prio);
+				uint32_t tickCount = xTaskGetTickCount();
+				uint32_t delayInTicks = pdMS_TO_TICKS(config.DelayDismissOldPackagePerDev[pPack->devNum]);
+				uint32_t resendDelayInTicks = pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][pPack->devNum]);
+				/* max number of resends done for all connections or maximum delay in config reached for this package     OR
+				 * no response on last resend received during resend timeout */
+				if(((wlConn >= NUMBER_OF_UARTS) || ((pPack->timestampFirstSendAttempt + delayInTicks) < tickCount))     ||
+					(pPack->sendAttemptsLeftPerWirelessConnection[wlConn] == 0) &&  (tickCount - pPack->timestampLastSendAttempt[wlConn] > resendDelayInTicks))
 				{
-					XF1_xsprintf(infoBuf, "Warning: Max number of retries reached and no ACK received -> discard package for device %u\r\n", unacknowledgedPackages[index].devNum);
+					XF1_xsprintf(infoBuf, "%u: Warning: Max number of retries reached and no ACK received -> discard package with sysTime %u for device %u\r\n", xTaskGetTickCount(), pPack->sysTime, pPack->devNum);
 					pushMsgToShellQueue(infoBuf);
-					FRTOS_vPortFree(unacknowledgedPackages[index].payload); /* free allocated memory when package dropped*/
-					unacknowledgedPackages[index].payload = NULL;
-					unacknowledgedPackagesOccupiedAtIndex[index] = 0;
+					FRTOS_vPortFree(pPack->payload); /* free allocated memory when package dropped*/
+					pPack->payload = NULL;
+					unacknowledgedPackagesOccupiedAtIndex[index] = false;
 					numberOfUnacknowledgedPackages--;
 					prio = NUMBER_OF_UARTS; /* leave iteration over priorities */
-					numberOfDroppedPackages[unacknowledgedPackages[index].devNum]++; /* update throughput printout */
+					numberOfDroppedPackages[pPack->devNum]++; /* update throughput printout */
 				}
-				if(unacknowledgedPackages[index].sendAttemptsLeftPerWirelessConnection[wlConn] > 0)
+				if(pPack->sendAttemptsLeftPerWirelessConnection[wlConn] > 0)
 				{
 					/* is timeout for ACK done?*/
-					if(xTaskGetTickCount() - unacknowledgedPackages[index].timestampLastSendAttempt[wlConn] > pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][unacknowledgedPackages[index].devNum]))
+					if(tickCount - pPack->timestampLastSendAttempt[wlConn] > pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][pPack->devNum]))
 					{
 						/* create new package for queue because memory is freed once package is pulled from queue */
-						package = unacknowledgedPackages[index];
-						package.payload = (uint8_t*) FRTOS_pvPortMalloc(package.payloadSize*sizeof(int8_t)); // ToDo: check queue state before allocating memory for package
-						if(package.payload == NULL)
+						resendPack = *pPack;
+						resendPack.payload = (uint8_t*) FRTOS_pvPortMalloc(resendPack.payloadSize*sizeof(int8_t)); // ToDo: check queue state before allocating memory for resendPack
+						if(resendPack.payload == NULL)
 						{
 							return; /* leave this entire function if malloc fails! */
 						}
 						/* fill package.payload with payload data */
-						for(int cnt = 0; cnt < package.payloadSize; cnt++)
+						for(int cnt = 0; cnt < resendPack.payloadSize; cnt++)
 						{
-							package.payload[cnt] = unacknowledgedPackages[index].payload[cnt];
+							resendPack.payload[cnt] = pPack->payload[cnt];
 						}
-						/* send package */
-						if(pushToSentPackagesQueue(wlConn, &package) == pdTRUE)
+						/* send resendPack */
+						if(pushToSentPackagesQueue(wlConn, &resendPack) == pdTRUE)
 						{
-							unacknowledgedPackages[index].sendAttemptsLeftPerWirelessConnection[wlConn]--;
-							unacknowledgedPackages[index].timestampLastSendAttempt[wlConn] = xTaskGetTickCount();
+							pPack->sendAttemptsLeftPerWirelessConnection[wlConn]--;
+							pPack->timestampLastSendAttempt[wlConn] = tickCount;
 							//sprintf(infoBuf, "Retry to send package\r\n");
 							//pushMsgToShellQueue(infoBuf, strlen(infoBuf));
 							prio = NUMBER_OF_UARTS; /* leave priority-while loop because package will be sent, now to wait on acknowledge */
 							/* update throughput printout */
-							numberOfPayloadBytesSent[wlConn] += unacknowledgedPackages[index].payloadSize;
+							numberOfPayloadBytesSent[wlConn] += pPack->payloadSize;
 						}
 						else
 						{
 							numberOfDroppedPackages[wlConn]++;
-							FRTOS_vPortFree(package.payload); /* free memory since it wont be popped from queue and freed there */
-							package.payload = NULL;
+							FRTOS_vPortFree(resendPack.payload); /* free memory since it wont be popped from queue and freed there */
+							resendPack.payload = NULL;
 						}
 					}
 					else /* package has already been sent, now waiting on acknowledge -> leave loop for this package, find next package to check */
 						prio = NUMBER_OF_UARTS; /* leave priority-while loop */
 				}
 				/* no send attempt left but we are waiting for ACK of very last send attempt on one wireless connection */
-				else if((unacknowledgedPackages[index].sendAttemptsLeftPerWirelessConnection[wlConn] == 0) &&  (xTaskGetTickCount() - unacknowledgedPackages[index].timestampLastSendAttempt[wlConn] < pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][unacknowledgedPackages[index].devNum])))
+				else if((pPack->sendAttemptsLeftPerWirelessConnection[wlConn] == 0) &&  (tickCount - pPack->timestampLastSendAttempt[wlConn] < resendDelayInTicks))
 				{
 					prio = NUMBER_OF_UARTS;
 				}
@@ -660,7 +784,7 @@ static bool storeNewPackageInUnacknowledgedPackagesArray(tWirelessPackage* pPack
 {
 	for(int index=0; index < MAX_NUMBER_OF_UNACK_PACKS_STORED; index++)
 	{
-		if(unacknowledgedPackagesOccupiedAtIndex[index] == 0) /* there is no package stored at this index */
+		if(unacknowledgedPackagesOccupiedAtIndex[index] != true) /* there is no package stored at this index */
 		{
 			unacknowledgedPackages[index] = *pPackage;
 			unacknowledgedPackages[index].payload = FRTOS_pvPortMalloc(unacknowledgedPackages[index].payloadSize*sizeof(int8_t));

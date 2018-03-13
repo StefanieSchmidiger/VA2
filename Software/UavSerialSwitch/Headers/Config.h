@@ -12,6 +12,13 @@ typedef enum ePackageNumbering
 	ONLY_SEND_OUT_NEW_PACKAGES = 0x04
 } tPackageNumbering;
 
+typedef enum eDebugOutput
+{
+	DEBUG_OUTPUT_NONE = 0x01,
+	DEBUG_OUTPUT_SHELL_COMMANDS_ONLY = 0x02,
+	DEBUG_OUTPUT_FULLLY_ENABLED = 0x03
+} eDebugOutput;
+
 typedef struct Configurations {
 	/* BaudRateConfiguration */
    int BaudRatesWirelessConn[NUMBER_OF_UARTS]; //
@@ -27,11 +34,12 @@ typedef struct Configurations {
    int DelayDismissOldPackagePerDev[NUMBER_OF_UARTS];
    bool SendAckPerWirelessConn[NUMBER_OF_UARTS];
    bool UseCtsPerWirelessConn[NUMBER_OF_UARTS];
-   tPackageNumbering PackNumberingProcessingMode[NUMBER_OF_UARTS];
+   tPackageNumbering PackNumberingProcessingMode[NUMBER_OF_UARTS]; /* per device side, NOT per wireless side */
+   int PackReorderingTimeout[NUMBER_OF_UARTS];
    /* SoftwareConfiguration */
    bool TestHwLoopbackOnly;
    bool EnableStressTest;
-   bool GenerateDebugOutput;
+   eDebugOutput GenerateDebugOutput;
    bool LoggingEnabled;
    int SpiHandlerTaskInterval; // [ms]
    int PackageHandlerTaskInterval; // [ms]

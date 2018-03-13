@@ -1,3 +1,4 @@
+#include "PE_Types.h"
 #include "FAT1.h"
 #include "Config.h"
 #include "Shell.h" // to create task
@@ -30,7 +31,7 @@ void SysInit_TaskEntry(void* param)
   /* mount SD card so config file can be read */
   if(FAT1_Init() != 0)
     {for(;;){}} /* SD Card could not be mounted */
-  FAT1_CheckCardPresence(&cardMounted, (unsigned char*)"0" /*volume*/, &fileSystemObject, CLS1_GetStdio());
+  FAT1_CheckCardPresence(&cardMounted, (uint8_t*)"0" /*volume*/, &fileSystemObject, CLS1_GetStdio());
   readConfig(); /* global config variable is needed for all other tasks -> read it before starting other tasks */
   createAllTasks(); /* start all other tasks */
   vTaskDelete(NULL); /* task deletes itself */
@@ -72,8 +73,11 @@ static bool createAllTasks(void)
 
 
 	/* create Shell task */
-	if (xTaskCreateStatic(Shell_TaskEntry, "Shell", SHELL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferShell, &pxTaskBufferShell) == NULL) {
-	  	    for(;;) {}} /* error */
+	if(config.GenerateDebugOutput != DEBUG_OUTPUT_NONE)
+	{
+		if (xTaskCreateStatic(Shell_TaskEntry, "Shell", SHELL_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferShell, &pxTaskBufferShell) == NULL) {
+				for(;;) {}} /* error */
+	}
 
 	/* create SPI handler task */
 	if (xTaskCreateStatic(spiHandler_TaskEntry, "SPI_Handler", SPI_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+3, puxStackBufferSpiHandler, &pxTaskBufferSpiHandler) == NULL) {
@@ -90,14 +94,18 @@ static bool createAllTasks(void)
 		for(;;) {}} /* error */
 
 	/* create throughput printout task */
-	if(config.GenerateDebugOutput)
+	if(config.GenerateDebugOutput == DEBUG_OUTPUT_FULLLY_ENABLED)
+	{
 		if (xTaskCreateStatic(throughputPrintout_TaskEntry, "Throughput_Printout", THROUGHPUT_PRINTOUT_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferThroughputPrintout, &pxTaskBufferThroughputPrintout) == NULL) {
 			for(;;) {}} /* error */
+	}
 
 	/* create logger task */
 	if(config.LoggingEnabled)
+	{
 		if (xTaskCreateStatic(logger_TaskEntry, "Logger", LOGGER_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferLogger, &pxTaskBufferLogger) == NULL) {
 			for(;;) {}} /* error */
+	}
 
 	/* create blinky task last to let user know that all init methods and mallocs were successful when LED blinks */
 	if (xTaskCreateStatic(blinky_TaskEntry, "Blinky", BLINKY_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferBlinky, &pxTaskBufferBlinky) == NULL) {

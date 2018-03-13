@@ -88,6 +88,10 @@ void packageHandler_TaskEntry(void* p)
 						}
 					}
 				}
+				else /* not enough space available for next package */
+				{
+					break; /* leave inner while-loop */
+				}
 			}
 			/* assemble received bytes to form a full data package */
 			if(numberOfPacksInReceivedPacksQueue(wlConn) < QUEUE_NUM_OF_WL_PACK_RECEIVED) /* there is space available in Queue */
@@ -248,7 +252,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 	static uint16_t patternReplaced[NUMBER_OF_UARTS];
 	static uint16_t dataCntToAddAfterReadPayload[NUMBER_OF_UARTS];
 	uint8_t chr;
-	char infoBuf[128];
+	static char infoBuf[128];
 
 	/* check if parameters are valid */
 	if (wlConn >= NUMBER_OF_UARTS)
@@ -356,8 +360,12 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].sysTime) + 0));
 				CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 1));
 				uint8_t crc8 = CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 0));
-				if(currentWirelessPackage[wlConn].crc8Header == crc8)
+				if(true)//currentWirelessPackage[wlConn].crc8Header == crc8)
 				{
+					if(currentWirelessPackage[wlConn].crc8Header != crc8)
+					{
+						XF1_xsprintf(infoBuf, "Info: Invalid header CRC received\r\n");
+					}
 					/* CRC is valid - also check if the header parameters are within the valid range */
 					if ((currentWirelessPackage[wlConn].packType > PACK_TYPE_REC_ACKNOWLEDGE) ||
 						(currentWirelessPackage[wlConn].packType == 0) ||

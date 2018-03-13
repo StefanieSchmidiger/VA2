@@ -22,7 +22,7 @@ void throughputPrintout_TaskEntry(void* p)
 {
 	const TickType_t taskInterval = pdMS_TO_TICKS(config.ThroughputPrintoutTaskInterval*1000); /* task interval in seconds, but configured in milliseconds */
 	TickType_t lastWakeTime = xTaskGetTickCount(); /* Initialize the xLastWakeTime variable with the current time. */
-	static char buf[200];
+	static char buf[150];
 	/* to calculate averages */
 	static float averagePayloadReceived[NUMBER_OF_UARTS];
 	static float averagePayloadSent[NUMBER_OF_UARTS];
@@ -92,6 +92,9 @@ void throughputPrintout_TaskEntry(void* p)
 
 		XF1_xsprintf(buf, "Wireless: Total number of received bytes per connection: %lu,%lu,%lu,%lu\r\n",
 				numberOfPayloadBytesExtracted[0], numberOfPayloadBytesExtracted[1], numberOfPayloadBytesExtracted[2], numberOfPayloadBytesExtracted[3]);
+		pushMsgToShellQueue(buf);
+
+		XF1_xsprintf(buf, "-----------------------------------------------------------\r\n");
 		pushMsgToShellQueue(buf);
 
 		/* reset measurement */

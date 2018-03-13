@@ -422,7 +422,7 @@ void configureHwBufBaudrate(tSpiSlaves spiSlave, tUartNr uartNr, unsigned int ba
 */
 static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue)
 {
-	uint8_t buffer[HW_FIFO_SIZE+1]; /* needs to be one byte bigger just in case we read HW_FIFO_SIZE number of bytes -> one additional byte received for sending command byte */
+	static uint8_t buffer[HW_FIFO_SIZE+1]; /* needs to be one byte bigger just in case we read HW_FIFO_SIZE number of bytes -> one additional byte received for sending command byte */
 	uint16_t dataToRead = 0;
 	uint16_t totalNumOfReadBytes = 0;
 	uint8_t fifoLevel = 0;
@@ -467,14 +467,14 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 				xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
 				if (spiSlave == MAX_14830_WIRELESS_SIDE)
 				{
-					char warnBuf[128];
+					char warnBuf[80];
 					XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on wireless side, UART number %u\r\n", (unsigned int) NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL, (unsigned int)uartNr);
 					LedOrange_On();
 					pushMsgToShellQueue(warnBuf);
 				}
 				else /* spiSlave == MAX_14830_DEVICE_SIDE */
 				{
-					char warnBuf[128];
+					char warnBuf[80];
 					XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on device side, UART number %u\r\n", (unsigned int) NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL, (unsigned int)uartNr);
 					LedOrange_On();
 					pushMsgToShellQueue(warnBuf);
@@ -516,7 +516,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 {
 	static uint32_t throughputPerWlConn[NUMBER_OF_UARTS];
 	static uint32_t lastUpdateThroughput[NUMBER_OF_UARTS];
-	uint8_t buffer[HW_FIFO_SIZE+1];
+	static uint8_t buffer[HW_FIFO_SIZE+1];
 	uint16_t cnt = 1;
 
 	/* check how much space there is left in hardware buffer */
@@ -549,7 +549,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		for (cnt = 1; cnt < numOfBytesToWrite+1; cnt++)
 		{
 			/* check if max throughput reached */
-			if((spiSlave == MAX_14830_WIRELESS_SIDE) && (config.MaxThroughputWirelessConn <= throughputPerWlConn[uartNr]))
+			if((spiSlave == MAX_14830_WIRELESS_SIDE) && (config.MaxThroughputWirelessConn[uartNr] <= throughputPerWlConn[uartNr]))
 			{
 				break; /* max throughput reached for this second - leave for-loop without popping more data from queue */
 			}

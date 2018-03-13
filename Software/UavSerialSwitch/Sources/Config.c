@@ -224,6 +224,10 @@ bool readConfig(void)
   		}
   	}
 
+  	/* PACK_REORDERING_TIMEOUT */
+  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "PACK_REORDERING_TIMEOUT",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
+  	csvToInt(copiedCsv, config.PackReorderingTimeout);
+
   	/* -------- SoftwareConfiguration -------- */
   	/* TEST_HW_LOOPBACK_ONLY */
   	config.TestHwLoopbackOnly = MINI_ini_getbool("SoftwareConfiguration", "TEST_HW_LOOPBACK_ONLY",  DEFAULT_BOOL, "serialSwitch_Config.ini");
@@ -232,7 +236,16 @@ bool readConfig(void)
   	config.EnableStressTest = MINI_ini_getbool("SoftwareConfiguration", "ENABLE_STRESS_TEST",  DEFAULT_BOOL, "serialSwitch_Config.ini");
 
   	/* GENERATE_DEBUG_OUTPUT */
-  	config.GenerateDebugOutput = MINI_ini_getbool("SoftwareConfiguration", "GENERATE_DEBUG_OUTPUT",  DEFAULT_BOOL, "serialSwitch_Config.ini");
+  	config.GenerateDebugOutput = MINI_ini_getl("SoftwareConfiguration", "GENERATE_DEBUG_OUTPUT",  DEFAULT_INT, "serialSwitch_Config.ini");
+  	switch(config.GenerateDebugOutput)
+  	{
+		case DEBUG_OUTPUT_NONE:
+		case DEBUG_OUTPUT_SHELL_COMMANDS_ONLY:
+		case DEBUG_OUTPUT_FULLLY_ENABLED:
+			break; /* no action when config parameter set right */
+		default:
+			config.GenerateDebugOutput = DEBUG_OUTPUT_FULLLY_ENABLED; /* set debug output to enabled when config parameter faulty */
+  	}
 
   	/* LOGGING_ENABLED */
   	config.LoggingEnabled = MINI_ini_getl("SoftwareConfiguration", "LOGGING_ENABLED",  DEFAULT_INT, "serialSwitch_Config.ini");

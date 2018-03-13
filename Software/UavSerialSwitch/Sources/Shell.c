@@ -108,7 +108,7 @@ void Shell_TaskInit(void)
 	msgQueue = xQueueCreate( MAX_NUMBER_OF_MESSAGES_STORED, sizeof(char*));
 #endif
 	if(msgQueue == NULL)
-		for(;;){} /* malloc for queue failed */
+		{for(;;){}} /* malloc for queue failed */
 	vQueueAddToRegistry(msgQueue, "DebugMessageQueue");
 }
 
@@ -116,16 +116,19 @@ void Shell_TaskInit(void)
 
 /*!
 * \fn void pullMsgFromQueueAndPrint(void)
-* \brief Pulls debug messages from queue and sends them to shell if GenerateDebugOutput == 1
+* \brief Pulls debug messages from queue and sends them to shell if GenerateDebugOutput set to DEBUG_OUTPUT_FULLLY_ENABLED
 */
 void pullMsgFromQueueAndPrint(void)
 {
   char* pMsg;
   while(xQueueReceive(msgQueue, &pMsg, 0) == pdTRUE)
   {
-	  if(config.GenerateDebugOutput)
+	  if(config.GenerateDebugOutput == DEBUG_OUTPUT_FULLLY_ENABLED)
+	  {
 		  CLS1_SendStr(pMsg, CLS1_GetStdio()->stdOut);
+	  }
 	  FRTOS_vPortFree(pMsg); /* free memory allocated when message was pushed into queue */
+	  pMsg = NULL;
   }
 }
 
@@ -140,7 +143,7 @@ BaseType_t pushMsgToShellQueue(char* pMsg)
 	/* limit string in shell in case terminating zero not added */
 	int numberOfChars = (strlen(pMsg) <= MAX_NUMBER_OF_CHARS_PER_MESSAGE) ? strlen(pMsg) : MAX_NUMBER_OF_CHARS_PER_MESSAGE; /* limit message length in queue */
 	/* saves config data in queue if debug output enabled */
-	if(config.GenerateDebugOutput)
+	if(config.GenerateDebugOutput == DEBUG_OUTPUT_FULLLY_ENABLED)
 	{
 		/* allocate memory for string in queue */
 		char* pTmpMsg;
@@ -155,6 +158,7 @@ BaseType_t pushMsgToShellQueue(char* pMsg)
 		{
 			/* free memory before returning */
 			FRTOS_vPortFree(pTmpMsg); /* free memory allocated when message was pushed into queue */
+			pTmpMsg = NULL;
 			return pdFAIL;
 		}
 	}
