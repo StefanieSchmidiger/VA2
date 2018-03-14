@@ -178,6 +178,8 @@ static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr r
 			numberOfDroppedPackages[UTIL1_constrain(getWlConnectionToUse(rawDataUartNr, UTIL1_constrain(prio-1, 1, NUMBER_OF_UARTS-1)), 1, NUMBER_OF_UARTS-1)]; /* make sure the prio for function call is within range */
 			XF1_xsprintf(infoBuf, "%u: Warning: Couldn't push newly generated package from device %u to package queue\r\n", xTaskGetTickCount(), rawDataUartNr);
 			pushMsgToShellQueue(infoBuf);
+			vPortFree(pPackage->payload); /* free package payload here since it wont be done upon pulling from queue */
+			pPackage->payload = NULL;
 			return false;
 		}
 		if(pushToSentPackagesQueue(wlConn, pPackage) != pdTRUE)
@@ -863,19 +865,7 @@ BaseType_t pushToSentPackagesQueue(tUartNr wlConn, tWirelessPackage* pPackage)
 	{
 		if(config.LoggingEnabled)
 		{
-			/* generate new package because payload is freed upon queue pull */
-			tWirelessPackage tmpPackage = *pPackage;
-			tmpPackage.payload = (uint8_t*) FRTOS_pvPortMalloc(tmpPackage.payloadSize*sizeof(int8_t));
-			if(tmpPackage.payload == NULL) /* malloc failed */
-			{
-				return pdTRUE; /* because package handling was successful, only logging failure */
-			}
-			/* copy payload into new package */
-			for(int cnt=0; cnt < tmpPackage.payloadSize; cnt++)
-			{
-				tmpPackage.payload[cnt] = pPackage->payload[cnt];
-			}
-			pushPackageToLoggerQueue(&tmpPackage, SENT_PACKAGE, wlConn);
+			pushPackageToLoggerQueue(pPackage, SENT_PACKAGE, wlConn); /* content is only copied in this function, new package generated for logging queue inside this function */
 		}
 		return pdTRUE;
 	}

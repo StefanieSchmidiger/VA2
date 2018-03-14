@@ -23,7 +23,7 @@ static void initLoggerQueues(void);
 static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry);
 static bool writeLogHeader(FIL* filePointer, char* fileName);
 static void packageToLogString(tWirelessPackage* pPack, char* logEntry, int logEntryStrSize);
-static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename);
+static bool logPackages(xQueueHandle* queue, FIL* filepointer, char* filename);
 
 
 void logger_TaskEntry(void* p)
@@ -79,8 +79,8 @@ void logger_TaskEntry(void* p)
 		for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 		{
 			/* write string of packages into buffer */
-			logPackages(queuePackagesToLog[SENT_PACKAGE][uartNr], &fp[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]);
-			logPackages(queuePackagesToLog[RECEIVED_PACKAGE][uartNr], &fp[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]);
+			logPackages(&queuePackagesToLog[SENT_PACKAGE][uartNr], &fp[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]);
+			logPackages(&queuePackagesToLog[RECEIVED_PACKAGE][uartNr], &fp[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]);
 			/* SD_CARD_WRITE_INTERVAL_MS passed? -> sync file system*/
 			if(xTaskGetTickCount() - timestampLastLog >= pdMS_TO_TICKS(SD_CARD_WRITE_INTERVAL_MS) )
 			{
@@ -124,9 +124,9 @@ void logger_TaskInit(void)
 		/* create variable for filenames for future use within this task */
 		for(char uartNr = '0'; uartNr < NUMBER_OF_UARTS + '0'; uartNr++)
 		{
-			if(XF1_xsprintf(filenameReceivedPackagesLogger[(int)(uartNr-'0')], "./recPackagesOnUart%c", uartNr) <= 0)
+			if(XF1_xsprintf(filenameReceivedPackagesLogger[(int)(uartNr-'0')], "./rxOnCon%c", uartNr) <= 0)
 				while(1){}
-			if(XF1_xsprintf(filenameSentPackagesLogger[(int)(uartNr-'0')], "./sentPackagesOnUart%c", uartNr) <= 0)
+			if(XF1_xsprintf(filenameSentPackagesLogger[(int)(uartNr-'0')], "./txOnCon%c", uartNr) <= 0)
 				while(1){}
 		}
 	}
@@ -148,7 +148,7 @@ static void initLoggerQueues(void)
 	{
 #if configSUPPORT_STATIC_ALLOCATION
 		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueSentPacks[uartNr], &ucQueueStorageSentPacks[uartNr]);
-		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueSentPacks[uartNr], &ucQueueStorageRecPacks[uartNr]);
+		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueRecPacks[uartNr], &ucQueueStorageRecPacks[uartNr]);
 #else
 		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage));
 		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage));
@@ -171,13 +171,13 @@ static void initLoggerQueues(void)
 * \param fileName: name of the file where log header is written into, fileName without the .log ending
 * \return true if successful, false if unsuccessful:
 */
-static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
+static bool logPackages(xQueueHandle* pQueue, FIL* filepointer, char* filename)
 {
 	tWirelessPackage pack;
 	FRESULT res;
 
 	/* concat string for all packages in queue */
-	while(xQueuePeek(queue, &pack, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) == pdTRUE) /* is there a package to log? peek before pop because malloc might fail*/
+	while(xQueuePeek(*pQueue, &pack, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) == pdTRUE) /* is there a package to log? peek before pop because malloc might fail*/
 	{
 		char* singlePackLog = (char*) FRTOS_pvPortMalloc(pack.payloadSize*sizeof(char) + 50);
 		if(singlePackLog == NULL)
@@ -186,7 +186,7 @@ static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
 		}
 		singlePackLog[0] = 0; /* empty string */
 		packageToLogString(&pack, singlePackLog, pack.payloadSize*sizeof(char) + 50); /* generate string for this package */
-		if(xQueueReceive(queue, &pack, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) == pdTRUE) /* pop package from queue */
+		if(xQueueReceive(*pQueue, &pack, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) == pdTRUE) /* pop package from queue */
 		{
 			writeToFile(filepointer, filename, singlePackLog); /* don't do sd card sync in every interval, very costly spi operation */
 			vPortFree(pack.payload);
@@ -211,39 +211,6 @@ static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry)
   UINT bw;
   TIMEREC time;
   const CLS1_StdIOType* io = CLS1_GetStdio();
-
-
-  /* check file size */
-  if(FAT1_f_size(filePointer) > MAX_LOG_FILE_SIZE_BYTES) /* max 10MB per file */
-  {
-	  char fullFileName[FILENAME_ARRAY_SIZE];
-	  char oldFileEnding[6];
-	  char newFileEnding[6];
-	  char oldFileName[FILENAME_ARRAY_SIZE];
-	  char newFileName[FILENAME_ARRAY_SIZE];
-	  UTIL1_strcpy(fullFileName, FILENAME_ARRAY_SIZE, fileName);
-	  UTIL1_strcat(fullFileName, FILENAME_ARRAY_SIZE, ".log");
-	  (void)FAT1_close(filePointer); /* closing file */
-	  /* rename all log files by incrementing their count number, e.g. filename_3.log will be filename_4.log */
-	  for(int oldFileNumber = MAX_NUMBER_OF_OLD_LOG_FILES_KEPT-2; oldFileNumber >= 0; oldFileNumber--)
-	  {
-		  XF1_xsprintf(oldFileEnding, "_%u.log", oldFileNumber);
-		  XF1_xsprintf(newFileEnding, "_%u.log", oldFileNumber+1);
-		  UTIL1_strcpy(oldFileName, FILENAME_ARRAY_SIZE, fileName);
-		  UTIL1_strcpy(newFileName, FILENAME_ARRAY_SIZE, fileName);
-		  UTIL1_strcat(oldFileName, FILENAME_ARRAY_SIZE, oldFileEnding);
-		  UTIL1_strcat(newFileName, FILENAME_ARRAY_SIZE, newFileEnding);
-		  FAT1_DeleteFile(newFileName, io);
-		  FAT1_RenameFile(oldFileName, newFileName, io);
-	  }
-	  FAT1_DeleteFile(oldFileName, io); /* delete filename_0.log */
-	  FAT1_RenameFile(fullFileName, oldFileName, io); /* rename filename.log to filename_0.log */
-	  if (FAT1_open(filePointer, fullFileName, FA_OPEN_ALWAYS|FA_WRITE)!=FR_OK) /* create new file and open file */
-	  	  return false;
-	  else
-		 if (FAT1_lseek(filePointer, FAT1_f_size(filePointer)) != FR_OK || filePointer->fptr != FAT1_f_size(filePointer)) /* move to the end of the file */
-			 return false;
-  }
 
 	#if 0 // ToDo: add timestamp to logging
 	  if (TmDt1_GetTime(&time)!=ERR_OK) /* get time */
@@ -330,9 +297,9 @@ static void packageToLogString(tWirelessPackage* pPack, char* logEntry, int logE
 }
 
 /*!
-* \fn BaseType_t pushPackageToLoggerQueue(tWirelessPackage package, tRxTxPackage rxTxPackage, tUartNr uartNr)
-* \brief Logs package content and frees memory of package when it is popped from queue
-* \param package: The wireless package itself
+* \fn BaseType_t pushPackageToLoggerQueue(tWirelessPackage pPackage, tRxTxPackage rxTxPackage, tUartNr uartNr)
+* \brief Logs package content by copying payload of pPackage into new package
+* \param pPackage: The wireless package itself
 * \param rxTxPackage: Information weather this is a received package or a sent package
 * \param wlConnNr: wireless connection number over which package was received/sent
 * \return pdTRUE if successful, pdFAIL if unsuccessful:
@@ -341,17 +308,25 @@ BaseType_t pushPackageToLoggerQueue(tWirelessPackage* pPackage, tRxTxPackage rxT
 {
 	if((wlConnNr >= NUMBER_OF_UARTS) || (rxTxPackage > SENT_PACKAGE)) /* invalid arguments -> return immediately */
 	{
-		/* free memory before returning */
-		FRTOS_vPortFree(pPackage->payload); /* free memory allocated when message was pushed into queue */
-		pPackage->payload = NULL;
 		return pdFAIL;
 	}
-	/* push package to queue */
-	if(xQueueSendToBack(queuePackagesToLog[rxTxPackage][wlConnNr], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_QUEUE_OPERATION_MS) ) != pdTRUE)
+	/* generate new package to push on logging queue */
+	tWirelessPackage tmpPackage = *pPackage;
+	tmpPackage.payload = (uint8_t*) FRTOS_pvPortMalloc(tmpPackage.payloadSize*sizeof(int8_t));
+	if(tmpPackage.payload == NULL) /* malloc failed */
+	{
+		return pdTRUE; /* because package handling was successful, only logging failure */
+	}
+	/* copy payload into new package */
+	for(int cnt=0; cnt < tmpPackage.payloadSize; cnt++)
+	{
+		tmpPackage.payload[cnt] = pPackage->payload[cnt];
+	}
+	if(xQueueSendToBack(queuePackagesToLog[rxTxPackage][wlConnNr], &tmpPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_QUEUE_OPERATION_MS) ) != pdTRUE) /* pushing successful? */
 	{
 		/* free memory before returning */
-		FRTOS_vPortFree(pPackage->payload); /* free memory allocated when message was pushed into queue */
-		pPackage->payload = NULL;
+		FRTOS_vPortFree(tmpPackage.payload); /* free memory allocated when message was pushed into queue */
+		tmpPackage.payload = NULL;
 		return pdFAIL;
 	}
 	return pdTRUE; /* return success*/

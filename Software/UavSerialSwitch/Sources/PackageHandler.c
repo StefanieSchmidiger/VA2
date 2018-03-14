@@ -443,7 +443,9 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 
 							if(pushToReceivedPackagesQueue(wlConn, &currentWirelessPackage[wlConn]) != pdTRUE) /* ToDo: handle failure on pushing package to receivedPackages queue , currently it is dropped if unsuccessful */
 							{
-								/* queue full */
+								vPortFree(currentWirelessPackage[wlConn].payload); /* free payload since it wont be done upon queue pop */
+								currentWirelessPackage[wlConn].payload = NULL;
+								numberOfDroppedAcks[wlConn]++;
 								XF1_xsprintf(infoBuf, "Error: Received acknowledge but unable to push this message to the send handler for wireless queue %u because queue full\r\n", (unsigned int) wlConn);
 								LedRed_On();
 								pushMsgToShellQueue(infoBuf);
@@ -458,6 +460,9 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 							if(pushToReceivedPackagesQueue(wlConn, &currentWirelessPackage[wlConn]) != pdTRUE) /* ToDo: handle queue full, now package is discarded */
 							{
 								/* queue full */
+								vPortFree(currentWirelessPackage[wlConn].payload); /* free payload since it wont be done upon queue pop */
+								currentWirelessPackage[wlConn].payload = NULL;
+								numberOfDroppedPackages[wlConn]++;
 								XF1_xsprintf(infoBuf, "Error: Received data package but unable to push this message to the send handler for wireless queue %u because queue full\r\n", (unsigned int) wlConn);
 								LedRed_On();
 								pushMsgToShellQueue(infoBuf);
@@ -582,31 +587,15 @@ static bool checkForPackStartReplacement(uint8_t* ptrToData, uint16_t* dataCntr,
 */
 static BaseType_t pushToReceivedPackagesQueue(tUartNr wlConn, tWirelessPackage* pPackage)
 {
-	if(xQueueSendToBack(ReceivedPackages[wlConn], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) ) != pdTRUE) /* ToDo: handle failure on pushing package to receivedPackages queue , currently it is dropped if unsuccessful */
+	if(xQueueSendToBack(ReceivedPackages[wlConn], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) ) == pdTRUE) /* ToDo: handle failure on pushing package to receivedPackages queue , currently it is dropped if unsuccessful */
 	{
-		/* queue full */
-		numberOfDroppedAcks[wlConn]++;
-		FRTOS_vPortFree(pPackage->payload); /* free memory since it wont be done on popping from queue */
-		pPackage->payload = NULL;
-		return pdFAIL;
-	}
-	if(config.LoggingEnabled)
-	{
-		/* generate new package because payload is freed upon queue pull */
-		tWirelessPackage tmpPackage = *pPackage;
-		tmpPackage.payload = (uint8_t*) FRTOS_pvPortMalloc(tmpPackage.payloadSize*sizeof(int8_t));
-		if(tmpPackage.payload == NULL) /* malloc failed */
+		if(config.LoggingEnabled)
 		{
-			return pdTRUE; /* because package handling was successful, only logging failure */
+			pushPackageToLoggerQueue(pPackage, RECEIVED_PACKAGE, wlConn); /* content is only copied in this function, new package generated for logging queue inside this function */
 		}
-		/* copy payload into new package */
-		for(int cnt=0; cnt < tmpPackage.payloadSize; cnt++)
-		{
-			tmpPackage.payload[cnt] = pPackage->payload[cnt];
-		}
-		pushPackageToLoggerQueue(&tmpPackage, RECEIVED_PACKAGE, wlConn);
+		return pdTRUE;
 	}
-	return pdTRUE;
+	return pdFAIL;  /* dont do logging if package wont be sent either */
 }
 
 
