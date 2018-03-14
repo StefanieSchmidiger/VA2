@@ -152,7 +152,7 @@ BaseType_t pushMsgToShellQueue(char* pMsg)
 		{
 			return pdFAIL;
 		}
-		UTIL1_strcpy(pTmpMsg, numberOfChars+1, pMsg); /* copy string to new memory location */
+		UTIL1_strcpy(pTmpMsg, numberOfChars, pMsg); /* copy string to new memory location */
 		/* push string to queue */
 		if(xQueueSendToBack(msgQueue, &pTmpMsg, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_SHELL_MS) ) != pdTRUE)
 		{
