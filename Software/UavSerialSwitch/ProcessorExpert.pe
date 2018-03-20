@@ -3,7 +3,7 @@
   <Header>
     <Name>UavSerialSwitch</Name>
     <SavedBy>Erich Styger Local</SavedBy>
-    <ModificationStamp>72</ModificationStamp>
+    <ModificationStamp>73</ModificationStamp>
     <Date>2017-04-24</Date>
     <IDE>Eclipse IDE</IDE>
     <PEversion>1.12.2.RT7_b1550-0615</PEversion>
@@ -29,7 +29,7 @@
     <UseExistingModules>true</UseExistingModules>
     <RenamePeripheries>false</RenamePeripheries>
     <Autodependency>true</Autodependency>
-    <ProjectCompNumb>140</ProjectCompNumb>
+    <ProjectCompNumb>142</ProjectCompNumb>
     <DelUnusedPreviouslyGenFiles>true</DelUnusedPreviouslyGenFiles>
     <GeneratedCodeFrozen>false</GeneratedCodeFrozen>
     <AssignInitComponentNameToPrph>true</AssignInitComponentNameToPrph>
@@ -17417,8 +17417,8 @@
         <ReadOnly>false</ReadOnly>
         <UserReadOnly>false</UserReadOnly>
         <PropertyModelIsAutomatic>false</PropertyModelIsAutomatic>
-        <Value>false</Value>
-        <Expanded>false</Expanded>
+        <Value>true</Value>
+        <Expanded>true</Expanded>
       </ItemState>
       <ItemState>
         <ItemSymbol>FRTrace</ItemSymbol>
@@ -35355,8 +35355,8 @@
         <ReadOnly>false</ReadOnly>
         <UserReadOnly>false</UserReadOnly>
         <PropertyModelIsAutomatic>false</PropertyModelIsAutomatic>
-        <Index>0</Index>
-        <EnumSymbVal>TRC_RECORDER_MODE_SNAPSHOT</EnumSymbVal>
+        <Index>1</Index>
+        <EnumSymbVal>TRC_RECORDER_MODE_STREAMING</EnumSymbVal>
       </ItemState>
       <ItemState>
         <ItemSymbol>RecorderBufferAllocation</ItemSymbol>
@@ -35701,8 +35701,8 @@
         <ReadOnly>false</ReadOnly>
         <UserReadOnly>false</UserReadOnly>
         <PropertyModelIsAutomatic>false</PropertyModelIsAutomatic>
-        <Index>1</Index>
-        <EnumSymbVal>TRC_START</EnumSymbVal>
+        <Index>2</Index>
+        <EnumSymbVal>TRC_START_AWAIT_HOST</EnumSymbVal>
       </ItemState>
       <ItemState>
         <ItemSymbol>RTTUpBufferIndex</ItemSymbol>

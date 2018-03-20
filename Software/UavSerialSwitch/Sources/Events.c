@@ -167,7 +167,11 @@ void FRTOS_vApplicationMallocFailedHook(void)
 void SPI_OnBlockSent(LDD_TUserData *UserDataPtr)
 {
   /* Write your code here ... */
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 	xSemaphoreGiveFromISR(spiTxMutex, NULL);
+#else
+	spiTxDone = true;
+#endif
 }
 
 /*
@@ -190,7 +194,11 @@ void SPI_OnBlockSent(LDD_TUserData *UserDataPtr)
 void SPI_OnBlockReceived(LDD_TUserData *UserDataPtr)
 {
   /* Write your code here ... */
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 	xSemaphoreGiveFromISR(spiRxMutex, NULL);
+#else
+	spiRxDone = true;
+#endif
 }
 
 /*

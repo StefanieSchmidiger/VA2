@@ -11,6 +11,7 @@
 #include "nIrqWirelessSide.h" // pin configuration
 #include "Shell.h" // to print out debug information
 #include "ThroughputPrintout.h" //to store debug information
+#include "PTRC1.h"
 
 #define CS_DEVICE 			0
 #define CS_WIRELESS 		1
@@ -25,12 +26,17 @@ static xQueueHandle TxWirelessBytes[NUMBER_OF_UARTS]; /* Incoming data from wire
 static xQueueHandle RxWirelessBytes[NUMBER_OF_UARTS]; /* Outgoing data to wireless side stored here */
 static xQueueHandle TxDeviceBytes[NUMBER_OF_UARTS]; /* Incoming data from device side stored here */
 static xQueueHandle RxDeviceBytes[NUMBER_OF_UARTS];  /* Outgoing data to device side stored here */
-xSemaphoreHandle spiRxMutex; /* Semaphore given in SPI_OnBlockReceived */
-xSemaphoreHandle spiTxMutex; /* Semaphore given in SPI_OnBlockSent */
 const char* queueNameRxWirelessBytes[] = {"RxWirelessBytes0", "RxWirelessBytes1", "RxWirelessBytes2", "RxWirelessBytes3"};
 const char* queueNameRxDeviceBytes[] = {"RxDeviceBytes0", "RxDeviceBytes1", "RxDeviceBytes2", "RxDeviceBytes3"};
 const char* queueNameTxWirelessBytes[] = {"TxWirelessBytes0", "TxWirelessBytes1", "TxWirelessBytes2", "TxWirelessBytes3"};
 const char* queueNameTxDeviceBytes[] = {"TxDeviceBytes0", "TxDeviceBytes1", "TxDeviceBytes2", "TxDeviceBytes3"};
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
+xSemaphoreHandle spiRxMutex; /* Semaphore given in SPI_OnBlockReceived */
+xSemaphoreHandle spiTxMutex; /* Semaphore given in SPI_OnBlockSent */
+#else
+volatile bool spiRxDone; /* Semaphore given in SPI_OnBlockReceived */
+volatile bool spiTxDone; /* Semaphore given in SPI_OnBlockSent */
+#endif
 
 /* prototypes, only used in this file */
 void spiHandler_TaskInit(void);
@@ -62,23 +68,35 @@ void spiHandler_TaskEntry(void* p)
 		{
 			/* read data from device spi interface */
 			if(config.EnableStressTest)
+			{
 				generateDebugData(RxDeviceBytes[uartNr]);
+			}
 			else
+			{
 				readHwBufAndWriteToQueue(MAX_14830_DEVICE_SIDE, uartNr, RxDeviceBytes[uartNr]);
+			}
 
 			/* write data from queue to device spi interface */
 			if(config.TestHwLoopbackOnly)
+			{
 				readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, RxDeviceBytes[uartNr], HW_FIFO_SIZE);
+			}
 			else
+			{
 				readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, TxDeviceBytes[uartNr], HW_FIFO_SIZE);
+			}
 
 			/* read data from wireless spi interface */
 			readHwBufAndWriteToQueue(MAX_14830_WIRELESS_SIDE, uartNr, RxWirelessBytes[uartNr]);
 			/* write data from queue to wireless spi interface */
 			if(config.TestHwLoopbackOnly)
+			{
 				readQueueAndWriteToHwBuf(MAX_14830_WIRELESS_SIDE, uartNr, RxWirelessBytes[uartNr], HW_FIFO_SIZE);
+			}
 			else
+			{
 				readQueueAndWriteToHwBuf(MAX_14830_WIRELESS_SIDE, uartNr, TxWirelessBytes[uartNr], HW_FIFO_SIZE);
+			}
 		}
 	}
 }
@@ -92,7 +110,7 @@ void spiHandler_TaskInit(void)
 {
 	spiDevice = SPI_Init(NULL); /* no auto-init in SPIMaster_LDD used because this variable is needed for ChangeConfiguration */
 	initSpiHandlerQueues();
-
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 	spiRxMutex = FRTOS_xSemaphoreCreateBinary(); /* Waits on Spi_ReceiveBlock */
 	if(spiRxMutex == NULL)
 		while(true){} /* malloc for semaphore failed */
@@ -105,6 +123,10 @@ void spiHandler_TaskInit(void)
 	 * before it can subsequently be taken (obtained) using the xSemaphoreTake() function. */
 	xSemaphoreGive(spiTxMutex); /* make sure Semaphore is given by default and can be taken for first SPI_send() */
 
+#else
+	spiRxDone = true;
+	spiTxDone = true;
+#endif
 
 	/*
 	Initialize MAX14830's:
@@ -283,6 +305,8 @@ void spiWriteToAllUartInterfaces(tMax14830Reg reg, uint8_t data)
 */
 bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool write, uint8_t* pData, uint8_t numOfTransfers)
 {
+	char traceString[] = "2";
+	PTRC1_vTracePrint(NULL, traceString);
 	uint8_t transferCnt = 0;
 	int maxDelay = 5; // [ms] ToDo: make relative to selected baud rate!
 	static uint8_t data[HW_FIFO_SIZE + 1]; /* MAX14830 can hold a maximum of HW_FIFO_SIZE bytes, 1 byte is command. Make static to ensure memory for SPI is still here when SPI master actually sends the data! */
@@ -341,17 +365,33 @@ bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool wri
 	if (write)
 	{
 		/* write transfer */
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 		xSemaphoreTake(spiTxMutex, maxDelay / portTICK_PERIOD_MS); /* wait for last write to complete */
+#else
+		while(spiTxDone != true);
+		spiTxDone = false;
+#endif
 		SPI_SendBlock(spiDevice, pData, numOfTransfers+1); /* wait for SPI to get ready for sending, add 1 byte for command */
 	}
 	else
 	{
 		/* read transfer */
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 		xSemaphoreTake(spiTxMutex, maxDelay / portTICK_PERIOD_MS); /* wait for last write to complete */
+#else
+		while(spiTxDone != true);
+		spiTxDone = false;
+#endif
 		SPI_ReceiveBlock(spiDevice, pData, numOfTransfers+1); /* add 1 byte for command */
 		SPI_SendBlock(spiDevice, data, numOfTransfers+1); /* add 1 byte for command */
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 		xSemaphoreTake(spiRxMutex, maxDelay / portTICK_PERIOD_MS); /* wait for read to be completed so that variable holds valid information when returning from this function */
+#else
+		while(spiRxDone != true);
+		spiRxDone = false;
+#endif
 	}
+	PTRC1_vTracePrint(NULL, traceString);
 	return true;
 }
 
@@ -426,7 +466,8 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	uint16_t dataToRead = 0;
 	uint16_t totalNumOfReadBytes = 0;
 	uint8_t fifoLevel = 0;
-
+	char traceString[] = "3";
+	PTRC1_vTracePrint(NULL, traceString);
 	while(true)
 	{
 		/* check how many characters there are to read in the hardware FIFO */
@@ -484,6 +525,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		totalNumOfReadBytes += dataToRead;
 		dataToRead = 0;
 	}
+	PTRC1_vTracePrint(NULL, traceString);
 	return totalNumOfReadBytes;
 }
 
@@ -518,6 +560,8 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	static uint32_t lastUpdateThroughput[NUMBER_OF_UARTS];
 	static uint8_t buffer[HW_FIFO_SIZE+1];
 	uint16_t cnt = 1;
+	char traceString[] = "1";
+	PTRC1_vTracePrint(NULL, traceString);
 
 	/* check how much space there is left in hardware buffer */
 	uint8_t spaceLeft = 0;
@@ -588,10 +632,14 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		}
 		/* transfer data popped from queue. cnt=numberOfTransfers-1 */
 		if(cnt-1 > 0) /* this if-statement is only for debugging purposes, so a breakpoint can be set here. spiTransfer with 0 bytes data would be possible */
+		{
 			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, WRITE_TRANSFER, buffer, cnt-1);
+		}
 		/* reenable transmission */
 		if (spiSlave == MAX_14830_DEVICE_SIDE)
+		{
 			spiSingleWriteTransfer(spiSlave, uartNr, MAX_REG_MODE1, 0x00);
+		}
 		else
 		{
 			if (config.UseCtsPerWirelessConn[(uint8_t)uartNr] > 0)
@@ -606,6 +654,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			}
 		}
 	}
+	PTRC1_vTracePrint(NULL, traceString);
 	return cnt-1;
 }
 

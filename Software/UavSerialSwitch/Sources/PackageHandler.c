@@ -365,6 +365,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 					if(currentWirelessPackage[wlConn].crc8Header != crc8)
 					{
 						XF1_xsprintf(infoBuf, "Info: Invalid header CRC received\r\n");
+						pushMsgToShellQueue(infoBuf);
 					}
 					/* CRC is valid - also check if the header parameters are within the valid range */
 					if ((currentWirelessPackage[wlConn].packType > PACK_TYPE_REC_ACKNOWLEDGE) ||
@@ -423,8 +424,13 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				CRC1_ResetCRC(crcPH);
 				CRC1_SetCRCStandard(crcPH, LDD_CRC_MODBUS_16); // ToDo: use LDD_CRC_CCITT, MODBUS only for backwards compatibility to old SW
 				CRC1_GetBlockCRC(crcPH, data[wlConn], currentWirelessPackage[wlConn].payloadSize, &crc16);
-				if(currentWirelessPackage[wlConn].crc16payload == (uint16_t) crc16) /* payload valid? */
+				if(true)//(currentWirelessPackage[wlConn].crc16payload == (uint16_t) crc16) /* payload valid? */
 				{
+					if(currentWirelessPackage[wlConn].crc16payload != (uint16_t) crc16)
+					{
+						XF1_xsprintf(infoBuf, "Info: Invalid payload CRC received\r\n");
+						pushMsgToShellQueue(infoBuf);
+					}
 					/*allocate memory for payload of package and set payload */
 					currentWirelessPackage[wlConn].payload = (uint8_t*) FRTOS_pvPortMalloc(currentWirelessPackage[wlConn].payloadSize*sizeof(int8_t)); /* as payload, the timestamp of the package to be acknowledged is saved */
 					if(currentWirelessPackage[wlConn].payload != NULL) /* malloc successful */

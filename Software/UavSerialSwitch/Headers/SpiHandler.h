@@ -6,6 +6,12 @@
 #include <stdbool.h>
 #include "FRTOS.h" // queues
 
+
+/*! \def USE_SEMAPHORES_INSTEAD_OF_FLAGS
+*  \brief Semaphores can be used to signal when SPI block received is done, instead of boolean flags, is more costly though
+*/
+#define USE_SEMAPHORES_INSTEAD_OF_FLAGS (0)
+
 /*! \def HW_FIFO_SIZE
 *  \brief Number of elements that fit into the hardware FIFO.
 */
@@ -124,9 +130,14 @@ typedef enum eSpiSlaves
 } tSpiSlaves;
 
 
+#if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 /* Semaphore for SPI Interface -> given back in SPI_OnBlockReceived/Sent */
 extern xSemaphoreHandle spiRxMutex;
 extern xSemaphoreHandle spiTxMutex;
+#else
+extern volatile bool spiRxDone;
+extern volatile bool spiTxDone;
+#endif
 
 
 /*!

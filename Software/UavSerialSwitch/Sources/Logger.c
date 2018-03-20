@@ -31,6 +31,7 @@ void logger_TaskEntry(void* p)
 	uint32_t timestampLastLog;
 	static FIL fp[2][NUMBER_OF_UARTS]; /* static because of its size */
 
+	/* ------------- init logger ----------------------- */
 	(void) p; /* p not used -> no compiler warning */
 	/* open log files and write log header into all of them */
 	for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
