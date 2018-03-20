@@ -179,6 +179,7 @@ bool readConfig(void)
   	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "MAX_THROUGHPUT_WIRELESS_CONN",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
   	csvToInt(copiedCsv, config.MaxThroughputWirelessConn);
 
+
   	/* USUAL_PACKET_SIZE_DEVICE_CONN */
   	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "USUAL_PACKET_SIZE_DEVICE_CONN",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
   	csvToInt(copiedCsv, config.UsualPacketSizeDeviceConn);
