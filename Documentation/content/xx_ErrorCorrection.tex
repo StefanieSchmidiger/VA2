@@ -1,0 +1,79 @@
+% 023_Introduction
+%
+% https://en.wikipedia.org/wiki/Error_detection_and_correction
+\todo{Hier Bild einfügen von INKT Vorlesung: Info -> Encoder with Code Rate R -> Modulation -> Versand -> Empfang -> Demodulation -> Decoding -> Output}
+In information theory and coding theory with applications in computer science and telecommunication, error detection and correction or error control are techniques that enable reliable delivery of digital data over unreliable communication channels. Many communication channels are subject to channel noise, and thus errors may be introduced during transmission from the source to a receiver. Error detection techniques allow detecting such errors, while error correction enables reconstruction of the original data in many cases.\\
+Common channel models include memory-less models where errors occur randomly and with a certain probability, and dynamic models where errors occur primarily in bursts. Consequently, error-detecting and correcting codes can be generally distinguished between random-error-detecting/correcting and burst-error-detecting/correcting. Some codes can also be suitable for a mixture of random errors and burst errors.\\
+The general idea for achieving error detection and correction is to add some redundancy. Error-detection and correction schemes can be either systematic or non-systematic: In a systematic scheme, the transmitter sends the original data, and attaches a fixed number of check bits (or parity data), which are derived from the data bits by some deterministic algorithm. In a system that uses a non-systematic code, the original message is transformed into an encoded message that has at least as many bits as the original message.\\
+%
+%
+The aim of encoding a message is to get the content to the recipient with minimal errors. The ground work for error detection and error correction methods has been done by Shannon in the 1940s. Shannon showed that every communication channel can be described by a maximal channel capacity with which information can be exchanged successfully. As long as the transmission rate is smaller or equal to the channel capacity, the transmission error could be arbitrarily small. When redundancy is added, possible errors can be detected or even corrected.\\
+Generally, there are two ways to correct a faulty message once received:
+\begin{itemize}
+    \item Foreward error correction
+    \item Retransmission of the faulty message
+\end{itemize}
+%
+%
+\subsubsection{Block Codes and Convolution Codes}
+If the decoder only uses the currently received block of bits to decode the received message into an output, it is called an (n, k) block code with n being the number of output symbols and k the number of input symbols. Thereby, the last received block code does not matter for the decoding and is not stored. With convolutionary codes, the history of messages received is used to decode the next message.\\
+Cyclic Codes\\
+Cyclic codes are a subgroup of block codes. A random sequence of 1 and 0 are shifted to form other codes and inverted for even more codes. They can be represented as polynomes where the power of X represents the 1 in a sequence, starting with $X^0$ as the leftmost bit.\\
+Systematic Block Codes\\
+When the original information bits are unaltered and only accompanied by some redundancy such as CRC, the block code word is called systematic. 
+%
+\section{Error Detection}%
+% https://en.wikipedia.org/wiki/Error_detection_and_correction
+Error detection is most commonly realized using a suitable hash function (or checksum algorithm). A hash function adds a fixed-length tag to a message, which enables receivers to verify the delivered message by recomputing the tag and comparing it with the one provided. Example: CRC.
+%
+%
+%
+%
+\section{Error Correction}
+%
+%
+\subsection{Automatic Repeat Request (ARQ)}
+ARQ is an error control method for data transmission that makes use of error-detection codes, acknowledgment and/or negative acknowledgment messages, and timeouts to achieve reliable data transmission. An acknowledgment is a message sent by the receiver to indicate that it has correctly received a data frame. Usually, when the transmitter does not receive the acknowledgment before the timeout occurs, it retransmits the frame until it is either correctly received or the error persists beyond a predetermined number of retransmissions.
+%
+%
+\subsection{Error Correcting Code}
+An error-correcting code (ECC) or forward error correction (FEC) code is a process of adding redundant data, or parity data, to a message, such that it can be recovered by a receiver even when a number of errors.\\
+Error-correcting codes are usually distinguished between convolutional codes and block codes:
+\begin{itemize}
+    \item Convolutional codes are processed on a bit-by-bit basis. They are particularly suitable for implementation in hardware, and the Viterbi decoder allows optimal decoding.
+    \item Block codes are processed on a block-by-block basis. Examples of block codes are repetition codes, Hamming codes, Reed Solomon codes, Golay, BCH and multidimensional parity-check codes. They were followed by a number of efficient codes, Reed–Solomon codes being the most notable due to their current widespread use.
+\end{itemize}
+%
+%
+\subsubsection{Reed Solomon}
+% https://pdfs.semanticscholar.org/7e94/64b704a9f4b59f9d7df9b437e1b8366b8912.pdf
+Reed Solomon is an error-correcting coding system that was devised to address the issue of correcting multiple 
+errors, especially burst-type errors in mass storage devices (hard disk drives, DVD, barcode tags), wireless and mobile 
+communications units, satellite links, digital TV, digital video broadcasting (DVB), and modem technologies like xDSL. Reed Solomon codes are an important subset of non-binary cyclic error correcting code and are the most widely used codes in practice. These codes are  used in wide range of applications in digital communications and data  storage. \\
+Reed Solomon describes a systematic  way of building codes that could detect and correct multiple random symbol errors. By adding t check symbols to the data, an RS code can detect any combination of up to t erroneous symbols, or correct up to [t/2] symbols. Furthermore, RS codes are suitable as multiple-burst bit-error correcting codes, since a sequence of b + 1 consecutive bit errors can affect at most two symbols of size b. The choice of t  is up to the designer of the code, and may be selected within wide limits.\\
+RS are  block codes and are  represented as RS (n, k),  where  n is the  size  of code  word length and k is the number of data symbols, n – k = 2t is the number of parity symbols.\\
+The properties of Reed-Solomon codes make them especially suited to the applications where burst error occurs. This is because
+\begin{itemize}
+    \item It does not matter to the code how many bits in a symbol are incorrect, if multiple bits in a symbol are corrupted it only counts as a single error. Alternatively, if a data stream is not characterized by error bursts or drop-outs but by random single bit errors, a Reed-Solomon code is usually a poor choice. More effective cods are available for this case.
+    \item Designers are not required to use the natural sizes of Reed-Solomon code blocks. A technique known as shortening produces a smaller code of any desired size from a large code. For example, the widely used (255,251) code can be converted into a (160,128). At the decoder, the same portion of the block is loaded locally with binary zero
+    s.
+    \item A Reed-Solomon code operating on 8-bits symbols has $n=2^8-1 = 255$ symbols per block because the number of symbol in the encoded block is $n = 2^m-1$
+    \item For the designer its capability to correct both burst errors makes it the best choice to use as the encoding and decoding tool.
+\end{itemize}
+%
+%
+\subsubsection{GoLay}
+%Refere5nces:
+%  http://aqdi.com/articles/using-the-golay-error-detection-and-correction-code-3/
+%  https://www.math.uci.edu/~nckaplan/teaching_files/kaplancodingnotes.pdf
+%  https://en.wikipedia.org/wiki/Binary_Golay_code
+%  http://cs.indstate.edu/~sbuddha/abstract.pdf      -> anleitung zur codeimplementierung
+%  http://www.the-art-of-ecc.com/topics.html         -> codeimplementierung
+There are two types of Golay codes: binary golay codes and ternary Golay codes. \\
+The binary Golay codes can further be devided into two types: the extended binary Golay code: G24 encodes 12 bits of data in a 24-bit word in such a way that any 3-bit errors can be corrected or any 7-bit errors can be detected, also called the binary (23, 12, 7) quadratic residue (QR) code.\\
+The other, the perfect binary Golay code, G23, has codewords of length 23 and is obtained from the extended binary Golay code by deleting one coordinate position (conversely, the extended binary Golay code is obtained from the perfect binary Golay code by adding a parity bit). In standard code notation tis code has the parameters [23, 12, 7].
+The ternary cyclic code, also known as the G11 code with parameters [11, 6, 5] or G12 with parameters [12, 6, 6] can correct up to 2 errors.
+%
+%
+\subsection{Hybrid}
+When both Foreward correction and automatic repeat requests are enabled, it is called hybrid. \cite{TestID}

@@ -119,6 +119,12 @@ pdfpagelayout=TwoPageRight                %%% Voreingestellte Ansicht im PDF-Edi
 \chapter{Modems}%
 \input{content/xx_Modems}%
 %
+\chapter{Channel Parametrization}%
+\input{content/xx_ChannelParametrization}%
+%
+\chapter{Error Correcting Codes}
+\input{content/xx_ErrorCorrection.tex}
+%
 \chapter{Conclusion} \label{sec:txtConclusion}%
 \input{content/08_Conclusion}%
 %
@@ -126,15 +132,15 @@ pdfpagelayout=TwoPageRight                %%% Voreingestellte Ansicht im PDF-Edi
 %--------------------------------------------------------------------------------------------------------------------
 % LITERATURVERZEICHNIS
 %--------------------------------------------------------------------------------------------------------------------
-
+\nocite{*} % list all references
 \literaturverzeichnis%
 {true} % LIteraturverzeichnis anzeigen? (true=ja, false=nein)
-
-
+%
+%
 %--------------------------------------------------------------------------------------------------------------------
 % BEZEICHNUNGEN
 %--------------------------------------------------------------------------------------------------------------------
-
+%
 \bezeichnungenChapter%
 {true} % Bezeichnungen anzeigen? (true=ja, false=nein)
 {\input{content/103_Bezeichnungen}}

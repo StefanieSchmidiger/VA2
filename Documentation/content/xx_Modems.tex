@@ -1,4 +1,4 @@
-% 023_Introduction
+% 0_Modems
 %
 \section{RF686x RFD900x}%
 The RF686x is a long distance radio modem to be integrated into custom projects.\\
@@ -36,9 +36,37 @@ In a multipoint connection, the link is between a sender and multiple receivers.
 MAVLink or Micro Air Vehicle Link is a protocol for communicating with small unmanned vehicle. It is designed as a header-only message marshaling library. It is used mostly for communication between a Ground Control Station (GCS) and Unmanned vehicles, and in the inter-communication of the subsystem of the vehicle. It can be used to transmit the orientation of the vehicle, its GPS location and speed.
 %
 %
+\subsection{AT Commands}
+The AT Commands can be used to change parameters such as power levels, air data rates, serial speeds etc. \\
+The AT command mode can be entered by using the '+++' sequence in a serial terminal connected to the radio. When doing this, you must allow at least 1 second after any data is sent out to be able to enter the command mode. This prevents the modem to misinterpret the sequence as data to be sent out.\\
+The modem will reply with 'OK' as a feedback to the user. Then commands can be entered to set or get modem and transmission parameters such as RSSI signal report.
+%
+%
 \subsection{SiK}
 A SiK Telemetry Radio is a small, light and inexpensive open source radio platform that typically allows ranges of better than 300m “out of the box” (the range can be extended to several kilometres with the use of a patch antenna on the ground). The radio uses open source firmware which has been specially designed to work well with MAVLink packets and to be integrated with the Mission Planner, Copter, Rover and Plane.\\
 SiK radio is a collection of firmware and tools for telemetry radios.\\
 Hardware for the SiK radio can be obtained from various manufacturers/stores in variants that support different range and form factors. Typically you will need a pair of devices - one for the vehicle and one for the ground station. \\
 A SiK Telemetry Radio is one of the easiest ways to setup a telemetry connection between your APM/Pixhawk and a ground station.\\
 You can use the MAVLink support in the SiK Radios to monitor the link quality while flying, if your ground station supports it
+%
+%
+%
+%
+%
+%
+\section{ARF868URL}
+All information from datasheet:\\
+ARF868 modem uses a packet oriented protocol on its RF interface. The data coming from the UART interface are accumulated in an internal fifo in the module and then encapsulated in an RF frame. The maximum amount of data that can be transferred into a single radio packet can reach 1024 Bytes.\\
+The maximum packet size can be set up in S218 register from 1 to 1024 bytes. Each new packet introduces some latency in the transmission 
+delay caused by the RF protocol overhead. The RF protocols encapsulate the data payload with the following elements:
+\begin{itemize}
+    \item  A preamble pattern required for receiver startup time
+    \item A bit synchronization pattern to synchronize the receiver on the RF frame
+    \item Other protocol field such as source address and destination address, payload length, optional CRC and internal packet type field.
+\end{itemize}
+The incoming fifo may accumulate up to 1024 data byte. No more data has to be set in the fifo while a 1024 bytes block of data has not been released by the radio transmission layer. To prevent from input fifo overrun, the hardware flow control may be activated. In this case, the RTS signal will be set when the incoming fifo is almost full to prevent the host controller from sending new data.\\
+The user can configure the modem to run in non-secure packet mode where no acknowledges are sent out. The modem can also run in secure packet mode where acknowleges are expected and packages can be retransmitted two times before they are dropped. \\
+RF protocol includes a 16 bit CRC. Each data extracted from an RF packet with an invalid CRC is silently discarded by the state machine module. The CRC ensures that all data received are valid. It can be disabled by the user whose protocols already have a control mechanism integrity or when some bug fixes user protocols are implemented.
+%
+\subsection{RSSI}
+This modem can also transmit RSSI values
