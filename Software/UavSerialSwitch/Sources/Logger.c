@@ -84,7 +84,7 @@ void logger_TaskEntry(void* p)
 			logPackages(queuePackagesToLog[SENT_PACKAGE][uartNr], &fp[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]);
 			logPackages(queuePackagesToLog[RECEIVED_PACKAGE][uartNr], &fp[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]);
 			/* SD_CARD_WRITE_INTERVAL_MS passed? -> sync file system*/
-			if(xTaskGetTickCount() - timestampLastLog >= pdMS_TO_TICKS(SD_CARD_WRITE_INTERVAL_MS) )
+			if(xTaskGetTickCount() - timestampLastLog >= pdMS_TO_TICKS(config.SdCardSyncInterval_s*1000) )
 			{
 				FAT1_sync(&fp[SENT_PACKAGE][uartNr]);
 				FAT1_sync(&fp[RECEIVED_PACKAGE][uartNr]);

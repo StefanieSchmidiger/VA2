@@ -23,7 +23,7 @@ long unsigned int numberOfTxBytesHwBuf[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 
 void throughputPrintout_TaskEntry(void* p)
 {
-	const TickType_t taskInterval = pdMS_TO_TICKS(config.ThroughputPrintoutTaskInterval*1000); /* task interval in seconds, but configured in milliseconds */
+	const TickType_t taskInterval = pdMS_TO_TICKS(config.ThroughputPrintoutTaskInterval_s*1000); /* task interval in seconds, but configured in milliseconds */
 	TickType_t lastWakeTime = xTaskGetTickCount(); /* Initialize the xLastWakeTime variable with the current time. */
 	static char buf[150];
 	int res;
@@ -52,14 +52,14 @@ void throughputPrintout_TaskEntry(void* p)
 		/* calculate throughput in byte per sec */
 		for(int cnt = 0; cnt < NUMBER_OF_UARTS; cnt++)
 		{
-			averagePacksReceived[cnt] = (numberOfPacksReceived[cnt]-lastNumberOfPacksReceived[cnt])/config.ThroughputPrintoutTaskInterval;
-			averagePacksSent[cnt] = (numberOfPacksSent[cnt]-lastNumberOfPacksSent[cnt]) / config.ThroughputPrintoutTaskInterval;
-			averageAcksReceived[cnt] = (numberOfAckReceived[cnt]-lastNumberOfAckReceived[cnt])/config.ThroughputPrintoutTaskInterval;
-			averageAcksSent[cnt] = (numberOfAcksSent[cnt]-lastNumberOfAcksSent[cnt])/config.ThroughputPrintoutTaskInterval;
-			averageUartBytesSent[MAX_14830_DEVICE_SIDE][cnt] = (numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt] - lastNumberOfUartBytesSent[MAX_14830_DEVICE_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
-			averageUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt] = (numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt] - lastNumberOfUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
-			averageUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt] = (numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt] - lastNumberOfUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
-			averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt] = (numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt] - lastNumberOfUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
+			averagePacksReceived[cnt] = (numberOfPacksReceived[cnt]-lastNumberOfPacksReceived[cnt])/config.ThroughputPrintoutTaskInterval_s;
+			averagePacksSent[cnt] = (numberOfPacksSent[cnt]-lastNumberOfPacksSent[cnt]) / config.ThroughputPrintoutTaskInterval_s;
+			averageAcksReceived[cnt] = (numberOfAckReceived[cnt]-lastNumberOfAckReceived[cnt])/config.ThroughputPrintoutTaskInterval_s;
+			averageAcksSent[cnt] = (numberOfAcksSent[cnt]-lastNumberOfAcksSent[cnt])/config.ThroughputPrintoutTaskInterval_s;
+			averageUartBytesSent[MAX_14830_DEVICE_SIDE][cnt] = (numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt] - lastNumberOfUartBytesSent[MAX_14830_DEVICE_SIDE][cnt])/config.ThroughputPrintoutTaskInterval_s;
+			averageUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt] = (numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt] - lastNumberOfUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt])/config.ThroughputPrintoutTaskInterval_s;
+			averageUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt] = (numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt] - lastNumberOfUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt])/config.ThroughputPrintoutTaskInterval_s;
+			averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt] = (numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt] - lastNumberOfUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt])/config.ThroughputPrintoutTaskInterval_s;
 			averagePayloadReceived[cnt] = (numberOfPayloadBytesExtracted[cnt]-lastNumberOfPayloadBytesExtracted[cnt])/(numberOfPacksReceived[cnt]-lastNumberOfPacksReceived[cnt]);
 			averagePayloadSent[cnt] = (numberOfPayloadBytesSent[cnt]-lastNumberOfPayloadBytesSent[cnt])/(numberOfPacksSent[cnt]-lastNumberOfPacksSent[cnt]);
 

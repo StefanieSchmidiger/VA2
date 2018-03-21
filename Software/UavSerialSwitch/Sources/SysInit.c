@@ -27,7 +27,7 @@ void SysInit_TaskEntry(void* param)
   bool cardMounted = false;
   static FAT1_FATFS fileSystemObject;
 
-
+  ledInitSequence();
   /* mount SD card so config file can be read */
   if(FAT1_Init() != 0)
     {for(;;){}} /* SD Card could not be mounted */
@@ -161,6 +161,7 @@ static void ledInitSequence(void)
 	LedGreen_Off();
 	LedOrange_Off();
 	LedRed_Off();
+	WAIT1_Waitms(500);
 	LedRed_On();
 	LedOrange_On();
 	LedGreen_On();

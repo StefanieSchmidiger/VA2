@@ -41,11 +41,12 @@ typedef struct Configurations {
    bool EnableStressTest;
    eDebugOutput GenerateDebugOutput;
    bool LoggingEnabled;
+   int SdCardSyncInterval_s; // [s]
    int SpiHandlerTaskInterval; // [ms]
    int PackageHandlerTaskInterval; // [ms]
    int NetworkHandlerTaskInterval; // [ms]
    int ToggleGreenLedInterval; // [ms]
-   int ThroughputPrintoutTaskInterval; // [sec]
+   int ThroughputPrintoutTaskInterval_s; // [sec]
    int ShellTaskInterval; // [ms]
    int LoggerTaskInterval; // [ms]
 } Configuration;

@@ -251,6 +251,9 @@ bool readConfig(void)
   	/* LOGGING_ENABLED */
   	config.LoggingEnabled = MINI_ini_getl("SoftwareConfiguration", "LOGGING_ENABLED",  DEFAULT_INT, "serialSwitch_Config.ini");
 
+  	/* SD_CARD_SYNC_INTERVAL */
+  	config.SdCardSyncInterval_s = MINI_ini_getl("SoftwareConfiguration", "SD_CARD_SYNC_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
+
   	/* SPI_HANDLER_TASK_INTERVAL */
   	config.SpiHandlerTaskInterval = MINI_ini_getl("SoftwareConfiguration", "SPI_HANDLER_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
@@ -264,7 +267,7 @@ bool readConfig(void)
   	config.ToggleGreenLedInterval = MINI_ini_getl("SoftwareConfiguration", "TOGGLE_GREEN_LED_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
   	/* THROUGHPUT_PRINTOUT_TASK_INTERVAL */
-	config.ThroughputPrintoutTaskInterval = MINI_ini_getl("SoftwareConfiguration", "THROUGHPUT_PRINTOUT_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
+	config.ThroughputPrintoutTaskInterval_s = MINI_ini_getl("SoftwareConfiguration", "THROUGHPUT_PRINTOUT_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
 	/* SHELL_TASK_INTERVAL */
 	config.ShellTaskInterval = MINI_ini_getl("SoftwareConfiguration", "SHELL_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
@@ -436,7 +439,7 @@ void setDefaultConfigValues(void)
   	config.ToggleGreenLedInterval = 500;
 
   	/* THROUGHPUT_PRINTOUT_TASK_INTERVAL */
-	config.ThroughputPrintoutTaskInterval = 5;
+	config.ThroughputPrintoutTaskInterval_s = 5;
 
 	/* SHELL_TASK_INTERVAL */
 	config.ShellTaskInterval = 50;
