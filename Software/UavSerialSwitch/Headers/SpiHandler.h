@@ -20,22 +20,22 @@
 /*! \def QUEUE_NUM_OF_CHARS_WL_TX_QUEUE
 *  \brief Number of chars that should have find space within a single wireless transmit queue.
 */
-#define QUEUE_NUM_OF_CHARS_WL_TX_QUEUE		512 /* 4 queues of this length will be created */
+#define QUEUE_NUM_OF_CHARS_WL_TX_QUEUE		2048 /* 4 queues of this length will be created */
 
 /*! \def QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE
 *  \brief Number of chars that should have find space within a single device transmit queue.
 */
-#define QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE		512 /* 4 queues of this length will be created */
+#define QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE		2048 /* 4 queues of this length will be created */
 
 /*! \def QUEUE_NUM_OF_CHARS_WL_RX_QUEUE
 *  \brief Number of chars that should have find space within a single wireless receive queue.
 */
-#define QUEUE_NUM_OF_CHARS_WL_RX_QUEUE		512 /* 4 queues of this length will be created */
+#define QUEUE_NUM_OF_CHARS_WL_RX_QUEUE		2048 /* 4 queues of this length will be created */
 
 /*! \def QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE
 *  \brief Number of chars that should have find space within a single device receive queue.
 */
-#define QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE		512 /* 4 queues of this length will be created */
+#define QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE		2048 /* 4 queues of this length will be created */
 
 /*! \def NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL
 *  \brief Number of queue entries that will be lost in case a queue is full

@@ -362,9 +362,9 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				uint8_t crc8 = CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 0));
 				if(true)//currentWirelessPackage[wlConn].crc8Header == crc8)
 				{
-					if(currentWirelessPackage[wlConn].crc8Header != crc8)
+					if(currentWirelessPackage[wlConn].crc8Header != crc8) /* in case the above crc check is commented out -> debug info printed that crc wouldnt be correct */
 					{
-						XF1_xsprintf(infoBuf, "Info: Invalid header CRC received\r\n");
+						XF1_xsprintf(infoBuf, "Info: Invalid header CRC received, but continuing anyway (debug)\r\n");
 						pushMsgToShellQueue(infoBuf);
 					}
 					/* CRC is valid - also check if the header parameters are within the valid range */
@@ -424,80 +424,90 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				CRC1_ResetCRC(crcPH);
 				CRC1_SetCRCStandard(crcPH, LDD_CRC_MODBUS_16); // ToDo: use LDD_CRC_CCITT, MODBUS only for backwards compatibility to old SW
 				CRC1_GetBlockCRC(crcPH, data[wlConn], currentWirelessPackage[wlConn].payloadSize, &crc16);
-				if(true)//(currentWirelessPackage[wlConn].crc16payload == (uint16_t) crc16) /* payload valid? */
+				if(true)//currentWirelessPackage[wlConn].crc16payload == (uint16_t) crc16) /* payload valid? */
 				{
-					if(currentWirelessPackage[wlConn].crc16payload != (uint16_t) crc16)
+					if(currentWirelessPackage[wlConn].crc16payload != (uint16_t) crc16) /* in case the above crc check is commented out -> debug info printed that crc wouldnt be correct */
 					{
-						XF1_xsprintf(infoBuf, "Info: Invalid payload CRC received\r\n");
+						XF1_xsprintf(infoBuf, "Info: Invalid payload CRC received, but continuing anyway (debug)\r\n");
 						pushMsgToShellQueue(infoBuf);
 					}
 					/*allocate memory for payload of package and set payload */
-					currentWirelessPackage[wlConn].payload = (uint8_t*) FRTOS_pvPortMalloc(currentWirelessPackage[wlConn].payloadSize*sizeof(int8_t)); /* as payload, the timestamp of the package to be acknowledged is saved */
-					if(currentWirelessPackage[wlConn].payload != NULL) /* malloc successful */
+					if(currentWirelessPackage[wlConn].payloadSize > 0)
 					{
-						for(int cnt=0; cnt < currentWirelessPackage[wlConn].payloadSize; cnt++) /* set payload of package */
+						currentWirelessPackage[wlConn].payload = (uint8_t*) FRTOS_pvPortMalloc(currentWirelessPackage[wlConn].payloadSize*sizeof(int8_t)); /* as payload, the timestamp of the package to be acknowledged is saved */
+						if(currentWirelessPackage[wlConn].payload != NULL) /* malloc successful */
 						{
-							currentWirelessPackage[wlConn].payload[cnt] = data[wlConn][cnt];
-						}
-						/* check packet type */
-						if (currentWirelessPackage[wlConn].packType == PACK_TYPE_REC_ACKNOWLEDGE)
-						{
-							/* received acknowledge - send message to queue */
-							currentWirelessPackage[wlConn].sysTime = *((uint32_t*)&data[wlConn][dataCntr[wlConn] - 6]);
-							numberOfAckReceived[wlConn]++;
-							currentWirelessPackage[wlConn].timestampPackageReceived = xTaskGetTickCount();
-
-							if(pushToReceivedPackagesQueue(wlConn, &currentWirelessPackage[wlConn]) != pdTRUE) /* ToDo: handle failure on pushing package to receivedPackages queue , currently it is dropped if unsuccessful */
+							for(int cnt=0; cnt < currentWirelessPackage[wlConn].payloadSize; cnt++) /* set payload of package */
 							{
-								vPortFree(currentWirelessPackage[wlConn].payload); /* free payload since it wont be done upon queue pop */
-								currentWirelessPackage[wlConn].payload = NULL;
-								numberOfDroppedAcks[wlConn]++;
-								XF1_xsprintf(infoBuf, "Error: Received acknowledge but unable to push this message to the send handler for wireless queue %u because queue full\r\n", (unsigned int) wlConn);
+								currentWirelessPackage[wlConn].payload[cnt] = data[wlConn][cnt];
+							}
+							/* check packet type */
+							if (currentWirelessPackage[wlConn].packType == PACK_TYPE_REC_ACKNOWLEDGE)
+							{
+								/* received acknowledge - send message to queue */
+								currentWirelessPackage[wlConn].sysTime = *((uint32_t*)&data[wlConn][dataCntr[wlConn] - 6]);
+								numberOfAckReceived[wlConn]++;
+								currentWirelessPackage[wlConn].timestampPackageReceived = xTaskGetTickCount();
+
+								if(pushToReceivedPackagesQueue(wlConn, &currentWirelessPackage[wlConn]) != pdTRUE) /* ToDo: handle failure on pushing package to receivedPackages queue , currently it is dropped if unsuccessful */
+								{
+									vPortFree(currentWirelessPackage[wlConn].payload); /* free payload since it wont be done upon queue pop */
+									currentWirelessPackage[wlConn].payload = NULL;
+									numberOfDroppedAcks[wlConn]++;
+									XF1_xsprintf(infoBuf, "Error: Received acknowledge but unable to push this message to the send handler for wireless queue %u because queue full\r\n", (unsigned int) wlConn);
+									LedRed_On();
+									pushMsgToShellQueue(infoBuf);
+								}
+							}
+							else if (currentWirelessPackage[wlConn].packType == PACK_TYPE_DATA_PACKAGE)
+							{
+								/* update throughput printout */
+								numberOfPacksReceived[wlConn]++;
+								numberOfPayloadBytesExtracted[wlConn] += currentWirelessPackage[wlConn].payloadSize;
+								/* received data package - send data to corresponding devices plus inform package generator to prepare a receive acknowledge */
+								if(pushToReceivedPackagesQueue(wlConn, &currentWirelessPackage[wlConn]) != pdTRUE) /* ToDo: handle queue full, now package is discarded */
+								{
+									/* queue full */
+									vPortFree(currentWirelessPackage[wlConn].payload); /* free payload since it wont be done upon queue pop */
+									currentWirelessPackage[wlConn].payload = NULL;
+									numberOfDroppedPackages[wlConn]++;
+									XF1_xsprintf(infoBuf, "Error: Received data package but unable to push this message to the send handler for wireless queue %u because queue full\r\n", (unsigned int) wlConn);
+									LedRed_On();
+									pushMsgToShellQueue(infoBuf);
+								}
+								/* check if it's the same session number as before */
+								if (sessionNumberLastValidPackage[currentWirelessPackage[wlConn].devNum] != currentWirelessPackage[wlConn].sessionNr)
+								{
+									/* session number changed. Reset timestamp and assign new session number. */
+									sessionNumberLastValidPackage[currentWirelessPackage[wlConn].devNum] = currentWirelessPackage[wlConn].sessionNr;
+									timestampLastValidPackage[currentWirelessPackage[wlConn].devNum] = 0;
+								}
+
+							}
+							else
+							{
+								/* something went wrong - invalid package type. Reset state machine and send out error. */
+								numberOfInvalidPackages[wlConn]++;
+								XF1_xsprintf(infoBuf, "Error: Invalid package type! There is probably an error in the implementation\r\n");
 								LedRed_On();
 								pushMsgToShellQueue(infoBuf);
 							}
 						}
-						else if (currentWirelessPackage[wlConn].packType == PACK_TYPE_DATA_PACKAGE)
+						else /* malloc failed */
 						{
-							/* update throughput printout */
-							numberOfPacksReceived[wlConn]++;
-							numberOfPayloadBytesExtracted[wlConn] += currentWirelessPackage[wlConn].payloadSize;
-							/* received data package - send data to corresponding devices plus inform package generator to prepare a receive acknowledge */
-							if(pushToReceivedPackagesQueue(wlConn, &currentWirelessPackage[wlConn]) != pdTRUE) /* ToDo: handle queue full, now package is discarded */
-							{
-								/* queue full */
-								vPortFree(currentWirelessPackage[wlConn].payload); /* free payload since it wont be done upon queue pop */
-								currentWirelessPackage[wlConn].payload = NULL;
-								numberOfDroppedPackages[wlConn]++;
-								XF1_xsprintf(infoBuf, "Error: Received data package but unable to push this message to the send handler for wireless queue %u because queue full\r\n", (unsigned int) wlConn);
-								LedRed_On();
-								pushMsgToShellQueue(infoBuf);
-							}
-							/* check if it's the same session number as before */
-							if (sessionNumberLastValidPackage[currentWirelessPackage[wlConn].devNum] != currentWirelessPackage[wlConn].sessionNr)
-							{
-								/* session number changed. Reset timestamp and assign new session number. */
-								sessionNumberLastValidPackage[currentWirelessPackage[wlConn].devNum] = currentWirelessPackage[wlConn].sessionNr;
-								timestampLastValidPackage[currentWirelessPackage[wlConn].devNum] = 0;
-							}
-
-						}
-						else
-						{
-							/* something went wrong - invalid package type. Reset state machine and send out error. */
+							/* malloc failed */
 							numberOfInvalidPackages[wlConn]++;
-							XF1_xsprintf(infoBuf, "Error: Invalid package type! There is probably an error in the implementation\r\n");
+							XF1_xsprintf(infoBuf, "Error: Malloc failed, could not push package to received packages queue\r\n");
 							LedRed_On();
 							pushMsgToShellQueue(infoBuf);
 						}
 					}
-					else /* malloc failed */
+					else
 					{
-						/* malloc failed */
-						numberOfInvalidPackages[wlConn]++;
-						XF1_xsprintf(infoBuf, "Error: Malloc failed, could not push package to received packages queue\r\n");
-						LedRed_On();
-						pushMsgToShellQueue(infoBuf);
+							numberOfInvalidPackages[wlConn]++;
+							XF1_xsprintf(infoBuf, "Error: payloadSize == 0 -> reset state machine\r\n");
+							LedRed_On();
+							pushMsgToShellQueue(infoBuf);
 					}
 				}
 				else

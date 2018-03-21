@@ -73,7 +73,7 @@ void spiHandler_TaskEntry(void* p)
 			}
 			else
 			{
-				readHwBufAndWriteToQueue(MAX_14830_DEVICE_SIDE, uartNr, RxDeviceBytes[uartNr]);
+				numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][uartNr] += readHwBufAndWriteToQueue(MAX_14830_DEVICE_SIDE, uartNr, RxDeviceBytes[uartNr]);
 			}
 
 			/* write data from queue to device spi interface */
@@ -83,11 +83,11 @@ void spiHandler_TaskEntry(void* p)
 			}
 			else
 			{
-				readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, TxDeviceBytes[uartNr], HW_FIFO_SIZE);
+				numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][uartNr] += readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, TxDeviceBytes[uartNr], HW_FIFO_SIZE);
 			}
 
 			/* read data from wireless spi interface */
-			readHwBufAndWriteToQueue(MAX_14830_WIRELESS_SIDE, uartNr, RxWirelessBytes[uartNr]);
+			numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][uartNr] += readHwBufAndWriteToQueue(MAX_14830_WIRELESS_SIDE, uartNr, RxWirelessBytes[uartNr]);
 			/* write data from queue to wireless spi interface */
 			if(config.TestHwLoopbackOnly)
 			{
@@ -95,7 +95,7 @@ void spiHandler_TaskEntry(void* p)
 			}
 			else
 			{
-				readQueueAndWriteToHwBuf(MAX_14830_WIRELESS_SIDE, uartNr, TxWirelessBytes[uartNr], HW_FIFO_SIZE);
+				numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][uartNr] += readQueueAndWriteToHwBuf(MAX_14830_WIRELESS_SIDE, uartNr, TxWirelessBytes[uartNr], HW_FIFO_SIZE);
 			}
 		}
 	}
@@ -468,7 +468,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	uint8_t fifoLevel = 0;
 	char traceString[] = "3";
 	PTRC1_vTracePrint(NULL, traceString);
-	while(true)
+	while(totalNumOfReadBytes < HW_FIFO_SIZE)
 	{
 		/* check how many characters there are to read in the hardware FIFO */
 		fifoLevel = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_RX_FIFO_LVL);
@@ -504,7 +504,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 					static uint8_t data;
 					xQueueReceive(RxWirelessBytes[uartNr], &data, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
 				}
-				numberOfDroppedBytes[uartNr] += NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL;
+				numberOfDroppedBytes[spiSlave][uartNr] += NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL;
 				xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
 				if (spiSlave == MAX_14830_WIRELESS_SIDE)
 				{

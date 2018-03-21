@@ -4,6 +4,7 @@
 #include "Config.h"
 #include <stdio.h> // sprintf
 #include "XF1.h" //xsprintf
+#include "SpiHandler.h"
 
 /* global variables */
 long unsigned int numberOfAckReceived[NUMBER_OF_UARTS];
@@ -15,8 +16,10 @@ long unsigned int numberOfAcksSent[NUMBER_OF_UARTS];
 long unsigned int numberOfSendAttempts[NUMBER_OF_UARTS];
 long unsigned int numberOfDroppedPackages[NUMBER_OF_UARTS];
 long unsigned int numberOfDroppedAcks[NUMBER_OF_UARTS];
-long unsigned int numberOfDroppedBytes[NUMBER_OF_UARTS];
+long unsigned int numberOfDroppedBytes[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 long unsigned int numberOfInvalidPackages[NUMBER_OF_UARTS];
+long unsigned int numberOfRxBytesHwBuf[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
+long unsigned int numberOfTxBytesHwBuf[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 
 void throughputPrintout_TaskEntry(void* p)
 {
@@ -31,6 +34,8 @@ void throughputPrintout_TaskEntry(void* p)
 	static float averagePacksReceived[NUMBER_OF_UARTS];
 	static float averageAcksSent[NUMBER_OF_UARTS];
 	static float averageAcksReceived[NUMBER_OF_UARTS];
+	static float averageUartBytesSent[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
+	static float averageUartBytesReceived[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 	/* so the global variables do not have to be reset */
 	static long unsigned int lastNumberOfPacksReceived[NUMBER_OF_UARTS];
 	static long unsigned int lastNumberOfPacksSent[NUMBER_OF_UARTS];
@@ -38,6 +43,8 @@ void throughputPrintout_TaskEntry(void* p)
 	static long unsigned int lastNumberOfAcksSent[NUMBER_OF_UARTS];
 	static long unsigned int lastNumberOfPayloadBytesExtracted[NUMBER_OF_UARTS];
 	static long unsigned int lastNumberOfPayloadBytesSent[NUMBER_OF_UARTS];
+	static long unsigned int lastNumberOfUartBytesSent[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
+	static long unsigned int lastNumberOfUartBytesReceived[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 
 	for(;;)
 	{
@@ -49,53 +56,72 @@ void throughputPrintout_TaskEntry(void* p)
 			averagePacksSent[cnt] = (numberOfPacksSent[cnt]-lastNumberOfPacksSent[cnt]) / config.ThroughputPrintoutTaskInterval;
 			averageAcksReceived[cnt] = (numberOfAckReceived[cnt]-lastNumberOfAckReceived[cnt])/config.ThroughputPrintoutTaskInterval;
 			averageAcksSent[cnt] = (numberOfAcksSent[cnt]-lastNumberOfAcksSent[cnt])/config.ThroughputPrintoutTaskInterval;
+			averageUartBytesSent[MAX_14830_DEVICE_SIDE][cnt] = (numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt] - lastNumberOfUartBytesSent[MAX_14830_DEVICE_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
+			averageUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt] = (numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt] - lastNumberOfUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
+			averageUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt] = (numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt] - lastNumberOfUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
+			averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt] = (numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt] - lastNumberOfUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt])/config.ThroughputPrintoutTaskInterval;
 			averagePayloadReceived[cnt] = (numberOfPayloadBytesExtracted[cnt]-lastNumberOfPayloadBytesExtracted[cnt])/(numberOfPacksReceived[cnt]-lastNumberOfPacksReceived[cnt]);
 			averagePayloadSent[cnt] = (numberOfPayloadBytesSent[cnt]-lastNumberOfPayloadBytesSent[cnt])/(numberOfPacksSent[cnt]-lastNumberOfPacksSent[cnt]);
+
 		}
 
-		res = XF1_xsprintf(buf, "-----------------------------------------------------------\r\n");
+		res = XF1_xsprintf(buf, "----------------------------------------------------------- \r\n");
 		res = pushMsgToShellQueue(buf);
 		/* print throughput information */
-		res = XF1_xsprintf(buf, "Wireless: Sent packages [packages/s]: %.1f,%.1f,%.1f,%.1f; Received packages: [packages/s] %.1f,%.1f,%.1f,%.1f\r\n",
+		res = XF1_xsprintf(buf, "Wireless: Sent packages [packages/s]: %.1f,%.1f,%.1f,%.1f; Received packages: [packages/s] %.1f,%.1f,%.1f,%.1f \r\n",
 				averagePacksSent[0], averagePacksSent[1], averagePacksSent[2], averagePacksSent[3],
 				averagePacksReceived[0], averagePacksReceived[1], averagePacksReceived[2], averagePacksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Average payload sent [bytes/pack]: %.1f,%.1f,%.1f,%.1f; Average payload received: [bytes/pack] %.1f,%.1f,%.1f,%.1f\r\n",
+		res = XF1_xsprintf(buf, "Wireless: Average payload sent [bytes/pack]: %.1f,%.1f,%.1f,%.1f; Average payload received: [bytes/pack] %.1f,%.1f,%.1f,%.1f \r\n",
 				averagePayloadSent[0], averagePayloadSent[1], averagePayloadSent[2], averagePayloadSent[3],
 				averagePayloadReceived[0], averagePayloadReceived[1], averagePayloadReceived[2], averagePayloadReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Sent acknowledges [acks/s]: %.1f,%.1f,%.1f,%.2f; Received acknowledges: [acks/s] %.1f,%.1f,%.1f,%.1f\r\n",
+		res = XF1_xsprintf(buf, "Wireless: Sent acknowledges [acks/s]: %.1f,%.1f,%.1f,%.2f; Received acknowledges: [acks/s] %.1f,%.1f,%.1f,%.1f \r\n",
 				averageAcksSent[0], averageAcksSent[1], averageAcksSent[2], averageAcksSent[3],
 				averageAcksReceived[0], averageAcksReceived[1], averageAcksReceived[2], averageAcksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Total number of dropped packages per device input: %lu,%lu,%lu,%lu\r\n",
+		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from device side[bytes/s]: %.1f,%.1f,%.1f,%.2f; Average bytes sent to device side: [bytes/s] %.1f,%.1f,%.1f,%.1f \r\n",
+				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][0], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][1], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][2], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][3],
+				averageUartBytesSent[MAX_14830_DEVICE_SIDE][0], averageUartBytesSent[MAX_14830_DEVICE_SIDE][1], averageUartBytesSent[MAX_14830_DEVICE_SIDE][2], averageUartBytesSent[MAX_14830_DEVICE_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from wireless side[bytes/s]: %.1f,%.1f,%.1f,%.2f; Average bytes sent to wireless side: [bytes/s] %.1f,%.1f,%.1f,%.1f \r\n",
+				averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][0], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][1], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][2], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][3],
+				averageUartBytesSent[MAX_14830_WIRELESS_SIDE][0], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][1], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][2], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Application: Total number of dropped packages per device input: %lu,%lu,%lu,%lu \r\n",
 				numberOfDroppedPackages[0], numberOfDroppedPackages[1], numberOfDroppedPackages[2], numberOfDroppedPackages[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Total number of dropped acknowledges per wireless input: %lu,%lu,%lu,%lu\r\n",
+		res = XF1_xsprintf(buf, "Application: Total number of dropped acknowledges per wireless input: %lu,%lu,%lu,%lu \r\n",
 				numberOfDroppedAcks[0], numberOfDroppedAcks[1], numberOfDroppedAcks[2], numberOfDroppedAcks[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Total number of invalid packages per wireless input: %lu,%lu,%lu,%lu\r\n",
+		res = XF1_xsprintf(buf, "BER: Total number of invalid packages per wireless input: %lu,%lu,%lu,%lu \r\n",
 				numberOfInvalidPackages[0], numberOfInvalidPackages[1], numberOfInvalidPackages[2], numberOfInvalidPackages[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Device: Total number of dropped bytes per device input: %lu,%lu,%lu,%lu\r\n",
-				numberOfDroppedBytes[0], numberOfDroppedBytes[1], numberOfDroppedBytes[2], numberOfDroppedBytes[3]);
+		res = XF1_xsprintf(buf, "SPI Handler: Total number of dropped bytes per device byte input: %lu,%lu,%lu,%lu \r\n",
+				numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][0], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][1], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][2], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Total number of sent bytes per connection: %lu,%lu,%lu,%lu\r\n",
+		res = XF1_xsprintf(buf, "SPI Handler: Total number of dropped bytes per wireless byte input: %lu,%lu,%lu,%lu \r\n",
+				numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][0], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][1], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][2], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Wireless: Total number of payload bytes sent over wireless: %lu,%lu,%lu,%lu \r\n",
 				numberOfPayloadBytesSent[0], numberOfPayloadBytesSent[1], numberOfPayloadBytesSent[2], numberOfPayloadBytesSent[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Total number of received bytes per connection: %lu,%lu,%lu,%lu\r\n",
+		res = XF1_xsprintf(buf, "Wireless: Total number of payload bytes received over wireless: %lu,%lu,%lu,%lu \r\n",
 				numberOfPayloadBytesExtracted[0], numberOfPayloadBytesExtracted[1], numberOfPayloadBytesExtracted[2], numberOfPayloadBytesExtracted[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "-----------------------------------------------------------\r\n");
+		res = XF1_xsprintf(buf, "----------------------------------------------------------- \r\n");
 		res = pushMsgToShellQueue(buf);
 
 		/* reset measurement */

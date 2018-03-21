@@ -21,8 +21,10 @@ extern long unsigned int numberOfPayloadBytesSent[NUMBER_OF_UARTS];
 extern long unsigned int numberOfSendAttempts[NUMBER_OF_UARTS];
 extern long unsigned int numberOfDroppedPackages[NUMBER_OF_UARTS];
 extern long unsigned int numberOfDroppedAcks[NUMBER_OF_UARTS];
-extern long unsigned int numberOfDroppedBytes[NUMBER_OF_UARTS];
+extern long unsigned int numberOfDroppedBytes[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 extern long unsigned int numberOfInvalidPackages[NUMBER_OF_UARTS];
+extern long unsigned int numberOfRxBytesHwBuf[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
+extern long unsigned int numberOfTxBytesHwBuf[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 
 void throughputPrintout_TaskEntry(void* p);
 

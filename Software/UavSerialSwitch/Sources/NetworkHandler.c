@@ -27,6 +27,7 @@ static tWirelessPackage unacknowledgedPackages[MAX_NUMBER_OF_UNACK_PACKS_STORED]
 static bool unacknowledgedPackagesOccupiedAtIndex[MAX_NUMBER_OF_UNACK_PACKS_STORED];
 static int numberOfUnacknowledgedPackages;
 static uint32_t sentPackNumTracker[NUMBER_OF_UARTS];
+static uint32_t sentAckNumTracker[NUMBER_OF_UARTS];
 static uint32_t sysTimeLastPushedOutPack[NUMBER_OF_UARTS];
 static uint32_t minSysTimeOfStoredPackagesForReordering[NUMBER_OF_UARTS];
 static tWirelessPackage reorderingPacks[NUMBER_OF_UARTS][REORDERING_PACKAGES_BUFFER_SIZE];
@@ -413,7 +414,7 @@ static void pushPayloadOut(tWirelessPackage* pPackage)
 		{
 			XF1_xsprintf(infoBuf, "%u: Warning: Push to device byte array for UART %u failed", xTaskGetTickCount(), pPackage->devNum);
 			pushMsgToShellQueue(infoBuf);
-			numberOfDroppedBytes[pPackage->devNum]++;
+			numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][pPackage->devNum]++;
 		}
 	}
 }
@@ -579,7 +580,7 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage, ui
 				UTIL1_strcatNum8u(infoBuf, sizeof(infoBuf), pPackage->devNum);
 				UTIL1_strcat(infoBuf, sizeof(infoBuf), " not successful");
 				pushMsgToShellQueue(infoBuf);
-				numberOfDroppedBytes[deviceNr] += cnt;
+				numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][deviceNr] += cnt;
 				FRTOS_vPortFree(pPackage->payload);
 				pPackage->payload = NULL;
 				return false;
@@ -653,7 +654,7 @@ static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPac
 	pAckPack->packType = PACK_TYPE_REC_ACKNOWLEDGE;
 	pAckPack->devNum = pReceivedDataPack->devNum;
 	pAckPack->sessionNr = sessionNr;
-	pAckPack->sysTime = xTaskGetTickCount();
+	pAckPack->sysTime = ++sentAckNumTracker[pReceivedDataPack->devNum];
 	pAckPack->payloadSize = sizeof(uint32_t);	/* as payload, the timestamp of the package to be acknowledged is saved */
 	/* calculate crc for header */
 	CRC1_ResetCRC(crcNH);
