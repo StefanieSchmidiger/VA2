@@ -63,13 +63,12 @@ void packageHandler_TaskEntry(void* p)
 			while(true)
 			{
 				/* check how much space is needed for next data package */
-				int freeSpace = QUEUE_NUM_OF_CHARS_WL_TX_QUEUE - numberOfBytesInTxByteQueue(MAX_14830_WIRELESS_SIDE, wlConn);
 				if(peekAtNextReadyToSendPack(wlConn, &package) != pdTRUE)
 				{
 					break; /* leave inner while-loop if queue access unsuccessful and continue with next wlConn */
 				}
 				/* enough space for next package available? */
-				if(freeSpace > (sizeof(tWirelessPackage) + package.payloadSize - 4))  /*subtract 4 bytes because pointer to payload in tWirelessPackage is 4 bytes*/
+				if(freeSpaceInTxByteQueue(MAX_14830_WIRELESS_SIDE, wlConn) > (sizeof(tWirelessPackage) + package.payloadSize - 4))  /*subtract 4 bytes because pointer to payload in tWirelessPackage is 4 bytes*/
 				{
 					if(popReadyToSendPackFromQueue(wlConn, &package) == pdTRUE) /* there is a package ready for sending */
 					{

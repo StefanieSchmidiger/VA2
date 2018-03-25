@@ -33,7 +33,7 @@ static uint32_t minSysTimeOfStoredPackagesForReordering[NUMBER_OF_UARTS];
 static tWirelessPackage reorderingPacks[NUMBER_OF_UARTS][REORDERING_PACKAGES_BUFFER_SIZE];
 static bool reorderingPacksOccupiedAtIndex[NUMBER_OF_UARTS][REORDERING_PACKAGES_BUFFER_SIZE];
 static uint32_t nofReorderingPacksStored[NUMBER_OF_UARTS];
-static SemaphoreHandle_t ackReceived[NUMBER_OF_UARTS];
+static volatile bool ackReceived[NUMBER_OF_UARTS];
 
 /* prototypes of local functions */
 static bool generateDataPackage(tUartNr wlConn, tWirelessPackage* pPackage, uint8_t sessionNr);
@@ -151,10 +151,7 @@ static void initSempahores(void)
 {
 	for(int uartNr=0; uartNr<NUMBER_OF_UARTS; uartNr++)
 	{
-		ackReceived[uartNr] = FRTOS_xSemaphoreCreateBinary();
-		if(ackReceived[uartNr] == NULL)
-			while(true){} /* malloc failed */
-		FRTOS_xSemaphoreGive(ackReceived[uartNr]); /* sending package = taking semaphore, receiving ack = giving it back */
+		ackReceived[uartNr] = true; /* sending package = taking semaphore, receiving ack = giving it back */
 	}
 }
 
@@ -271,7 +268,6 @@ static bool processReceivedPackage(tUartNr wlConn)
 			case WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK:
 				pushPayloadOut(&package);/* send out data stream right away because packages are in right order */
 				sysTimeLastPushedOutPack[package.devNum] = package.sysTime;
-				FRTOS_xSemaphoreGive(ackReceived[package.devNum]);
 				break;
 			case PACKAGE_REORDERING:
 				if(sysTimeLastPushedOutPack[package.devNum] <= package.sysTime) /* old package received */
@@ -378,6 +374,7 @@ static bool processReceivedPackage(tUartNr wlConn)
 					numberOfUnacknowledgedPackages--;
 					FRTOS_vPortFree(package.payload); /* free memory for package popped from queue */
 					package.payload = NULL;
+					ackReceived[wlConn] = true;
 					return true; /* unacknowledged package found, leave for-loop */
 				}
 			}
@@ -561,9 +558,14 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage, ui
 			return false;
 		}
 		/* still waiting for an acknowledge on data from this device side? */
-		if((config.PackNumberingProcessingMode[deviceNr] == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK) && (FRTOS_xSemaphoreTake(ackReceived[wlConn], 0) != pdTRUE))
+		if((config.PackNumberingProcessingMode[deviceNr] == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK) && (ackReceived[wlConn] == false))
 		{
 			return false;
+		}
+		/* limit payload of package */
+		if(numberOfBytesInRxQueue > PACKAGE_MAX_PAYLOAD_SIZE)
+		{
+			numberOfBytesInRxQueue = PACKAGE_MAX_PAYLOAD_SIZE;
 		}
 		/* Put together package */
 		/* put together payload by allocating memory and copy data */

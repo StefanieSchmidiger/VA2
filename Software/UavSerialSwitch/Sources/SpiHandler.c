@@ -19,8 +19,10 @@
 #define WRITE_TRANSFER 		true
 #define READ_TRANSFER 		false
 #define SINGLE_BYTE			1
+#define NUMBER_OF_EVENT_CHANNELS (7)
 
 /* global variables, only used in this file */
+traceString userEvent[NUMBER_OF_EVENT_CHANNELS];
 LDD_TDeviceData* spiDevice; /* For different functions to access SPI device */
 static xQueueHandle TxWirelessBytes[NUMBER_OF_UARTS]; /* Incoming data from wireless side stored here */
 static xQueueHandle RxWirelessBytes[NUMBER_OF_UARTS]; /* Outgoing data to wireless side stored here */
@@ -66,6 +68,7 @@ void spiHandler_TaskEntry(void* p)
 		/* read all data and write it to queue */
 		for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 		{
+			vTracePrint(userEvent[0], "6");
 			/* read data from device spi interface */
 			if(config.EnableStressTest)
 			{
@@ -83,7 +86,7 @@ void spiHandler_TaskEntry(void* p)
 			}
 			else
 			{
-				numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][uartNr] += readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, TxDeviceBytes[uartNr], HW_FIFO_SIZE);
+				numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][uartNr] += readQueueAndWriteToHwBuf(MAX_14830_DEVICE_SIDE, uartNr, TxDeviceBytes[uartNr], uxQueueMessagesWaiting(TxDeviceBytes[uartNr]) );
 			}
 
 			/* read data from wireless spi interface */
@@ -95,8 +98,9 @@ void spiHandler_TaskEntry(void* p)
 			}
 			else
 			{
-				numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][uartNr] += readQueueAndWriteToHwBuf(MAX_14830_WIRELESS_SIDE, uartNr, TxWirelessBytes[uartNr], HW_FIFO_SIZE);
+				numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][uartNr] += readQueueAndWriteToHwBuf(MAX_14830_WIRELESS_SIDE, uartNr, TxWirelessBytes[uartNr], uxQueueMessagesWaiting(TxWirelessBytes[uartNr]) );
 			}
+			vTracePrint(userEvent[0], "8");
 		}
 	}
 }
@@ -187,6 +191,13 @@ void spiHandler_TaskInit(void)
 
 	/* Set word length and number of stop bits */
 	spiWriteToAllUartInterfaces(MAX_REG_LCR, 0x03);
+
+	userEvent[0] = xTraceRegisterString("starting execution on one uart");
+	userEvent[1] = xTraceRegisterString("readQueueAndWriteToHwBuf");
+	userEvent[2] = xTraceRegisterString("readHwBufAndWriteToQueue");
+	userEvent[3] = xTraceRegisterString("before for-loop");
+	userEvent[4] = xTraceRegisterString("popping one byte");
+	userEvent[5] = xTraceRegisterString("queue empty");
 }
 
 /*!
@@ -198,10 +209,10 @@ void initSpiHandlerQueues(void)
 
 #if configSUPPORT_STATIC_ALLOCATION
 	/* The variable used to hold the queue's data structure. */
-	static uint8_t xStaticQueueRxWlBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_WL_RX_QUEUE * sizeof(uint8_t) ];
-	static uint8_t xStaticQueueTxWlBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE * sizeof(uint8_t) ];
-	static uint8_t xStaticQueueRxDevBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_WL_TX_QUEUE * sizeof(uint8_t) ];
-	static uint8_t xStaticQueueTxDevBytes[NUMBER_OF_UARTS][ QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueRxWlBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueTxWlBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueRxDevBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueTxDevBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
 	/* The array to use as the queue's storage area. */
 	static StaticQueue_t ucQueueStorageRxWlBytes[NUMBER_OF_UARTS];
 	static StaticQueue_t ucQueueStorageRxDevBytes[NUMBER_OF_UARTS];
@@ -212,15 +223,15 @@ void initSpiHandlerQueues(void)
 	for(int uartNr=0; uartNr<NUMBER_OF_UARTS; uartNr++)
 	{
 #if configSUPPORT_STATIC_ALLOCATION
-		RxWirelessBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_WL_RX_QUEUE, sizeof(uint8_t), xStaticQueueRxWlBytes[uartNr], &ucQueueStorageRxWlBytes[uartNr]); /* bytes received on wireless side */
-		RxDeviceBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE, sizeof(uint8_t), xStaticQueueRxDevBytes[uartNr], &ucQueueStorageRxDevBytes[uartNr]); /* bytes received on device side */
-		TxWirelessBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_WL_TX_QUEUE, sizeof(uint8_t), xStaticQueueTxWlBytes[uartNr], &ucQueueStorageTxWlBytes[uartNr]); /* bytes sent out on wireless side */
-		TxDeviceBytes[uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE, sizeof(uint8_t), xStaticQueueTxDevBytes[uartNr], &ucQueueStorageTxDevBytes[uartNr]); /* bytes sent out on device side */
+		RxWirelessBytes[uartNr] = xQueueCreateStatic( BYTE_QUEUE_SIZE, sizeof(uint8_t), xStaticQueueRxWlBytes[uartNr], &ucQueueStorageRxWlBytes[uartNr]); /* bytes received on wireless side */
+		RxDeviceBytes[uartNr] = xQueueCreateStatic( BYTE_QUEUE_SIZE, sizeof(uint8_t), xStaticQueueRxDevBytes[uartNr], &ucQueueStorageRxDevBytes[uartNr]); /* bytes received on device side */
+		TxWirelessBytes[uartNr] = xQueueCreateStatic( BYTE_QUEUE_SIZE, sizeof(uint8_t), xStaticQueueTxWlBytes[uartNr], &ucQueueStorageTxWlBytes[uartNr]); /* bytes sent out on wireless side */
+		TxDeviceBytes[uartNr] = xQueueCreateStatic( BYTE_QUEUE_SIZE, sizeof(uint8_t), xStaticQueueTxDevBytes[uartNr], &ucQueueStorageTxDevBytes[uartNr]); /* bytes sent out on device side */
 #else
-		RxWirelessBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_WL_RX_QUEUE, sizeof(uint8_t)); /* bytes received on wireless side */
-		RxDeviceBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_DEV_RX_QUEUE, sizeof(uint8_t)); /* bytes received on device side */
-		TxWirelessBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_WL_TX_QUEUE, sizeof(uint8_t)); /* bytes sent out on wireless side */
-		TxDeviceBytes[uartNr] = xQueueCreate( QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE, sizeof(uint8_t)); /* bytes sent out on device side */
+		RxWirelessBytes[uartNr] = xQueueCreate( BYTE_QUEUE_SIZE, sizeof(uint8_t)); /* bytes received on wireless side */
+		RxDeviceBytes[uartNr] = xQueueCreate( BYTE_QUEUE_SIZE, sizeof(uint8_t)); /* bytes received on device side */
+		TxWirelessBytes[uartNr] = xQueueCreate( BYTE_QUEUE_SIZE, sizeof(uint8_t)); /* bytes sent out on wireless side */
+		TxDeviceBytes[uartNr] = xQueueCreate( BYTE_QUEUE_SIZE, sizeof(uint8_t)); /* bytes sent out on device side */
 #endif
 		if(RxWirelessBytes[uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
@@ -305,8 +316,6 @@ void spiWriteToAllUartInterfaces(tMax14830Reg reg, uint8_t data)
 */
 bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool write, uint8_t* pData, uint8_t numOfTransfers)
 {
-	char traceString[] = "2";
-	PTRC1_vTracePrint(NULL, traceString);
 	uint8_t transferCnt = 0;
 	int maxDelay = 5; // [ms] ToDo: make relative to selected baud rate!
 	static uint8_t data[HW_FIFO_SIZE + 1]; /* MAX14830 can hold a maximum of HW_FIFO_SIZE bytes, 1 byte is command. Make static to ensure memory for SPI is still here when SPI master actually sends the data! */
@@ -391,7 +400,6 @@ bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool wri
 		spiRxDone = false;
 #endif
 	}
-	PTRC1_vTracePrint(NULL, traceString);
 	return true;
 }
 
@@ -466,9 +474,11 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	uint16_t dataToRead = 0;
 	uint16_t totalNumOfReadBytes = 0;
 	uint8_t fifoLevel = 0;
-	char traceString[] = "3";
-	PTRC1_vTracePrint(NULL, traceString);
-	while(totalNumOfReadBytes < HW_FIFO_SIZE)
+	uint8_t numOfIterations = 0;
+	int freeSpaceInQueue = 0;
+
+	vTracePrint(userEvent[2], "3");
+	while((totalNumOfReadBytes < HW_FIFO_SIZE) && (numOfIterations < 1))
 	{
 		/* check how many characters there are to read in the hardware FIFO */
 		fifoLevel = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_RX_FIFO_LVL);
@@ -491,41 +501,48 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		/* read the data from the HW buffer */
 		spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, buffer, dataToRead);
 
+		/* make space in queue for all bytes that will be read from hw buffer */
+		freeSpaceInQueue = BYTE_QUEUE_SIZE - uxQueueMessagesWaiting(queue);
+		if(freeSpaceInQueue < dataToRead) /* not enough space in queue to save all bytes from HW buffer */
+		{
+			/* queue is full -> delete enough old bytes to fit new ones in */
+			for(int i = 0; i < dataToRead - freeSpaceInQueue; i++)
+			{
+				static uint8_t data;
+				xQueueReceive(RxWirelessBytes[uartNr], &data, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
+			}
+			numberOfDroppedBytes[spiSlave][uartNr] += (dataToRead - freeSpaceInQueue);
+			/* print out warning that bytes have been dropped */
+			if (spiSlave == MAX_14830_WIRELESS_SIDE)
+			{
+				char warnBuf[80];
+				XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on wireless side, UART number %u\r\n", (unsigned int) (dataToRead - freeSpaceInQueue), (unsigned int)uartNr);
+				LedOrange_On();
+				pushMsgToShellQueue(warnBuf);
+			}
+			else /* spiSlave == MAX_14830_DEVICE_SIDE */
+			{
+				char warnBuf[80];
+				XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on device side, UART number %u\r\n", (unsigned int) (dataToRead - freeSpaceInQueue), (unsigned int)uartNr);
+				LedOrange_On();
+				pushMsgToShellQueue(warnBuf);
+			}
+		}
 
 		/* send the read data to the corresponding queue */
-		/* cnt starts at 1 because buffer[0] is left empty for commando, therefore it needs to count up to dataToRead+1 */
+		/* cnt starts at 1 because buffer[0] is left empty for commando, therefore index needs to start at 1 and count up to dataToRead+1 */
 		for (unsigned int cnt = 1; cnt < dataToRead+1; cnt++)
 		{
-			if (xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) == errQUEUE_FULL)
+			if (xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) != pdTRUE)
 			{
-				/* queue is full -> delete oldest NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL bytes */
-				for(int i = 0; i < NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL; i++)
-				{
-					static uint8_t data;
-					xQueueReceive(RxWirelessBytes[uartNr], &data, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
-				}
-				numberOfDroppedBytes[spiSlave][uartNr] += NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL;
-				xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
-				if (spiSlave == MAX_14830_WIRELESS_SIDE)
-				{
-					char warnBuf[80];
-					XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on wireless side, UART number %u\r\n", (unsigned int) NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL, (unsigned int)uartNr);
-					LedOrange_On();
-					pushMsgToShellQueue(warnBuf);
-				}
-				else /* spiSlave == MAX_14830_DEVICE_SIDE */
-				{
-					char warnBuf[80];
-					XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on device side, UART number %u\r\n", (unsigned int) NUM_OF_BYTES_TO_DELETE_ON_QUEUE_FULL, (unsigned int)uartNr);
-					LedOrange_On();
-					pushMsgToShellQueue(warnBuf);
-				}
+				break;
 			}
 		}
 		totalNumOfReadBytes += dataToRead;
 		dataToRead = 0;
+		numOfIterations++;
 	}
-	PTRC1_vTracePrint(NULL, traceString);
+	vTracePrint(userEvent[2], "4");
 	return totalNumOfReadBytes;
 }
 
@@ -560,13 +577,17 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	static uint32_t lastUpdateThroughput[NUMBER_OF_UARTS];
 	static uint8_t buffer[HW_FIFO_SIZE+1];
 	uint16_t cnt = 1;
-	char traceString[] = "1";
-	PTRC1_vTracePrint(NULL, traceString);
+	vTracePrint(userEvent[1], "0");
+
+	if(numOfBytesToWrite <= 0)
+	{
+		return 0;
+	}
 
 	/* check how much space there is left in hardware buffer */
-	uint8_t spaceLeft = 0;
-	uint8_t spaceTaken = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_TX_FIFO_LVL);
-	spaceLeft = HW_FIFO_SIZE - spaceTaken;
+	uint8_t spaceLeftInHwBuf = 0;
+	uint8_t spaceTakenInHwBuf = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_TX_FIFO_LVL);
+	spaceLeftInHwBuf = HW_FIFO_SIZE - spaceTakenInHwBuf;
 
 	/* reset throughput counter for WL slave every second */
 	if((spiSlave == MAX_14830_WIRELESS_SIDE) && (xTaskGetTickCount()-lastUpdateThroughput[uartNr] >= pdMS_TO_TICKS(1000))) /* has 1sec passed on WL side? */
@@ -576,10 +597,10 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	}
 
 	/* check if there is enough space to write the number of bytes that should be written */
-	if (spaceLeft < numOfBytesToWrite)
+	if (spaceLeftInHwBuf < numOfBytesToWrite)
 	{
 		/* There isn't enough space to write the desired amount of data - just write as much as possible */
-		numOfBytesToWrite = spaceLeft;
+		numOfBytesToWrite = spaceLeftInHwBuf;
 	}
 	/* write those bytes.. */
 	if (numOfBytesToWrite > 0)
@@ -589,6 +610,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		{
 			numOfBytesToWrite = HW_FIFO_SIZE;
 		}
+		vTracePrint(userEvent[3], "0");
 		/* pop bytes from queue and store them in buffer array. cnt starts at 1 because buffer[0] needs to be empty for commando byte */
 		for (cnt = 1; cnt < numOfBytesToWrite+1; cnt++)
 		{
@@ -597,14 +619,17 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			{
 				break; /* max throughput reached for this second - leave for-loop without popping more data from queue */
 			}
-
+			vTracePrint(userEvent[4], "0");
 			/* try to pop data from queue */
-			if (xQueueReceive(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) == errQUEUE_EMPTY)
+			if (xQueueReceive(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) == pdFAIL)
 			{
-				break; /* queue is empty, no data to read - leave for-loop without incrementing cnt */
+				vTracePrint(userEvent[5], "1");
+				break; /* queue is empty not empty, but popping failed -> leave for-loop without incrementing cnt */
 			}
+			vTracePrint(userEvent[4], "1");
 			throughputPerWlConn[uartNr]++;
 		}
+		vTracePrint(userEvent[3], "1");
 
 		/*
 			From the MAX14830 data sheet:
@@ -616,7 +641,9 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			=> Don't do this when hardware flow control is enabled! In this case, transmitting is controlled by the CTS pin.
 		*/
 		if (spiSlave != MAX_14830_WIRELESS_SIDE)
+		{
 			spiSingleWriteTransfer(spiSlave, uartNr, MAX_REG_MODE1, 0x02);
+		}
 		else
 		{
 			if (config.UseCtsPerWirelessConn[(uint8_t)uartNr] > 0)
@@ -640,7 +667,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		{
 			spiSingleWriteTransfer(spiSlave, uartNr, MAX_REG_MODE1, 0x00);
 		}
-		else
+		else /* MAX_14830_WIRELESS_SIDE */
 		{
 			if (config.UseCtsPerWirelessConn[(uint8_t)uartNr] > 0)
 			{
@@ -654,7 +681,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			}
 		}
 	}
-	PTRC1_vTracePrint(NULL, traceString);
+	vTracePrint(userEvent[1], "1");
 	return cnt-1;
 }
 
@@ -753,6 +780,6 @@ uint16_t numberOfBytesInTxByteQueue(tSpiSlaves spiSlave, tUartNr uartNr)
 uint16_t freeSpaceInTxByteQueue(tSpiSlaves spiSlave, tUartNr uartNr)
 {
 	if(uartNr < NUMBER_OF_UARTS)
-		return (spiSlave == MAX_14830_WIRELESS_SIDE)? (QUEUE_NUM_OF_CHARS_WL_TX_QUEUE - ((uint16_t) uxQueueMessagesWaiting(TxWirelessBytes[uartNr]))) :  (QUEUE_NUM_OF_CHARS_DEV_TX_QUEUE - ((uint16_t) uxQueueMessagesWaiting(TxDeviceBytes[uartNr])));
+		return (spiSlave == MAX_14830_WIRELESS_SIDE)? (BYTE_QUEUE_SIZE - ((uint16_t) uxQueueMessagesWaiting(TxWirelessBytes[uartNr]))) :  (BYTE_QUEUE_SIZE - ((uint16_t) uxQueueMessagesWaiting(TxDeviceBytes[uartNr])));
 	return 0; /* if uartNr was not in range */
 }

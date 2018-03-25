@@ -101,7 +101,7 @@ void Shell_TaskInit(void)
   CLS1_Init();
 
 #if configSUPPORT_STATIC_ALLOCATION
-	static uint8_t xStaticQueue[ QUEUE_NUM_OF_CHARS_WL_RX_QUEUE * sizeof(uint8_t) ]; /* The variable used to hold the queue's data structure. */
+	static uint8_t xStaticQueue[ BYTE_QUEUE_SIZE * sizeof(uint8_t) ]; /* The variable used to hold the queue's data structure. */
 	static StaticQueue_t ucQueueStorage; /* The array to use as the queue's storage area. */
 	msgQueue = xQueueCreateStatic( MAX_NUMBER_OF_MESSAGES_STORED, sizeof(char*), xStaticQueue, &ucQueueStorage);
 #else
