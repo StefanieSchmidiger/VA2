@@ -28,14 +28,14 @@ void throughputPrintout_TaskEntry(void* p)
 	static char buf[150];
 	int res;
 	/* to calculate averages */
-	static float averagePayloadReceived[NUMBER_OF_UARTS];
-	static float averagePayloadSent[NUMBER_OF_UARTS];
-	static float averagePacksSent[NUMBER_OF_UARTS];
-	static float averagePacksReceived[NUMBER_OF_UARTS];
-	static float averageAcksSent[NUMBER_OF_UARTS];
-	static float averageAcksReceived[NUMBER_OF_UARTS];
-	static float averageUartBytesSent[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
-	static float averageUartBytesReceived[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
+	static int averagePayloadReceived[NUMBER_OF_UARTS];
+	static int averagePayloadSent[NUMBER_OF_UARTS];
+	static int averagePacksSent[NUMBER_OF_UARTS];
+	static int averagePacksReceived[NUMBER_OF_UARTS];
+	static int averageAcksSent[NUMBER_OF_UARTS];
+	static int averageAcksReceived[NUMBER_OF_UARTS];
+	static int averageUartBytesSent[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
+	static int averageUartBytesReceived[NOF_SPI_SLAVES][NUMBER_OF_UARTS];
 	/* so the global variables do not have to be reset */
 	static long unsigned int lastNumberOfPacksReceived[NUMBER_OF_UARTS];
 	static long unsigned int lastNumberOfPacksSent[NUMBER_OF_UARTS];
@@ -68,27 +68,27 @@ void throughputPrintout_TaskEntry(void* p)
 		res = XF1_xsprintf(buf, "----------------------------------------------------------- \r\n");
 		res = pushMsgToShellQueue(buf);
 		/* print throughput information */
-		res = XF1_xsprintf(buf, "Wireless: Sent packages [packages/s]: %.1f,%.1f,%.1f,%.1f; Received packages: [packages/s] %.1f,%.1f,%.1f,%.1f \r\n",
+		res = XF1_xsprintf(buf, "Wireless: Sent packages [packages/s]: %u,%u,%u,%u; Received packages: [packages/s] %u,%u,%u,%u \r\n",
 				averagePacksSent[0], averagePacksSent[1], averagePacksSent[2], averagePacksSent[3],
 				averagePacksReceived[0], averagePacksReceived[1], averagePacksReceived[2], averagePacksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Average payload sent [bytes/pack]: %.1f,%.1f,%.1f,%.1f; Average payload received: [bytes/pack] %.1f,%.1f,%.1f,%.1f \r\n",
+		res = XF1_xsprintf(buf, "Wireless: Average payload sent [bytes/pack]: %u,%u,%u,%u; Average payload received: [bytes/pack] %u,%u,%u,%u \r\n",
 				averagePayloadSent[0], averagePayloadSent[1], averagePayloadSent[2], averagePayloadSent[3],
 				averagePayloadReceived[0], averagePayloadReceived[1], averagePayloadReceived[2], averagePayloadReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Sent acknowledges [acks/s]: %.1f,%.1f,%.1f,%.2f; Received acknowledges: [acks/s] %.1f,%.1f,%.1f,%.1f \r\n",
+		res = XF1_xsprintf(buf, "Wireless: Sent acknowledges [acks/s]: %u,%u,%u,%u; Received acknowledges: [acks/s] %u,%u,%u,%u \r\n",
 				averageAcksSent[0], averageAcksSent[1], averageAcksSent[2], averageAcksSent[3],
 				averageAcksReceived[0], averageAcksReceived[1], averageAcksReceived[2], averageAcksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from device side[bytes/s]: %.1f,%.1f,%.1f,%.2f; Average bytes sent to device side: [bytes/s] %.1f,%.1f,%.1f,%.1f \r\n",
+		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from device side[bytes/s]: %u,%u,%u,%u; Average bytes sent to device side: [bytes/s] %u,%u,%u,%u \r\n",
 				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][0], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][1], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][2], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][3],
 				averageUartBytesSent[MAX_14830_DEVICE_SIDE][0], averageUartBytesSent[MAX_14830_DEVICE_SIDE][1], averageUartBytesSent[MAX_14830_DEVICE_SIDE][2], averageUartBytesSent[MAX_14830_DEVICE_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from wireless side[bytes/s]: %.1f,%.1f,%.1f,%.2f; Average bytes sent to wireless side: [bytes/s] %.1f,%.1f,%.1f,%.1f \r\n",
+		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from wireless side[bytes/s]: %u,%u,%u,%u; Average bytes sent to wireless side: [bytes/s] %u,%u,%u,%u \r\n",
 				averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][0], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][1], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][2], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][3],
 				averageUartBytesSent[MAX_14830_WIRELESS_SIDE][0], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][1], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][2], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][3]);
 		res = pushMsgToShellQueue(buf);

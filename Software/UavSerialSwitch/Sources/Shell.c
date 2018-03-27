@@ -141,7 +141,8 @@ void pullMsgFromQueueAndPrint(void)
 BaseType_t pushMsgToShellQueue(char* pMsg)
 {
 	/* limit string in shell in case terminating zero not added */
-	int numberOfChars = (strlen(pMsg) <= MAX_NUMBER_OF_CHARS_PER_MESSAGE) ? strlen(pMsg) : MAX_NUMBER_OF_CHARS_PER_MESSAGE; /* limit message length in queue */
+	int numberOfChars = UTIL1_strlen(pMsg) + 1; /* +1 to add the terminating zero in malloc without cutting last character */
+	numberOfChars = (numberOfChars <= MAX_NUMBER_OF_CHARS_PER_MESSAGE) ? numberOfChars : MAX_NUMBER_OF_CHARS_PER_MESSAGE; /* limit message length in queue */
 	/* saves config data in queue if debug output enabled */
 	if(config.GenerateDebugOutput == DEBUG_OUTPUT_FULLLY_ENABLED)
 	{

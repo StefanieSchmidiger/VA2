@@ -42,6 +42,7 @@
 /// golay 23/12 error correction encoding and decoding
 ///
 #include <stdint.h>
+#include "Golay23.h"
 
 
 /// encode n bytes of data into 2n coded bytes. n must be a multiple 3

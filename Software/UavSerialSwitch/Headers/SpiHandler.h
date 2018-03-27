@@ -29,6 +29,13 @@
 #define SPI_HANDLER_QUEUE_DELAY				0
 
 
+/*! \def PACK_FILL
+*  \brief Filling character for golay encoding if end backage size is not a multiple of 3.
+*  Used when encoding a message.
+*/
+#define PACK_FILL									((uint8_t)' ')
+
+
 
 /*! \enum eMax14830Reg
 *  \brief Registers of the MAX14830, see MAX14830 data sheet.

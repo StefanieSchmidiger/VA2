@@ -12,6 +12,7 @@
 #include "Shell.h" // to print out debug information
 #include "ThroughputPrintout.h" //to store debug information
 #include "PTRC1.h"
+#include "Golay.h"
 
 #define CS_DEVICE 			0
 #define CS_WIRELESS 		1
@@ -49,7 +50,7 @@ uint8_t spiSingleReadTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg 
 void configureHwBufBaudrate(tSpiSlaves spiSlave, tUartNr uartNr, unsigned int baudRateToSet);
 void initSpiHandlerQueues(void);
 static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue);
-static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint8_t numOfBytesToWrite);
+static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint16_t numOfBytesToWrite);
 static void generateDebugData(xQueueHandle queue);
 
 /*!
@@ -68,7 +69,7 @@ void spiHandler_TaskEntry(void* p)
 		/* read all data and write it to queue */
 		for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 		{
-			vTracePrint(userEvent[0], "6");
+			//vTracePrint(userEvent[0], "6");
 			/* read data from device spi interface */
 			if(config.EnableStressTest)
 			{
@@ -100,7 +101,7 @@ void spiHandler_TaskEntry(void* p)
 			{
 				numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][uartNr] += readQueueAndWriteToHwBuf(MAX_14830_WIRELESS_SIDE, uartNr, TxWirelessBytes[uartNr], uxQueueMessagesWaiting(TxWirelessBytes[uartNr]) );
 			}
-			vTracePrint(userEvent[0], "8");
+			//vTracePrint(userEvent[0], "8");
 		}
 	}
 }
@@ -471,13 +472,14 @@ void configureHwBufBaudrate(tSpiSlaves spiSlave, tUartNr uartNr, unsigned int ba
 static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue)
 {
 	static uint8_t buffer[HW_FIFO_SIZE+1]; /* needs to be one byte bigger just in case we read HW_FIFO_SIZE number of bytes -> one additional byte received for sending command byte */
+	static uint8_t encodedBuf[HW_FIFO_SIZE+1];
 	uint16_t dataToRead = 0;
 	uint16_t totalNumOfReadBytes = 0;
 	uint8_t fifoLevel = 0;
 	uint8_t numOfIterations = 0;
 	int freeSpaceInQueue = 0;
 
-	vTracePrint(userEvent[2], "3");
+	//vTracePrint(userEvent[2], "3");
 	while((totalNumOfReadBytes < HW_FIFO_SIZE) && (numOfIterations < 1))
 	{
 		/* check how many characters there are to read in the hardware FIFO */
@@ -498,10 +500,27 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			dataToRead = fifoLevel;
 		}
 
-		/* read the data from the HW buffer */
-		spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, buffer, dataToRead);
+		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* read and decode if Golay enabled */
+		{
+			/*
+			There's a tradeoff here: the number of data to be decoded needs to be a multiple of 6.
+			So we can either just read out as many as there is multiple of 6, risking that we delay some of the chars quite long.
+			Or we can read out all chars, fill up with pseudo chars and destroy some of the codewords this way.
+			=> decided to read out only multiples of 6
+			*/
+			while ((dataToRead % 6) > 0)	dataToRead--; /* read out multiples of 6 */
+			/* read the data from the HW buffer */
+			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, encodedBuf, dataToRead);
+			golay_decode(dataToRead, encodedBuf, buffer);
+			dataToRead = dataToRead / 2; /* Golay doubled the data rate -> after decoding, only half is actual data */
+		}
+		else /* golay not used on this UART */
+		{
+			/* read the data from the HW buffer */
+			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, buffer, dataToRead);
+		}
 
-		/* make space in queue for all bytes that will be read from hw buffer */
+		/* make space in queue for all bytes that were read from hw buffer */
 		freeSpaceInQueue = BYTE_QUEUE_SIZE - uxQueueMessagesWaiting(queue);
 		if(freeSpaceInQueue < dataToRead) /* not enough space in queue to save all bytes from HW buffer */
 		{
@@ -509,7 +528,11 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			for(int i = 0; i < dataToRead - freeSpaceInQueue; i++)
 			{
 				static uint8_t data;
-				xQueueReceive(RxWirelessBytes[uartNr], &data, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
+				if(xQueueReceive(queue, &data, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) != pdTRUE)
+				{
+					dataToRead = i;
+					break; /* leave for-loop and stop emptying queue */
+				}
 			}
 			numberOfDroppedBytes[spiSlave][uartNr] += (dataToRead - freeSpaceInQueue);
 			/* print out warning that bytes have been dropped */
@@ -542,7 +565,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		dataToRead = 0;
 		numOfIterations++;
 	}
-	vTracePrint(userEvent[2], "4");
+	//vTracePrint(userEvent[2], "4");
 	return totalNumOfReadBytes;
 }
 
@@ -571,13 +594,14 @@ static void generateDebugData(xQueueHandle queue)
 * \param numOfBytesToWrite: The number of bytes that should be written to the hardware buffer if there is space enough in the buffer.
 * \return The number of written bytes.
 */
-static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint8_t numOfBytesToWrite)
+static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint16_t numOfBytesToWrite)
 {
 	static uint32_t throughputPerWlConn[NUMBER_OF_UARTS];
 	static uint32_t lastUpdateThroughput[NUMBER_OF_UARTS];
 	static uint8_t buffer[HW_FIFO_SIZE+1];
+	static uint8_t encodedBuf[HW_FIFO_SIZE+1];
 	uint16_t cnt = 1;
-	vTracePrint(userEvent[1], "0");
+	//vTracePrint(userEvent[1], "0");
 
 	if(numOfBytesToWrite <= 0)
 	{
@@ -587,7 +611,14 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	/* check how much space there is left in hardware buffer */
 	uint8_t spaceLeftInHwBuf = 0;
 	uint8_t spaceTakenInHwBuf = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_TX_FIFO_LVL);
-	spaceLeftInHwBuf = HW_FIFO_SIZE - spaceTakenInHwBuf;
+	if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* golay enabled for this uart? */
+	{
+		spaceLeftInHwBuf = (HW_FIFO_SIZE / 2) - spaceTakenInHwBuf; /* golay doubles the data rate */
+	}
+	else
+	{
+		spaceLeftInHwBuf = HW_FIFO_SIZE - spaceTakenInHwBuf;
+	}
 
 	/* reset throughput counter for WL slave every second */
 	if((spiSlave == MAX_14830_WIRELESS_SIDE) && (xTaskGetTickCount()-lastUpdateThroughput[uartNr] >= pdMS_TO_TICKS(1000))) /* has 1sec passed on WL side? */
@@ -602,15 +633,20 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		/* There isn't enough space to write the desired amount of data - just write as much as possible */
 		numOfBytesToWrite = spaceLeftInHwBuf;
 	}
+	else if (numOfBytesToWrite > HW_FIFO_SIZE) /* too many bytes in queue? */
+	{
+		numOfBytesToWrite = HW_FIFO_SIZE; /* hw buffer empty, limit bytes that will be transmitted to hw buffer */
+	}
 	/* write those bytes.. */
 	if (numOfBytesToWrite > 0)
 	{
-		/* put together an array that can be written to the hardware buffer */
-		if (numOfBytesToWrite > HW_FIFO_SIZE)
+		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* limit bytes to multiple of 3 so fill characters dont have to be used */
 		{
-			numOfBytesToWrite = HW_FIFO_SIZE;
+			numOfBytesToWrite = numOfBytesToWrite - (numOfBytesToWrite % 3); /* to prevent fill character being used */
+			// ToDo: fill characters might still be used in case max throughput reached and for-loop left with break or queue pop unsuccessful!
 		}
-		vTracePrint(userEvent[3], "0");
+		/* put together an array that can be written to the hardware buffer */
+		//vTracePrint(userEvent[3], "0");
 		/* pop bytes from queue and store them in buffer array. cnt starts at 1 because buffer[0] needs to be empty for commando byte */
 		for (cnt = 1; cnt < numOfBytesToWrite+1; cnt++)
 		{
@@ -619,17 +655,28 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			{
 				break; /* max throughput reached for this second - leave for-loop without popping more data from queue */
 			}
-			vTracePrint(userEvent[4], "0");
+			//vTracePrint(userEvent[4], "0");
 			/* try to pop data from queue */
 			if (xQueueReceive(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) == pdFAIL)
 			{
-				vTracePrint(userEvent[5], "1");
+				//vTracePrint(userEvent[5], "1");
 				break; /* queue is empty not empty, but popping failed -> leave for-loop without incrementing cnt */
 			}
-			vTracePrint(userEvent[4], "1");
+			//vTracePrint(userEvent[4], "1");
 			throughputPerWlConn[uartNr]++;
 		}
-		vTracePrint(userEvent[3], "1");
+		//vTracePrint(userEvent[3], "1");
+
+		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr])
+		{
+			/* buffer needs to be multiple of 3, add fill chars if necessary */
+			while (((cnt) % 3) > 0)
+			{
+				buffer[cnt++] = PACK_FILL;
+			}
+			golay_encode(cnt, &buffer[1], &encodedBuf[1]);
+			cnt = ((cnt-1) * 2) + 1;
+		}
 
 		/*
 			From the MAX14830 data sheet:
@@ -644,7 +691,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		{
 			spiSingleWriteTransfer(spiSlave, uartNr, MAX_REG_MODE1, 0x02);
 		}
-		else
+		else /* WL side */
 		{
 			if (config.UseCtsPerWirelessConn[(uint8_t)uartNr] > 0)
 			{
@@ -658,7 +705,11 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			}
 		}
 		/* transfer data popped from queue. cnt=numberOfTransfers-1 */
-		if(cnt-1 > 0) /* this if-statement is only for debugging purposes, so a breakpoint can be set here. spiTransfer with 0 bytes data would be possible */
+		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr])
+		{
+			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, WRITE_TRANSFER, encodedBuf, cnt-1);
+		}
+		else
 		{
 			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, WRITE_TRANSFER, buffer, cnt-1);
 		}
@@ -681,7 +732,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			}
 		}
 	}
-	vTracePrint(userEvent[1], "1");
+	//vTracePrint(userEvent[1], "1");
 	return cnt-1;
 }
 

@@ -3,7 +3,7 @@
   <Header>
     <Name>UavSerialSwitch</Name>
     <SavedBy>Erich Styger Local</SavedBy>
-    <ModificationStamp>85</ModificationStamp>
+    <ModificationStamp>87</ModificationStamp>
     <Date>2017-04-24</Date>
     <IDE>Eclipse IDE</IDE>
     <PEversion>1.12.2.RT7_b1550-0615</PEversion>
@@ -29,7 +29,7 @@
     <UseExistingModules>true</UseExistingModules>
     <RenamePeripheries>false</RenamePeripheries>
     <Autodependency>true</Autodependency>
-    <ProjectCompNumb>150</ProjectCompNumb>
+    <ProjectCompNumb>158</ProjectCompNumb>
     <DelUnusedPreviouslyGenFiles>true</DelUnusedPreviouslyGenFiles>
     <GeneratedCodeFrozen>false</GeneratedCodeFrozen>
     <AssignInitComponentNameToPrph>true</AssignInitComponentNameToPrph>

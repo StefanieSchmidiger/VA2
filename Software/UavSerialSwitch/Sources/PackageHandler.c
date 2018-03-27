@@ -68,7 +68,7 @@ void packageHandler_TaskEntry(void* p)
 					break; /* leave inner while-loop if queue access unsuccessful and continue with next wlConn */
 				}
 				/* enough space for next package available? */
-				if(freeSpaceInTxByteQueue(MAX_14830_WIRELESS_SIDE, wlConn) > (sizeof(tWirelessPackage) + package.payloadSize - 4))  /*subtract 4 bytes because pointer to payload in tWirelessPackage is 4 bytes*/
+				if(freeSpaceInTxByteQueue(MAX_14830_WIRELESS_SIDE, wlConn) > (TOTAL_WL_PACKAGE_SIZE + package.payloadSize))
 				{
 					if(popReadyToSendPackFromQueue(wlConn, &package) == pdTRUE) /* there is a package ready for sending */
 					{
@@ -157,9 +157,12 @@ static bool sendPackageToWirelessQueue(tUartNr wlConn, tWirelessPackage* pPackag
 		return false;
 	}
 	static uint8_t startChar = PACK_START;
+
+	//taskENTER_CRITICAL();
 	if(pushToByteQueue(MAX_14830_WIRELESS_SIDE, wlConn, &startChar) == errQUEUE_FULL)
 	{
 		numberOfDroppedPackages[wlConn]++;
+		//taskEXIT_CRITICAL();
 		return false;
 	}
 	if(sendNonPackStartCharacter(wlConn, &pPackage->packType))
@@ -185,9 +188,13 @@ static bool sendPackageToWirelessQueue(tUartNr wlConn, tWirelessPackage* pPackag
 													static uint8_t repChar = PACK_FILL;
 													if(sendNonPackStartCharacter(wlConn, &repChar))
 														if(sendNonPackStartCharacter(wlConn, &repChar))
+														{
+															//taskEXIT_CRITICAL();
 															return true;
+														}
 												}
 										}
+	//taskEXIT_CRITICAL();
 	return false;
 }
 

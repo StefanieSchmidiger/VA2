@@ -36,6 +36,7 @@ typedef struct Configurations {
    bool UseCtsPerWirelessConn[NUMBER_OF_UARTS];
    tPackageNumbering PackNumberingProcessingMode[NUMBER_OF_UARTS]; /* per device side, NOT per wireless side */
    int PackReorderingTimeout[NUMBER_OF_UARTS];
+   bool UseGolayPerWlConn[NUMBER_OF_UARTS];
    /* SoftwareConfiguration */
    bool TestHwLoopbackOnly;
    bool EnableStressTest;

@@ -229,6 +229,10 @@ bool readConfig(void)
   	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "PACK_REORDERING_TIMEOUT",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
   	csvToInt(copiedCsv, config.PackReorderingTimeout);
 
+  	/* USE_GOLAY_ERROR_CORRECTING_CODE */
+  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "USE_GOLAY_ERROR_CORRECTING_CODE",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
+  	csvToBool(copiedCsv, config.UseGolayPerWlConn);
+
   	/* -------- SoftwareConfiguration -------- */
   	/* TEST_HW_LOOPBACK_ONLY */
   	config.TestHwLoopbackOnly = MINI_ini_getbool("SoftwareConfiguration", "TEST_HW_LOOPBACK_ONLY",  DEFAULT_BOOL, "serialSwitch_Config.ini");

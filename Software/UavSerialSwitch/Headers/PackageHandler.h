@@ -37,6 +37,11 @@
 */
 #define PACKAGE_HEADER_SIZE							(11)
 
+/*! \def TOTAL_WL_PACKAGE_SIZE
+*  \brief Size of wireless package minus payload, +2 because CRC payload is 2 bytes
+*/
+#define TOTAL_WL_PACKAGE_SIZE						(PACKAGE_HEADER_SIZE + 2)
+
 
 /*! \def PACKAGE_MAX_PAYLOAD_SIZE
 *  \brief Maximal size of payload.
@@ -80,7 +85,7 @@ typedef struct sWirelessPackage
 	uint16_t crc16payload;
 	/* internal information, needed for (re)sending package */
 	uint8_t currentPrioConnection;
-	uint8_t sendAttemptsLeftPerWirelessConnection[NUMBER_OF_UARTS];
+	int8_t sendAttemptsLeftPerWirelessConnection[NUMBER_OF_UARTS];
 	uint32_t timestampFirstSendAttempt;
 	uint32_t timestampLastSendAttempt[NUMBER_OF_UARTS];	/* holds the timestamp when the packet was sent the last time for every wireless connection */
 	uint16_t totalNumberOfSendAttemptsPerWirelessConnection[NUMBER_OF_UARTS];		/* to save the total number of send attempts that were needed for this package */

@@ -193,8 +193,11 @@ static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr r
 			pPackage->sendAttemptsLeftPerWirelessConnection[wlConn]--;
 			pPackage->timestampLastSendAttempt[wlConn] = xTaskGetTickCount();
 			pPackage->timestampFirstSendAttempt = xTaskGetTickCount();
+			ackReceived[wlConn] = false; /* flag for PackNumberProcessingMode == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK */
 			if(storeNewPackageInUnacknowledgedPackagesArray(pPackage) == true)
+			{
 				return true; /* success */
+			}
 		}
 		else /* no ack expected */
 		{
@@ -557,8 +560,9 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage, ui
 		{
 			return false;
 		}
-		/* still waiting for an acknowledge on data from this device side? */
-		if((config.PackNumberingProcessingMode[deviceNr] == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK) && (ackReceived[wlConn] == false))
+		/* still waiting for an acknowledge on data from this device side and ack enabled on this wl conn? */
+		if((config.PackNumberingProcessingMode[deviceNr] == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK) && (ackReceived[wlConn] == false) &&
+				config.SendAckPerWirelessConn[wlConn])
 		{
 			return false;
 		}
@@ -708,7 +712,15 @@ static void handleResendingOfUnacknowledgedPackages(void)
 		{
 			tWirelessPackage* pPack = &unacknowledgedPackages[index];
 			unackPackagesLeft --;
-			int prio = 1;
+			int prio = 4;
+			int maxPrio = 1;
+			/* find maximum wl connection priority configured on this device */
+			while(maxPrio != NUMBER_OF_UARTS)
+			{
+				maxPrio = getWlConnectionToUse(pPack->devNum, prio);
+				prio --;
+			}
+			prio = 1;
 			while(prio <= NUMBER_OF_UARTS) /* iterate though all priorities (starting at highest priority) to see if resend is required */
 			{
 				int wlConn = getWlConnectionToUse(pPack->devNum, prio);
@@ -718,7 +730,7 @@ static void handleResendingOfUnacknowledgedPackages(void)
 				/* max number of resends done for all connections or maximum delay in config reached for this package     OR
 				 * no response on last resend received during resend timeout */
 				if(((wlConn >= NUMBER_OF_UARTS) || ((pPack->timestampFirstSendAttempt + delayInTicks) < tickCount))     ||
-					(pPack->sendAttemptsLeftPerWirelessConnection[wlConn] == 0) &&  (tickCount - pPack->timestampLastSendAttempt[wlConn] > resendDelayInTicks))
+					((prio == maxPrio) && (pPack->sendAttemptsLeftPerWirelessConnection[wlConn] == 0) &&  (tickCount - pPack->timestampLastSendAttempt[wlConn] > resendDelayInTicks)))
 				{
 					XF1_xsprintf(infoBuf, "%u: Warning: Max number of retries reached and no ACK received -> discard package with sysTime %u for device %u\r\n", xTaskGetTickCount(), pPack->sysTime, pPack->devNum);
 					pushMsgToShellQueue(infoBuf);
@@ -726,10 +738,11 @@ static void handleResendingOfUnacknowledgedPackages(void)
 					pPack->payload = NULL;
 					unacknowledgedPackagesOccupiedAtIndex[index] = false;
 					numberOfUnacknowledgedPackages--;
+					ackReceived[wlConn] = true;
 					prio = NUMBER_OF_UARTS; /* leave iteration over priorities */
 					numberOfDroppedPackages[pPack->devNum]++; /* update throughput printout */
 				}
-				if(pPack->sendAttemptsLeftPerWirelessConnection[wlConn] > 0)
+				else if(pPack->sendAttemptsLeftPerWirelessConnection[wlConn] > 0) /* there are send attempts left on this wl conn */
 				{
 					/* is timeout for ACK done?*/
 					if(tickCount - pPack->timestampLastSendAttempt[wlConn] > pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][pPack->devNum]))
@@ -751,8 +764,6 @@ static void handleResendingOfUnacknowledgedPackages(void)
 						{
 							pPack->sendAttemptsLeftPerWirelessConnection[wlConn]--;
 							pPack->timestampLastSendAttempt[wlConn] = tickCount;
-							//sprintf(infoBuf, "Retry to send package\r\n");
-							//pushMsgToShellQueue(infoBuf, strlen(infoBuf));
 							prio = NUMBER_OF_UARTS; /* leave priority-while loop because package will be sent, now to wait on acknowledge */
 							/* update throughput printout */
 							numberOfPayloadBytesSent[wlConn] += pPack->payloadSize;
@@ -771,6 +782,10 @@ static void handleResendingOfUnacknowledgedPackages(void)
 				else if((pPack->sendAttemptsLeftPerWirelessConnection[wlConn] == 0) &&  (tickCount - pPack->timestampLastSendAttempt[wlConn] < resendDelayInTicks))
 				{
 					prio = NUMBER_OF_UARTS;
+				}
+				else if(pPack->sendAttemptsLeftPerWirelessConnection[wlConn] == 0) /* no ack received on this wl connection */
+				{
+					ackReceived[wlConn] = true; /* no resending on this wl conn -> make sure next package can be sent */
 				}
 				prio++;
 			}
