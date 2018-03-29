@@ -133,6 +133,8 @@ void throughputPrintout_TaskEntry(void* p)
 			lastNumberOfAcksSent[cnt] = numberOfAcksSent[cnt];
 			lastNumberOfPayloadBytesExtracted[cnt] = numberOfPayloadBytesExtracted[cnt];
 			lastNumberOfPayloadBytesSent[cnt] = numberOfPayloadBytesSent[cnt];
+			lastNumberOfUartBytesReceived[cnt] = numberOfTxBytesHwBuf[cnt];
+			lastNumberOfUartBytesSent[cnt] = numberOfRxBytesHwBuf[cnt];
 		}
 	}
 }
