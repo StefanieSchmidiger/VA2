@@ -133,8 +133,10 @@ void throughputPrintout_TaskEntry(void* p)
 			lastNumberOfAcksSent[cnt] = numberOfAcksSent[cnt];
 			lastNumberOfPayloadBytesExtracted[cnt] = numberOfPayloadBytesExtracted[cnt];
 			lastNumberOfPayloadBytesSent[cnt] = numberOfPayloadBytesSent[cnt];
-			lastNumberOfUartBytesReceived[cnt] = numberOfTxBytesHwBuf[cnt];
-			lastNumberOfUartBytesSent[cnt] = numberOfRxBytesHwBuf[cnt];
+			lastNumberOfUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt] = numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt];
+			lastNumberOfUartBytesSent[MAX_14830_DEVICE_SIDE][cnt] = numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt];
+			lastNumberOfUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt] = numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt];
+			lastNumberOfUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt] = numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt];
 		}
 	}
 }
