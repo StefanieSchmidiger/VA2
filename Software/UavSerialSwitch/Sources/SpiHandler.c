@@ -13,6 +13,7 @@
 #include "ThroughputPrintout.h" //to store debug information
 #include "PTRC1.h"
 #include "Golay.h"
+#include "PackageHandler.h" // for PACK_FILL in golay decoding
 
 #define CS_DEVICE 			0
 #define CS_WIRELESS 		1
@@ -471,102 +472,104 @@ void configureHwBufBaudrate(tSpiSlaves spiSlave, tUartNr uartNr, unsigned int ba
 */
 static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue)
 {
+	static uint32_t timestampLastHwBufRead[NUMBER_OF_UARTS];
 	static uint8_t buffer[HW_FIFO_SIZE+1]; /* needs to be one byte bigger just in case we read HW_FIFO_SIZE number of bytes -> one additional byte received for sending command byte */
 	static uint8_t encodedBuf[HW_FIFO_SIZE+1];
-	uint16_t dataToRead = 0;
-	uint16_t totalNumOfReadBytes = 0;
-	uint8_t fifoLevel = 0;
-	uint8_t numOfIterations = 0;
+	uint16_t nofReadBytesToProcess = 0;
+	uint16_t totalNofReadBytes = 0;
+	uint8_t nofBytesInHwBuf = 0;
+	uint8_t nofLoopIterations = 0;
 	int freeSpaceInQueue = 0;
 
 	//vTracePrint(userEvent[2], "3");
-	while((totalNumOfReadBytes < HW_FIFO_SIZE) && (numOfIterations < 1))
+	while((totalNofReadBytes < BYTE_QUEUE_SIZE) && (nofLoopIterations < 2))
 	{
-		/* check how many characters there are to read in the hardware FIFO */
-		fifoLevel = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_RX_FIFO_LVL);
-		if (fifoLevel == 0)
+		/* check how many characters there are to read in the hardware buffer */
+		nofBytesInHwBuf = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_RX_FIFO_LVL);
+		if (nofBytesInHwBuf == 0) /* hw buffer empty */
 		{
-			/* nothing left to read, leave this loop */
-			break;
+			break; /* nothing left to read, leave this loop */
 		}
-		else if (fifoLevel > HW_FIFO_SIZE)
+		else if (nofBytesInHwBuf > BYTE_QUEUE_SIZE) /* there is more data to read than there is space in the queue */
 		{
-			/* there is more data to read than there is space in the buffer - just read that much */
-			dataToRead = HW_FIFO_SIZE;
+			nofBytesInHwBuf = BYTE_QUEUE_SIZE;  /* just read as much as can possibly be stored in one read-cycle */
 		}
-		else
+		else /* the queue is possibly big enough to hold all read data */
 		{
-			/* read all the available data, there is enough room in the buffer */
-			dataToRead = fifoLevel;
+			nofReadBytesToProcess = nofBytesInHwBuf; /* read all the available data */
 		}
 
+		/* read byte data from hw buffer */
 		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* read and decode if Golay enabled */
 		{
 			/*
 			There's a tradeoff here: the number of data to be decoded needs to be a multiple of 6.
-			So we can either just read out as many as there is multiple of 6, risking that we delay some of the chars quite long.
+			So we can either just read out as many bytes as there is multiple of 6, risking that we delay some of the bytes quite long.
 			Or we can read out all chars, fill up with pseudo chars and destroy some of the codewords this way.
 			=> decided to read out only multiples of 6
 			*/
-			while ((dataToRead % 6) > 0)	dataToRead--; /* read out multiples of 6 */
+			if((nofReadBytesToProcess % 6) > 0) /* nof data that will be read is NOT a multiple of six */
+			{
+				if(xTaskGetTickCount() - timestampLastHwBufRead[uartNr] < MAX_GOLAY_DELAY_TICKS) /* the last read attempt was not too long ago? */
+				{
+					while((nofReadBytesToProcess % 6) > 0)			nofReadBytesToProcess--; /* read out multiples of 6 */
+				}
+				else {nofReadBytesToProcess=1;} /* Todo: dont do this here! only debug! dont delay bytes in hw buffer for longer than MAX_DECODING_READ_DELAY_TICKS, instead fill up with pseudo chars */
+				if(nofReadBytesToProcess <= 0)
+				{
+					break; /* leave for-loop, dont update timestampLastHwBufRead because nothing is read */
+				}
+			}
+			timestampLastHwBufRead[uartNr] = xTaskGetTickCount(); /* make sure to not delay last non-multiple of 6 too long */
 			/* read the data from the HW buffer */
-			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, encodedBuf, dataToRead);
-			golay_decode(dataToRead, encodedBuf, buffer);
-			dataToRead = dataToRead / 2; /* Golay doubled the data rate -> after decoding, only half is actual data */
+			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, encodedBuf, nofReadBytesToProcess);
+			golay_decode(nofReadBytesToProcess, &encodedBuf[1], &buffer[1]);
+			nofReadBytesToProcess = nofReadBytesToProcess / 2; /* Golay doubled the data rate -> after decoding, only half is actual data */
 		}
 		else /* golay not used on this UART */
 		{
 			/* read the data from the HW buffer */
-			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, buffer, dataToRead);
+			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, buffer, nofReadBytesToProcess);
 		}
 
 		/* make space in queue for all bytes that were read from hw buffer */
 		freeSpaceInQueue = BYTE_QUEUE_SIZE - uxQueueMessagesWaiting(queue);
-		if(freeSpaceInQueue < dataToRead) /* not enough space in queue to save all bytes from HW buffer */
+		if(freeSpaceInQueue < nofReadBytesToProcess) /* not enough space in queue to save all bytes from HW buffer */
 		{
+			char warnBuf[80];
 			/* queue is full -> delete enough old bytes to fit new ones in */
-			for(int i = 0; i < dataToRead - freeSpaceInQueue; i++)
+			for(int i = 0; i < nofReadBytesToProcess - freeSpaceInQueue; i++)
 			{
 				static uint8_t data;
 				if(xQueueReceive(queue, &data, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) != pdTRUE)
 				{
-					dataToRead = i;
+					nofReadBytesToProcess = i;
 					break; /* leave for-loop and stop emptying queue */
 				}
 			}
-			numberOfDroppedBytes[spiSlave][uartNr] += (dataToRead - freeSpaceInQueue);
+			numberOfDroppedBytes[spiSlave][uartNr] += (nofReadBytesToProcess - freeSpaceInQueue);
 			/* print out warning that bytes have been dropped */
-			if (spiSlave == MAX_14830_WIRELESS_SIDE)
-			{
-				char warnBuf[80];
-				XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on wireless side, UART number %u\r\n", (unsigned int) (dataToRead - freeSpaceInQueue), (unsigned int)uartNr);
-				LedOrange_On();
-				pushMsgToShellQueue(warnBuf);
-			}
-			else /* spiSlave == MAX_14830_DEVICE_SIDE */
-			{
-				char warnBuf[80];
-				XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on device side, UART number %u\r\n", (unsigned int) (dataToRead - freeSpaceInQueue), (unsigned int)uartNr);
-				LedOrange_On();
-				pushMsgToShellQueue(warnBuf);
-			}
+			XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on %s side, UART number %u\r\n", (unsigned int) (nofReadBytesToProcess - freeSpaceInQueue), spiSlave == MAX_14830_WIRELESS_SIDE ? "wireless":"device", (unsigned int)uartNr);
+			LedOrange_On();
+			pushMsgToShellQueue(warnBuf);
+
 		}
 
 		/* send the read data to the corresponding queue */
-		/* cnt starts at 1 because buffer[0] is left empty for commando, therefore index needs to start at 1 and count up to dataToRead+1 */
-		for (unsigned int cnt = 1; cnt < dataToRead+1; cnt++)
+		/* cnt starts at 1 because buffer[0] is left empty for commando, therefore index needs to start at 1 and count up to nofReadBytesToProcess+1 */
+		for (unsigned int cnt = 1; cnt < nofReadBytesToProcess+1; cnt++)
 		{
 			if (xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) != pdTRUE)
 			{
 				break;
 			}
 		}
-		totalNumOfReadBytes += dataToRead;
-		dataToRead = 0;
-		numOfIterations++;
+		totalNofReadBytes += nofReadBytesToProcess;
+		nofReadBytesToProcess = 0;
+		nofLoopIterations++;
 	}
 	//vTracePrint(userEvent[2], "4");
-	return totalNumOfReadBytes;
+	return totalNofReadBytes;
 }
 
 /*!
@@ -596,6 +599,7 @@ static void generateDebugData(xQueueHandle queue)
 */
 static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint16_t numOfBytesToWrite)
 {
+	static uint32_t lastEncodingTimestamp[NUMBER_OF_UARTS];
 	static uint32_t throughputPerWlConn[NUMBER_OF_UARTS];
 	static uint32_t lastUpdateThroughput[NUMBER_OF_UARTS];
 	static uint8_t buffer[HW_FIFO_SIZE+1];
@@ -609,15 +613,11 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	}
 
 	/* check how much space there is left in hardware buffer */
-	uint8_t spaceLeftInHwBuf = 0;
 	uint8_t spaceTakenInHwBuf = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_TX_FIFO_LVL);
+	uint8_t spaceLeftInHwBuf = HW_FIFO_SIZE - spaceTakenInHwBuf;
 	if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* golay enabled for this uart? */
 	{
-		spaceLeftInHwBuf = (HW_FIFO_SIZE / 2) - spaceTakenInHwBuf; /* golay doubles the data rate */
-	}
-	else
-	{
-		spaceLeftInHwBuf = HW_FIFO_SIZE - spaceTakenInHwBuf;
+		spaceLeftInHwBuf /= 2; /* golay doubles the data rate */
 	}
 
 	/* reset throughput counter for WL slave every second */
@@ -628,22 +628,27 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	}
 
 	/* check if there is enough space to write the number of bytes that should be written */
-	if (spaceLeftInHwBuf < numOfBytesToWrite)
-	{
-		/* There isn't enough space to write the desired amount of data - just write as much as possible */
-		numOfBytesToWrite = spaceLeftInHwBuf;
-	}
-	else if (numOfBytesToWrite > HW_FIFO_SIZE) /* too many bytes in queue? */
-	{
-		numOfBytesToWrite = HW_FIFO_SIZE; /* hw buffer empty, limit bytes that will be transmitted to hw buffer */
-	}
-	/* write those bytes.. */
+	numOfBytesToWrite = spaceLeftInHwBuf < numOfBytesToWrite ? spaceLeftInHwBuf : numOfBytesToWrite; /* There isn't enough space to write the desired amount of data */
+
+	/* write those bytes */
 	if (numOfBytesToWrite > 0)
 	{
-		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* limit bytes to multiple of 3 so fill characters dont have to be used */
+		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* golay encoding required? */
 		{
-			numOfBytesToWrite = numOfBytesToWrite - (numOfBytesToWrite % 3); /* to prevent fill character being used */
-			// ToDo: fill characters might still be used in case max throughput reached and for-loop left with break or queue pop unsuccessful!
+			uint16_t tmpNofBytesToWrite = numOfBytesToWrite;
+			if((numOfBytesToWrite % 3) != 0)/* golay needs multiples of 3 for encoding */
+			{
+				numOfBytesToWrite = numOfBytesToWrite - (numOfBytesToWrite % 3); /* limit bytes to multiple of 3 so fill characters dont have to be used */
+			}
+			if(numOfBytesToWrite <= 0) /* there are 0, 1 or 2 characters in queue -> not multiple of 3*/
+			{
+				if((xTaskGetTickCount() - lastEncodingTimestamp[uartNr] < MAX_GOLAY_DELAY_TICKS) || (tmpNofBytesToWrite <= 0)) /* no timeout, we waited less than MAX_GOLAY_DELAY_TICKS for an additional character to get a multiple of 3 */
+				{
+					return 0;
+				} /* else: numOfBytesToWrite == 1, 2 ---> restore the original numOfBytesToWrite*/
+				numOfBytesToWrite = tmpNofBytesToWrite;
+			}
+			lastEncodingTimestamp[uartNr] = xTaskGetTickCount(); /* numOfBytesToWrite will not be multiple of 3, but we waited long enough for new queue byte */
 		}
 		/* put together an array that can be written to the hardware buffer */
 		//vTracePrint(userEvent[3], "0");
@@ -670,12 +675,12 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr])
 		{
 			/* buffer needs to be multiple of 3, add fill chars if necessary */
-			while (((cnt) % 3) > 0)
+			while (((cnt-1) % 3) > 0) /* (cnt-1) because cnt starts at 1 and ends at numOfBytesToWrite+1 */
 			{
 				buffer[cnt++] = PACK_FILL;
 			}
-			golay_encode(cnt, &buffer[1], &encodedBuf[1]);
-			cnt = ((cnt-1) * 2) + 1;
+			golay_encode(cnt-1, &buffer[1], &encodedBuf[1]); /* (cnt-1) because cnt starts at 1 and ends at numOfBytesToWrite+1 */
+			cnt = ((cnt-1) * 2) + 1; /* golay doubles the data rate, cnt = (numberOfBytesToWrite + fill characters because %3 necessary)*2+1 */
 		}
 
 		/*
@@ -693,7 +698,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		}
 		else /* WL side */
 		{
-			if (config.UseCtsPerWirelessConn[(uint8_t)uartNr] > 0)
+			if (config.UseCtsPerWirelessConn[uartNr])
 			{
 				/* When hardware flow control is enabled, disable it temporary */
 				spiSingleWriteTransfer(spiSlave, uartNr, MAX_REG_FLOW_CTRL, 0x00);

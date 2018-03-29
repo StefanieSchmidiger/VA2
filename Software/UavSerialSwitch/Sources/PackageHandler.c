@@ -158,11 +158,11 @@ static bool sendPackageToWirelessQueue(tUartNr wlConn, tWirelessPackage* pPackag
 	}
 	static uint8_t startChar = PACK_START;
 
-	//taskENTER_CRITICAL();
-	if(pushToByteQueue(MAX_14830_WIRELESS_SIDE, wlConn, &startChar) == errQUEUE_FULL)
+	taskENTER_CRITICAL();
+	if(pushToByteQueue(MAX_14830_WIRELESS_SIDE, wlConn, &startChar) != pdTRUE)
 	{
 		numberOfDroppedPackages[wlConn]++;
-		//taskEXIT_CRITICAL();
+		taskEXIT_CRITICAL();
 		return false;
 	}
 	if(sendNonPackStartCharacter(wlConn, &pPackage->packType))
@@ -189,12 +189,12 @@ static bool sendPackageToWirelessQueue(tUartNr wlConn, tWirelessPackage* pPackag
 													if(sendNonPackStartCharacter(wlConn, &repChar))
 														if(sendNonPackStartCharacter(wlConn, &repChar))
 														{
-															//taskEXIT_CRITICAL();
+															taskEXIT_CRITICAL();
 															return true;
 														}
 												}
 										}
-	//taskEXIT_CRITICAL();
+	taskEXIT_CRITICAL();
 	return false;
 }
 
@@ -282,14 +282,14 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 					/* check if there is still something left in the buffer to use */
 					if ((dataCntToAddAfterReadPayload[wlConn] >= 2) && (dataCntr[wlConn] == 0))
 					{
-						/* in this case, the first char is already in the buffer => put it to the first place */
+						/* in this case, the first char is already in the buffer -> put it to the first place */
 						data[wlConn][0] = data[wlConn][1];
 						dataCntr[wlConn] = 1;
 						if (checkForPackStartReplacement(&data[wlConn][0], &dataCntr[wlConn], &patternReplaced[wlConn]))
 						{
 							dataCntr[wlConn] = 0;
 							numberOfInvalidPackages[wlConn]++;
-							XF1_xsprintf(infoBuf, "Info: Restart state machine, start of package detected\r\n");
+							XF1_xsprintf(infoBuf, "Info: Restart state machine in STATE_START 0, start of package detected\r\n");
 							pushMsgToShellQueue(infoBuf);
 						}
 					}
@@ -302,7 +302,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 					{
 						dataCntr[wlConn] = 0;
 						numberOfInvalidPackages[wlConn]++;
-						XF1_xsprintf(infoBuf, "Info: Restart state machine, start of package detected\r\n");
+						XF1_xsprintf(infoBuf, "Info: Restart state machine in STATE_START 1, start of package detected\r\n");
 						pushMsgToShellQueue(infoBuf);
 					}
 					break;
@@ -323,7 +323,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				/* found start of package, restart reading header */
 				dataCntr[wlConn] = 0;
 				numberOfInvalidPackages[wlConn]++;
-				XF1_xsprintf(infoBuf, "Info: Restart state machine, start of package detected\r\n");
+				XF1_xsprintf(infoBuf, "Info: Restart state machine in STATE_READ_HEADER 0, start of package detected\r\n");
 				pushMsgToShellQueue(infoBuf);
 			}
 			if (dataCntr[wlConn] >= (PACKAGE_HEADER_SIZE - 1 + 2)) /* -1: without PACK_START; +2 to read the first 2 bytes from the payload to check if the replacement pattern is there */
@@ -350,7 +350,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 					dataCntr[wlConn] = 0;
 					currentRecHandlerState[wlConn] = STATE_READ_HEADER;
 					numberOfInvalidPackages[wlConn]++;
-					XF1_xsprintf(infoBuf, "Info: Restart state machine, start of package detected\r\n");
+					XF1_xsprintf(infoBuf, "Info: Restart state machine in STATE_READ_HEADER 1, start of package detected\r\n");
 					pushMsgToShellQueue(infoBuf);
 					break;
 				}
@@ -413,7 +413,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				dataCntr[wlConn] = 0;
 				currentRecHandlerState[wlConn] = STATE_READ_HEADER;
 				numberOfInvalidPackages[wlConn]++;
-				XF1_xsprintf(infoBuf, "Info: Restart state machine, start of package detected\r\n");
+				XF1_xsprintf(infoBuf, "Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected\r\n");
 				pushMsgToShellQueue(infoBuf);
 				break;
 			}
@@ -521,7 +521,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 					/* received invalid payload */
 					numOfInvalidRecWirelessPack[wlConn]++;
 					numberOfInvalidPackages[wlConn]++;
-					XF1_xsprintf(infoBuf, "Info: Received %u invalid payload, reset state machine", (unsigned int) numOfInvalidRecWirelessPack[wlConn]);
+					XF1_xsprintf(infoBuf, "Info: Received %u invalid payload CRC, reset state machine", (unsigned int) numOfInvalidRecWirelessPack[wlConn]);
 					pushMsgToShellQueue(infoBuf);
 				}
 				/* reset state machine */

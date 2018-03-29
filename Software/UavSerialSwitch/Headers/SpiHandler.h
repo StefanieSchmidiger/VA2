@@ -28,12 +28,12 @@
 */
 #define SPI_HANDLER_QUEUE_DELAY				0
 
-
-/*! \def PACK_FILL
-*  \brief Filling character for golay encoding if end backage size is not a multiple of 3.
-*  Used when encoding a message.
+/*! \def MAX_DECODING_READ_DELAY_TICKS
+*  \brief The golay decoder can only decode when the input is a multiple of 6.
+*  This timeout specifies how long the decoder will wait for the 6 bytes to fill up before
+*  filling the missing bytes up with PACK_FILL and decoding anyway
 */
-#define PACK_FILL									((uint8_t)' ')
+#define MAX_GOLAY_DELAY_TICKS				5000
 
 
 

@@ -307,7 +307,7 @@ static bool processReceivedPackage(tUartNr wlConn)
 				}
 				break;
 			case ONLY_SEND_OUT_NEW_PACKAGES:
-				if(sysTimeLastPushedOutPack[package.devNum] <= package.sysTime) /* package is newer than the last one pushed out */
+				if(sysTimeLastPushedOutPack[package.devNum] < package.sysTime) /* package is newer than the last one pushed out */
 				{
 					pushPayloadOut(&package);
 					sysTimeLastPushedOutPack[package.devNum] = package.sysTime;
