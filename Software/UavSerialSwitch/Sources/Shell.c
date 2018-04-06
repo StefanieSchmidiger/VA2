@@ -121,14 +121,17 @@ void Shell_TaskInit(void)
 void pullMsgFromQueueAndPrint(void)
 {
   char* pMsg;
-  while(xQueueReceive(msgQueue, &pMsg, 0) == pdTRUE)
+  for(int i=uxQueueMessagesWaiting(msgQueue); i > 0; i--)
   {
-	  if(config.GenerateDebugOutput == DEBUG_OUTPUT_FULLLY_ENABLED)
+	  if(xQueueReceive(msgQueue, &pMsg, 0) == pdTRUE)
 	  {
-		  CLS1_SendStr(pMsg, CLS1_GetStdio()->stdOut);
+		  if(config.GenerateDebugOutput == DEBUG_OUTPUT_FULLLY_ENABLED)
+		  {
+			  CLS1_SendStr(pMsg, CLS1_GetStdio()->stdOut);
+		  }
+		  FRTOS_vPortFree(pMsg); /* free memory allocated when message was pushed into queue */
+		  pMsg = NULL;
 	  }
-	  FRTOS_vPortFree(pMsg); /* free memory allocated when message was pushed into queue */
-	  pMsg = NULL;
   }
 }
 

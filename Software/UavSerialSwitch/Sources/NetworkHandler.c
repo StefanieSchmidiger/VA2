@@ -847,7 +847,7 @@ BaseType_t popReadyToSendPackFromQueue(tUartNr uartNr, tWirelessPackage* pPackag
 */
 BaseType_t peekAtNextReadyToSendPack(tUartNr uartNr, tWirelessPackage *pPackage)
 {
-	if(uartNr < NUMBER_OF_UARTS)
+	if( (uartNr < NUMBER_OF_UARTS) && (uxQueueMessagesWaiting(queuePackagesToSend[uartNr]) > 0) )
 	{
 		return FRTOS_xQueuePeek(queuePackagesToSend[uartNr], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_NETW_HANDLER_MS) );
 	}

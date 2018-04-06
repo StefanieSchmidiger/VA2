@@ -179,19 +179,19 @@ static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
 	FRESULT res;
 
 	/* concat string for all packages in queue */
-	while(xQueuePeek(queue, &pack, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) == pdTRUE) /* is there a package to log? peek before pop because malloc might fail*/
+	for(int i=0; i<uxQueueMessagesWaiting(queue); i++)
 	{
-		if(pack.payloadSize <= 0)
-		{
-			return false;
-		}
+		/* allocate string memory for package to string conversion */
+		if(xQueuePeek( queue, &pack, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) != pdTRUE ) { return false; }/* is there a package to log? peek before pop because malloc might fail and we need to know malloc size beforehand*/
+		if(pack.payloadSize <= 0) { return false; }/* invalid package, results in faulty malloc call */
 		char* singlePackLog = (char*) FRTOS_pvPortMalloc(pack.payloadSize*sizeof(char) + 100);
-		if(singlePackLog == NULL)
-		{
-			return false;
-		}
+		if(singlePackLog == NULL) { return false; } /* malloc failed */
+
+		/* convert package to string */
 		singlePackLog[0] = 0; /* empty string */
 		packageToLogString(&pack, singlePackLog, pack.payloadSize*sizeof(char) + 100); /* generate string for this package */
+
+		/* clean up logging queue */
 		if(xQueueReceive(queue, &pack, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) == pdTRUE) /* pop package from queue */
 		{
 			writeToFile(filepointer, filename, singlePackLog); /* don't do sd card sync in every interval, very costly spi operation */

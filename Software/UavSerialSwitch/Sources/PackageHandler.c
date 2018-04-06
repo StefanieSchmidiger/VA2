@@ -60,7 +60,7 @@ void packageHandler_TaskEntry(void* p)
 		for(int wlConn = 0; wlConn < NUMBER_OF_UARTS; wlConn++)
 		{
 			/* send packages byte wise to spi queue as long as there is enough space available for a full package */
-			while(true)
+			for(int i=numberOfPackagesReadyToSend(wlConn); i > 0; i--)
 			{
 				/* check how much space is needed for next data package */
 				if(peekAtNextReadyToSendPack(wlConn, &package) != pdTRUE)
@@ -89,6 +89,9 @@ void packageHandler_TaskEntry(void* p)
 				}
 				else /* not enough space available for next package */
 				{
+					char infoBuf[50];
+					UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Pushing pack to wireless not possible, too little space");
+					pushMsgToShellQueue(infoBuf);
 					break; /* leave inner while-loop */
 				}
 			}
@@ -646,7 +649,7 @@ BaseType_t popReceivedPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage)
 */
 BaseType_t peekAtReceivedPackQueue(tUartNr uartNr, tWirelessPackage *pPackage)
 {
-	if(uartNr < NUMBER_OF_UARTS)
+	if( (uartNr < NUMBER_OF_UARTS) && (uxQueueMessagesWaiting(ReceivedPackages[uartNr]) > 0) )
 	{
 		return FRTOS_xQueuePeek(ReceivedPackages[uartNr], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) );
 	}
