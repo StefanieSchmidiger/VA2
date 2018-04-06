@@ -68,27 +68,27 @@ void throughputPrintout_TaskEntry(void* p)
 		res = XF1_xsprintf(buf, "----------------------------------------------------------- \r\n");
 		res = pushMsgToShellQueue(buf);
 		/* print throughput information */
-		res = XF1_xsprintf(buf, "Wireless: Sent packages [packages/s]: %u,%u,%u,%u; Received packages: [packages/s] %u,%u,%u,%u \r\n",
+		res = XF1_xsprintf(buf, "Wireless: Sent packages [packages/s]: %lu,%lu,%lu,%lu; Received packages: [packages/s] %lu,%lu,%lu,%lu \r\n",
 				averagePacksSent[0], averagePacksSent[1], averagePacksSent[2], averagePacksSent[3],
 				averagePacksReceived[0], averagePacksReceived[1], averagePacksReceived[2], averagePacksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Average payload sent [bytes/pack]: %u,%u,%u,%u; Average payload received: [bytes/pack] %u,%u,%u,%u \r\n",
+		res = XF1_xsprintf(buf, "Wireless: Average payload sent [bytes/pack]: %lu,%lu,%lu,%lu; Average payload received: [bytes/pack] %lu,%lu,%lu,%lu \r\n",
 				averagePayloadSent[0], averagePayloadSent[1], averagePayloadSent[2], averagePayloadSent[3],
 				averagePayloadReceived[0], averagePayloadReceived[1], averagePayloadReceived[2], averagePayloadReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Sent acknowledges [acks/s]: %u,%u,%u,%u; Received acknowledges: [acks/s] %u,%u,%u,%u \r\n",
+		res = XF1_xsprintf(buf, "Wireless: Sent acknowledges [acks/s]: %lu,%lu,%lu,%lu; Received acknowledges: [acks/s] %lu,%lu,%lu,%lu \r\n",
 				averageAcksSent[0], averageAcksSent[1], averageAcksSent[2], averageAcksSent[3],
 				averageAcksReceived[0], averageAcksReceived[1], averageAcksReceived[2], averageAcksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from device side[bytes/s]: %u,%u,%u,%u; Average bytes sent to device side: [bytes/s] %u,%u,%u,%u \r\n",
+		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from device side[bytes/s]: %lu,%lu,%lu,%lu; Average bytes sent to device side: [bytes/s] %lu,%lu,%lu,%lu \r\n",
 				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][0], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][1], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][2], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][3],
 				averageUartBytesSent[MAX_14830_DEVICE_SIDE][0], averageUartBytesSent[MAX_14830_DEVICE_SIDE][1], averageUartBytesSent[MAX_14830_DEVICE_SIDE][2], averageUartBytesSent[MAX_14830_DEVICE_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from wireless side[bytes/s]: %u,%u,%u,%u; Average bytes sent to wireless side: [bytes/s] %u,%u,%u,%u \r\n",
+		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from wireless side[bytes/s]: %lu,%lu,%lu,%lu; Average bytes sent to wireless side: [bytes/s] %lu,%lu,%lu,%lu \r\n",
 				averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][0], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][1], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][2], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][3],
 				averageUartBytesSent[MAX_14830_WIRELESS_SIDE][0], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][1], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][2], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
@@ -133,10 +133,10 @@ void throughputPrintout_TaskEntry(void* p)
 			lastNumberOfAcksSent[cnt] = numberOfAcksSent[cnt];
 			lastNumberOfPayloadBytesExtracted[cnt] = numberOfPayloadBytesExtracted[cnt];
 			lastNumberOfPayloadBytesSent[cnt] = numberOfPayloadBytesSent[cnt];
-			lastNumberOfUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt] = numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt];
-			lastNumberOfUartBytesSent[MAX_14830_DEVICE_SIDE][cnt] = numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt];
-			lastNumberOfUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt] = numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt];
-			lastNumberOfUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt] = numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt];
+			lastNumberOfUartBytesReceived[MAX_14830_DEVICE_SIDE][cnt] = numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt];
+			lastNumberOfUartBytesSent[MAX_14830_DEVICE_SIDE][cnt] = numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][cnt];
+			lastNumberOfUartBytesReceived[MAX_14830_WIRELESS_SIDE][cnt] = numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt];
+			lastNumberOfUartBytesSent[MAX_14830_WIRELESS_SIDE][cnt] = numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][cnt];
 		}
 	}
 }
