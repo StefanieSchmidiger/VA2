@@ -1,0 +1,28 @@
+% 0_Modems
+%
+\section{To Do List for next revision}%
+\subsection{Queue Usage}
+Queue operations are costly when it comes to CPU usage. While it makes sense to use queues as task intercommunication for packages, using queues for bytes only is a bit of an overkill. Popping one byte from a queue takes about 10 us. Here the source code for popping bytes from a queue:
+\begin{lstlisting}
+for (cnt = 1; cnt < numOfBytesToWrite+1; cnt++)
+{
+    /* try to pop data from queue */
+    if (xQueueReceive(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) == pdFAIL)
+    {
+        break; /* queue is not empty or queue pop failed -> leave for-loop without incrementing cnt */
+    }
+}
+\end{lstlisting}
+\spic{ProcessingTimePop1Byte_SpiHandler_180321.JPG}{xQueueReceive for 1 byte takes about 10 us}{\label{fig:picxQueueReceive1Byte}}%
+Percepio Trace shows the time between two xQueueReceive opeartions, see \autoref{fig:picxQueueReceive1Byte}. The runningtime is shown on the right, format mm:ss:milliseconds:microseconds\\
+This application uses the FreeRTOS V9.0.0. The newer version, FreeRTOS V10.0.0, introduces the concept of StreamBuffers and MessageBuffers. See the change history in \cite{ChangeLogFreeRtos}. The description of Stream Buffers and Message Buffers is the following:\\
+"Stream Buffers are an inter process communication (IPC) primitive optimized for use in scenarios where there is only one reader and only one writer, such as sending a stream of data from an interrupt service routine (ISR) to an RTOS task, or from one processor core to another.\\
+Message Buffers build on top of Stream Buffers. Whereas as Stream Buffers send a continuous stream of bytes, Message Buffers send discrete messages that can be of varying length. " \cite{DescriptionFreeRtosBuffers}
+Because the three main tasks (SPI Handler, Package Handler, Network Handler) each have queue interfaces that have only one reader and one writer to each queue, these queues could be replaced by the new FreeRTOS buffers. \\
+As for now, the application still uses the FreeRTOS V9.0.0. There is a possible bug in this FreeRTOS version as a xQueueReceive does not always take 10 us but randomly takes up to several milliseconds, even though the queue operation timeout (variable SPI\_HANDLER\_QUEUE\_DELAY in the code sample above) is set to zero. See the timestamp between the last xQueueReceive operation and the OS Ticks operation in \autoref{fig:picxQueueReceiveDelay}. The xQueueReceive takes almost 4ms which means that the FreeRTOS is in a faulty state. Because xQueueReceive defines a critical section, all interrupts are disabled during that time and the OS Ticks event, which should be called every millisecond, is delayed. This might result in faulty behaviour of any task that uses the OS Ticks variable to keep track of time. 
+\spic{EventLog_4msQueueReceiveHighlighted.PNG}{xQueueReceive delay}{\label{fig:picxQueueReceiveDelay}}%
+%
+%
+%
+\section{Trace Analyzer 4}
+A session can only be started if the percepio trace component (processor expert) is set to Recorder Mode = Streaming, Streaming Trace Enable Method = Trace Start Await Host.
