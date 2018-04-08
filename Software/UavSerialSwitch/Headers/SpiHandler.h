@@ -20,7 +20,7 @@
 /*! \def QUEUE_NUM_OF_CHARS_WL_TX_QUEUE
 *  \brief Number of chars that should have find space within a single byte queue.
 */
-#define BYTE_QUEUE_SIZE		2048 /* 16 queues of this length will be created */
+#define BYTE_QUEUE_SIZE		3000 /* 16 queues of this length will be created */
 
 
 /*! \def SPI_HANDLER_QUEUE_DELAY

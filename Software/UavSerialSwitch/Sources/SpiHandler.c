@@ -435,27 +435,12 @@ void configureHwBufBaudrate(tSpiSlaves spiSlave, tUartNr uartNr, unsigned int ba
 		spiSingleWriteTransfer(spiSlave, uartNr, MAX_REG_DIVMSB, 0x00);
 		break;
 	default:
-		if (spiSlave == MAX_14830_WIRELESS_SIDE)
-		{
-			XF1_xsprintf(infoBuf, "Warning: Unsupported baud rate on wireless side at UART number %u\r\n", (unsigned int)uartNr);
-		}
-		else
-		{
-			XF1_xsprintf(infoBuf, "Warning: Unsupported baud rate on device side at UART number %u\r\n", (unsigned int)uartNr);
-		}
+		XF1_xsprintf(infoBuf, "Warning: Unsupported baud rate on %s side at UART number %u\r\n", spiSlave == MAX_14830_WIRELESS_SIDE ? "wireless" : "device", (unsigned int)uartNr);
 		pushMsgToShellQueue(infoBuf);
 		LedOrange_On();
 		return;
 	}
-	if (spiSlave == MAX_14830_WIRELESS_SIDE)
-	{
-		XF1_xsprintf(infoBuf, "Info: Set baud rate for UART %u on wireless side: %u baud\r\n", (unsigned int)uartNr, baudRateToSet);
-
-	}
-	else
-	{
-		XF1_xsprintf(infoBuf, "Info: Set baud rate for UART %u on device side: %u baud\r\n", (unsigned int)uartNr, baudRateToSet);
-	}
+	XF1_xsprintf(infoBuf, "Info: Set baud rate for UART %u on %s side: %u baud\r\n", (unsigned int)uartNr, spiSlave == MAX_14830_WIRELESS_SIDE ? "wireless" : "device", baudRateToSet);
 	pushMsgToShellQueue(infoBuf);
 }
 
@@ -482,7 +467,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 	int freeSpaceInQueue = 0;
 
 	//vTracePrint(userEvent[2], "3");
-	while((totalNofReadBytes < BYTE_QUEUE_SIZE) && (nofLoopIterations < 2))
+	while((totalNofReadBytes < BYTE_QUEUE_SIZE) && (nofLoopIterations < 3))
 	{
 		/* check how many characters there are to read in the hardware buffer */
 		nofBytesInHwBuf = spiSingleReadTransfer(spiSlave, uartNr, MAX_REG_RX_FIFO_LVL);
@@ -492,7 +477,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		}
 		else if (nofBytesInHwBuf > BYTE_QUEUE_SIZE) /* there is more data to read than there is space in the queue */
 		{
-			nofBytesInHwBuf = BYTE_QUEUE_SIZE;  /* just read as much as can possibly be stored in one read-cycle */
+			nofReadBytesToProcess = BYTE_QUEUE_SIZE;  /* just read as much as can possibly be stored in one read-cycle */
 		}
 		else /* the queue is possibly big enough to hold all read data */
 		{
@@ -528,7 +513,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		}
 		else /* golay not used on this UART */
 		{
-			/* read the data from the HW buffer */
+			/* read data from HW buffer */
 			spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, buffer, nofReadBytesToProcess);
 		}
 
@@ -561,6 +546,9 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 		{
 			if (xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) != pdTRUE)
 			{
+				char infoBuf[100];
+				XF1_xsprintf(infoBuf, "Warning: Not all read bytes could be sent to queue, losing %u bytes on wl %u\r\n", (nofReadBytesToProcess-cnt), uartNr);
+				pushMsgToShellQueue(infoBuf);
 				break;
 			}
 		}
@@ -658,6 +646,8 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			/* check if max throughput reached */
 			if((spiSlave == MAX_14830_WIRELESS_SIDE) && (config.MaxThroughputWirelessConn[uartNr] <= throughputPerWlConn[uartNr]))
 			{
+				char infoBuf[50];
+				XF1_xsprintf(infoBuf, "Throughput maximum reached for WL conn %u -> hold off from sending more bytes\r\n", (unsigned int)uartNr);
 				break; /* max throughput reached for this second - leave for-loop without popping more data from queue */
 			}
 			//vTracePrint(userEvent[4], "0");

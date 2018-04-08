@@ -60,7 +60,7 @@ void packageHandler_TaskEntry(void* p)
 		for(int wlConn = 0; wlConn < NUMBER_OF_UARTS; wlConn++)
 		{
 			/* send packages byte wise to spi queue as long as there is enough space available for a full package */
-			for(int i=numberOfPackagesReadyToSend(wlConn); i > 0; i--)
+			while(numberOfPackagesReadyToSend(wlConn) > 0)
 			{
 				/* check how much space is needed for next data package */
 				if(peekAtNextReadyToSendPack(wlConn, &package) != pdTRUE)
@@ -89,8 +89,8 @@ void packageHandler_TaskEntry(void* p)
 				}
 				else /* not enough space available for next package */
 				{
-					char infoBuf[50];
-					UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Pushing pack to wireless not possible, too little space");
+					char infoBuf[70];
+					XF1_xsprintf(infoBuf, "Pushing pack to wireless %u not possible, too little space\r\n", wlConn);
 					pushMsgToShellQueue(infoBuf);
 					break; /* leave inner while-loop */
 				}
@@ -278,8 +278,11 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 			while (dataCntr[wlConn] > 0)
 			{
 				dataCntr[wlConn]--;
+				int lostBytes = 0;
 				if (data[wlConn][dataCntr[wlConn]] == PACK_START)
 				{
+					XF1_xsprintf(infoBuf, "Lost Bytes = %u \r\n", lostBytes);
+					pushMsgToShellQueue(infoBuf);
 					currentRecHandlerState[wlConn] = STATE_READ_HEADER;
 					patternReplaced[wlConn] = 0;
 					/* check if there is still something left in the buffer to use */
@@ -310,6 +313,8 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 					}
 					break;
 				}
+				else /* still waiting for start */
+					lostBytes++;
 			}
 			if (chr == PACK_START)
 			{
@@ -413,10 +418,20 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 			if (checkForPackStartReplacement(&data[wlConn][0], &dataCntr[wlConn], &patternReplaced[wlConn]) == true)
 			{
 				/* start of package detected, restart reading header */
+				XF1_xsprintf(infoBuf, "Last 100 bytes = ");
+				for(int i=100; i>0;i--)
+				{
+					UTIL1_strcatNum8Hex(infoBuf, sizeof(infoBuf), data[wlConn][dataCntr[wlConn]-i]);
+				}
+				UTIL1_strcat(infoBuf, sizeof(infoBuf), "\r\n");
+				pushMsgToShellQueue(infoBuf);
 				dataCntr[wlConn] = 0;
 				currentRecHandlerState[wlConn] = STATE_READ_HEADER;
 				numberOfInvalidPackages[wlConn]++;
+
 				XF1_xsprintf(infoBuf, "Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected\r\n");
+				pushMsgToShellQueue(infoBuf);
+				XF1_xsprintf(infoBuf, "PayloadSize = %u, SysTime = %lu, SessionNr = %u \r\n", currentWirelessPackage[wlConn].payloadSize, currentWirelessPackage[wlConn].sysTime, currentWirelessPackage[wlConn].sessionNr);
 				pushMsgToShellQueue(infoBuf);
 				break;
 			}
