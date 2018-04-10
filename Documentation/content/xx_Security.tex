@@ -1,0 +1,77 @@
+% 0_Security
+%
+\cite{Security_BuEdu} Security in IT is a challenging subject nowadays and needs to be split into three components:
+\begin{itemize}
+    \item Authentication: A means for one party to verify another's identity, e.g. by entering a password
+    \item Authorization: Process by which one party verifies that the other party has access permission
+    \item Encryption: Process of transforming data so that it is unreadable by anyone who does not have a decryption key
+\end{itemize}
+%
+%
+%
+\section{Authentication}
+%
+%
+%
+\section{Authorization}
+%
+%
+%
+\section{Encryption}
+To provide security against data manipulation and eavesdropping, data encryption needs to be implemented on wireless side.\\
+There are three parts to data encryption:
+\begin{itemize}
+    \item Integrity: The same data is received as was transmitted, it cannot be modified without detection.
+    \item Confidentiality: Data can only be read by the intended receiver.
+    \item Availability: All systems are functioning correctly and information is available when it is needed.
+\end{itemize}
+There are two ways to encrypt data: symmetrically and asymmetrically.
+%
+\subsubsection{Integrity}
+Integrity of data can be assured with a hash function. A hash is a string or number generated from a string of text. The resulting string or number is a fixed length, and will vary widely with small variations in input.\\
+The only way to recreate the input data from an ideal cryptographic hash function's output is to attempt a brute-force search of possible inputs to see if they produce a match, or use a rainbow table of matched hashes. Therefore,hashing is a one-way function that scrambles plain text to produce a unique message digest. \\
+A CRC is an example of a simple hash function and is used to check if the message received matches the message transmitted.\\
+Integrity only does not provide security against tempering with the message itself. If someone knows the hash algorithm used, a message can be modified and its hash value recalculated without the receiver knowing about it.
+%
+\subsubsection{Confidentiality}
+Encryption ensures that only authorized individuals can decipher data. Encryption turns data into a series of unreadable characters, that are not of a fixed length.\\
+There are two primary types of encryption: symmetric key encryption and public key encryption.\\
+In symmetric key encryption, the key to both encrypt and decrypt is exactly the same. There are numerous standards for symmetric encryption, the popular being AES with a 256 bit key.\\
+Public key encryption has two different keys, one used to encrypt data (the public key) and one used to decrypt it (the private key). The public key is made available for anyone to use to encrypt messages, however only the intended recipient has access to the private key, and therefore the ability to decrypt messages.\\
+Symmetric encryption provides improved performance, and is simpler to use, however the key needs to be known by both the systems, the one encrypting and the one decrypting data.\\
+%source: https://www.securityinnovationeurope.com/blog/page/whats-the-difference-between-hashing-and-encrypting
+\subsubsection{Availability}
+Availability of information refers to ensuring that authorized parties are able to access the information when needed.\\
+Information only has value if the right people can access it at the right times. 
+%
+%
+%
+%
+%
+\section{Encryption on Teensy 3.5}%
+The Teensy 3.5 uses the micro controller MK64FX512VMD12. In the MK64FX512xxD12 data sheet (see \cite{NXP_Datasheet}, p.1), it sais that this family supports hardware encryption such as DES, 3DES, AES, MD5, SHA-1, SHA-256. The supported encryption standards are elaborated in more detail in the following subsections.
+%
+%
+\subsection{DES}
+The Data Encryption Standard is a symmetric-key encryption algorithm developed in the early 1970s. It is now considered an insecure encryption standard and can be deciphered quickly, mostly due to its small key size (only 56 bit). \cite{DES_Wikipedia} While the small key size was generally sufficient when the algorithm was designed, the increasing computational power made brute-force attacks feasible. \cite{3DES_Wikipedia}
+%
+%
+\subsection{3DES}
+The Triple Data Encryption Standard is a symmetric-key encryption algorithm which applies the DES cipher algorithm three times to each data block. Thereby, all three encryption keys can be identical or independent Theoretically, the resulting key length can be up to 3 x 56 bits = 168 bits. No matter if the keys are independent or identical, the resulting key has a shorter length due to vulnerability to different attacks. \cite{3DES_Wikipedia}
+%
+%
+\subsection{AES}
+The Advanced Encryption Standard is, just like the DES, a symmetric-key algorithm and has been established in 2001. It superseded the DES and is now one of the most widely used encryption protocols. Its key sizes can either be 128 bits, 192 bits or 256 bits. \cite{AES_Wikipedia}
+%
+%
+\subsection{MD5}
+The MD5 algorithm is a widely used hash function producing a 128-bit hash value. Although MD5 was initially designed to be used as a cryptographic hash function, it has been found to suffer from extensive vulnerabilities. It can still be used as a checksum to verify data integrity, but only against unintentional corruption.\\
+Like most hash functions, MD5 is neither encryption nor encoding. It can be cracked by brute-force attack and suffers from extensive vulnerabilities. \cite{MD5_Wikipedia}
+%
+%
+\subsection{SHA-1}
+The Secure Hash Algorithm 1 is a cryptographic hash function which takes an input and produces a 160-bit (20-byte) hash value as an output. Since 2005 SHA-1 has not been considered secure anymore and it is recommended to use SHA-2 or SHA-3 instead. \cite{SHA1_Wikipedia}
+%
+%
+\subsection{SHA-256}
+The Secure Hash Algorithm 256 is, just like the SHA-1, a cryptographic hash function. It generates a fixed size 256-bit (32-byte) hash output.
