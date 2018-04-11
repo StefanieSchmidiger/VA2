@@ -1,0 +1,787 @@
+                                    set     CASR,0
+                                    set     CAA,1
+                                    set     CA0,2
+                                    set     CA1,3
+                                    set     CA2,4
+                                    set     CA3,5
+                                    set     CA4,6
+                                    set     CA5,7
+                                    set     CA6,8
+                                    set     CA7,9
+                                    set     CA8,10
+                                    set     CNOP,0x000
+                                    set     LDR,0x010
+                                    set     STR,0x020
+                                    set     ADR,0x030
+                                    set     RADR,0x040
+                                    set     ADRA,0x050
+                                    set     XOR,0x060
+                                    set     ROTL,0x070
+                                    set     MVRA,0x080
+                                    set     MVAR,0x090
+                                    set     AESS,0x0a0
+                                    set     AESIS,0x0b0
+                                    set     AESC,0x0c0
+                                    set     AESIC,0x0d0
+                                    set     AESR,0x0e0
+                                    set     AESIR,0x0f0
+                                    set     DESR,0x100
+                                    set     DESK,0x110
+                                    set     HASH,0x120
+                                    set     SHS,0x130
+                                    set     MDS,0x140
+                                    set     SHS2,0x150
+                                    set     ILL,0x1f0
+                                    set     IP,8
+                                    set     FP,4
+                                    set     DC,1
+                                    set     CP,2
+                                    set     KSL1,0
+                                    set     KSL2,1
+                                    set     KSR1,2
+                                    set     KSR2,3
+                                    set     HFF,0
+                                    set     HFG,1
+                                    set     HFH,2
+                                    set     HFI,3
+                                    set     HFP,2
+                                    set     HFC,4
+                                    set     HFM,5
+                                    set     HF2C,6
+                                    set     HF2M,7
+                                    set     HF2S,8
+                                    set     HF2T,9
+                                    set     HF2U,10
+                                    set     HF2V,11
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # NOTE: Code alignment for the CAU library functions in this file is carefully
+                                # constructed to maximize processor performance. The existing alignment should
+                                # be maintained for best results!!
+                                #
+                                # The individual code segments for the functions are presented first, followed
+                                # by a common read-only data area containing the required data constants.
+                                #
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # AES: Performs an AES key expansion
+                                #   arguments
+                                #           *key        pointer to input key (128, 192, 256 bits in length)
+                                #           key_size    key_size in bits (128, 192, 256)
+                                #           *key_sch    pointer to key schedule output (44, 52, 60 longwords)
+                                #
+                                #   calling convention
+                                #   void    cau_aes_set_key (const unsigned char *key,
+                                #                            const int            key_size,
+                                #                            unsigned char       *key_sch)
+                                
+                                    global  _cau_aes_set_key
+                                    global  cau_aes_set_key
+                                    align   4
+                                _cau_aes_set_key:
+                                cau_aes_set_key:
+00000: 4e56 ffe4               	    link    %a6,&-28                    # temp stack space for 7 regs
+00004: 48d7 001c               	    movm.l  &0x001c,(%sp)               # save d2/d3/d4
+00008: 206e 0008               	    mov.l   (8,%a6),%a0                 # get 1st argument: *key
+0000c: 226e 0010               	    mov.l   (16,%a6),%a1                # get 3rd argument: *key_sch
+00010: 4cd0 000f               	    movm.l  (%a0),&0x000f               # load key[0-3]
+00014: 48d1 000f               	    movm.l  &0x000f,(%a1)               # copy key[0-3] to key_sch[0-3]
+00018: 282e 000c               	    mov.l   (12,%a6),%d4                # load key_size
+0001c: 0c84 0000 0080          	    cmpi.l  %d4,&128                    # check key_size
+00022: 6700 03a8               	    beq.w   aes_set_key128_L%0          # branch if key_size = 128 bits
+00026: 0c84 0000 00c0          	    cmpi.l  %d4,&192                    # check key_size
+0002c: 6700 0202               	    beq.w   aes_set_key192_L%0          # branch if key_size = 192 bits
+                                
+                                # key_size = 256 bits
+                                    align   4
+                                aes_set_key256_L%0:
+00030: 48ef 04e0 000c          	    movm.l  &0x04e0,(12,%sp)            # save d5/d6/d7/a2
+00036: 4ce8 00f0 0010          	    movm.l  (16,%a0),&0x00f0            # load key[4-7]
+0003c: 48e9 00f0 0010          	    movm.l  &0x00f0,(16,%a1)            # copy key[4-7] to key_sch[4-7]
+00042: 347c 0008               	    mov.w   &8,%a2                      # rotate count
+00046: 43e9 0020               	    lea     (32,%a1),%a1                # adjust pointer to key_sch[8]
+0004a: 41fa 0664               	    lea     (rcon.w,%pc),%a0            # pointer to rcon[0]
+                                
+                                    align   4
+00050: fc87 0011               	    cp0ld.l %d7,&LDR+CAA                # load CAU accumulator with key_sch[7]
+00054: fc8a 0071               	    cp0ld.l %a2,&ROTL+CAA               # rotate left by 8
+00058: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+0005c: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[0]
+00060: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[0]
+00064: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[8]
+00068: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[8]
+0006a: b181                    	    eor.l   %d0,%d1                     # generate key_sch[9]
+0006c: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[9]
+0006e: b382                    	    eor.l   %d1,%d2                     # generate key_sch[10]
+00070: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[10]
+00072: b583                    	    eor.l   %d2,%d3                     # generate key_sch[11]
+00074: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[11]
+                                
+                                    align   4
+00078: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[11]
+0007c: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00080: fc84 0061               	    cp0ld.l %d4,&XOR+CAA                # XOR key_sch[4]
+00084: fd84 0021               	    cp0st.l %d4,&STR+CAA                # get key_sch[12]
+00088: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[12]
+0008a: b985                    	    eor.l   %d4,%d5                     # generate key_sch[13]
+0008c: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[13]
+0008e: bb86                    	    eor.l   %d5,%d6                     # generate key_sch[14]
+00090: 22c6                    	    mov.l   %d6,(%a1)+                  # store key_sch[14]
+00092: bd87                    	    eor.l   %d6,%d7                     # generate key_sch[15]
+00094: 22c7                    	    mov.l   %d7,(%a1)+                  # store key_sch[15]
+                                
+                                    align   4
+00098: fc87 0011               	    cp0ld.l %d7,&LDR+CAA                # load CAU accumulator with key_sch[15]
+0009c: fc8a 0071               	    cp0ld.l %a2,&ROTL+CAA               # rotate left by 8
+000a0: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+000a4: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[1]
+000a8: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[8]
+000ac: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[16]
+000b0: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[16]
+000b2: b181                    	    eor.l   %d0,%d1                     # generate key_sch[17]
+000b4: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[17]
+000b6: b382                    	    eor.l   %d1,%d2                     # generate key_sch[18]
+000b8: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[18]
+000ba: b583                    	    eor.l   %d2,%d3                     # generate key_sch[19]
+000bc: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[19]
+                                
+                                    align   4
+000c0: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[19]
+000c4: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+000c8: fc84 0061               	    cp0ld.l %d4,&XOR+CAA                # XOR key_sch[12]
+000cc: fd84 0021               	    cp0st.l %d4,&STR+CAA                # get key_sch[20]
+000d0: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[20]
+000d2: b985                    	    eor.l   %d4,%d5                     # generate key_sch[21]
+000d4: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[21]
+000d6: bb86                    	    eor.l   %d5,%d6                     # generate key_sch[22]
+000d8: 22c6                    	    mov.l   %d6,(%a1)+                  # store key_sch[22]
+000da: bd87                    	    eor.l   %d6,%d7                     # generate key_sch[23]
+000dc: 22c7                    	    mov.l   %d7,(%a1)+                  # store key_sch[23]
+                                
+                                    align   4
+000e0: fc87 0011               	    cp0ld.l %d7,&LDR+CAA                # load CAU accumulator with key_sch[23]
+000e4: fc8a 0071               	    cp0ld.l %a2,&ROTL+CAA               # rotate left by 8
+000e8: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+000ec: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[2]
+000f0: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[16]
+000f4: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[24]
+000f8: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[24]
+000fa: b181                    	    eor.l   %d0,%d1                     # generate key_sch[25]
+000fc: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[25]
+000fe: b382                    	    eor.l   %d1,%d2                     # generate key_sch[26]
+00100: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[26]
+00102: b583                    	    eor.l   %d2,%d3                     # generate key_sch[27]
+00104: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[27]
+                                    
+                                    align   4
+00108: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[27]
+0010c: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00110: fc84 0061               	    cp0ld.l %d4,&XOR+CAA                # XOR key_sch[20]
+00114: fd84 0021               	    cp0st.l %d4,&STR+CAA                # get key_sch[28]
+00118: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[28]
+0011a: b985                    	    eor.l   %d4,%d5                     # generate key_sch[29]
+0011c: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[29]
+0011e: bb86                    	    eor.l   %d5,%d6                     # generate key_sch[30]
+00120: 22c6                    	    mov.l   %d6,(%a1)+                  # store key_sch[30]
+00122: bd87                    	    eor.l   %d6,%d7                     # generate key_sch[31]
+00124: 22c7                    	    mov.l   %d7,(%a1)+                  # store key_sch[31]
+                                
+                                    align   4
+00128: fc87 0011               	    cp0ld.l %d7,&LDR+CAA                # load CAU accumulator with key_sch[31]
+0012c: fc8a 0071               	    cp0ld.l %a2,&ROTL+CAA               # rotate left by 8
+00130: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00134: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[3]
+00138: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[24]
+0013c: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[32]
+00140: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[32]
+00142: b181                    	    eor.l   %d0,%d1                     # generate key_sch[33]
+00144: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[33]
+00146: b382                    	    eor.l   %d1,%d2                     # generate key_sch[34]
+00148: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[34]
+0014a: b583                    	    eor.l   %d2,%d3                     # generate key_sch[35]
+0014c: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[35]
+                                    
+                                    align   4
+00150: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[35]
+00154: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00158: fc84 0061               	    cp0ld.l %d4,&XOR+CAA                # XOR key_sch[28]
+0015c: fd84 0021               	    cp0st.l %d4,&STR+CAA                # get key_sch[36]
+00160: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[36]
+00162: b985                    	    eor.l   %d4,%d5                     # generate key_sch[37]
+00164: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[37]
+00166: bb86                    	    eor.l   %d5,%d6                     # generate key_sch[38]
+00168: 22c6                    	    mov.l   %d6,(%a1)+                  # store key_sch[38]
+0016a: bd87                    	    eor.l   %d6,%d7                     # generate key_sch[39]
+0016c: 22c7                    	    mov.l   %d7,(%a1)+                  # store key_sch[39]
+                                
+                                    align   4
+00170: fc87 0011               	    cp0ld.l %d7,&LDR+CAA                # load CAU accumulator with key_sch[39]
+00174: fc8a 0071               	    cp0ld.l %a2,&ROTL+CAA               # rotate left by 8
+00178: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+0017c: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[4]
+00180: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[32]
+00184: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[40]
+00188: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[40]
+0018a: b181                    	    eor.l   %d0,%d1                     # generate key_sch[41]
+0018c: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[41]
+0018e: b382                    	    eor.l   %d1,%d2                     # generate key_sch[42]
+00190: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[42]
+00192: b583                    	    eor.l   %d2,%d3                     # generate key_sch[43]
+00194: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[43]
+                                
+                                    align   4
+00198: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[43]
+0019c: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+001a0: fc84 0061               	    cp0ld.l %d4,&XOR+CAA                # XOR key_sch[36]
+001a4: fd84 0021               	    cp0st.l %d4,&STR+CAA                # get key_sch[44]
+001a8: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[44]
+001aa: b985                    	    eor.l   %d4,%d5                     # generate key_sch[45]
+001ac: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[45]
+001ae: bb86                    	    eor.l   %d5,%d6                     # generate key_sch[46]
+001b0: 22c6                    	    mov.l   %d6,(%a1)+                  # store key_sch[46]
+001b2: bd87                    	    eor.l   %d6,%d7                     # generate key_sch[47]
+001b4: 22c7                    	    mov.l   %d7,(%a1)+                  # store key_sch[47]
+                                
+                                    align   4
+001b8: fc87 0011               	    cp0ld.l %d7,&LDR+CAA                # load CAU accumulator with key_sch[47]
+001bc: fc8a 0071               	    cp0ld.l %a2,&ROTL+CAA               # rotate left by 8
+001c0: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+001c4: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[5]
+001c8: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[40]
+001cc: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[48]
+001d0: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[48]
+001d2: b181                    	    eor.l   %d0,%d1                     # generate key_sch[49]
+001d4: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[49]
+001d6: b382                    	    eor.l   %d1,%d2                     # generate key_sch[50]
+001d8: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[50]
+001da: b583                    	    eor.l   %d2,%d3                     # generate key_sch[51]
+001dc: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[51]
+                                
+                                    align   4
+001e0: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[51]
+001e4: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+001e8: fc84 0061               	    cp0ld.l %d4,&XOR+CAA                # XOR key_sch[44]
+001ec: fd84 0021               	    cp0st.l %d4,&STR+CAA                # get key_sch[52]
+001f0: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[52]
+001f2: b985                    	    eor.l   %d4,%d5                     # generate key_sch[53]
+001f4: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[53]
+001f6: bb86                    	    eor.l   %d5,%d6                     # generate key_sch[54]
+001f8: 22c6                    	    mov.l   %d6,(%a1)+                  # store key_sch[54]
+001fa: bd87                    	    eor.l   %d6,%d7                     # generate key_sch[55]
+001fc: 22c7                    	    mov.l   %d7,(%a1)+                  # store key_sch[55]
+                                
+                                    align   4
+00200: fc87 0011               	    cp0ld.l %d7,&LDR+CAA                # load CAU accumulator with key_sch[55]
+00204: fc8a 0071               	    cp0ld.l %a2,&ROTL+CAA               # rotate left by 8
+00208: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+0020c: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[6]
+00210: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[48]
+00214: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[56]
+00218: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[56]
+0021a: b181                    	    eor.l   %d0,%d1                     # generate key_sch[57]
+0021c: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[57]
+0021e: b382                    	    eor.l   %d1,%d2                     # generate key_sch[58]
+00220: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[58]
+00222: b583                    	    eor.l   %d2,%d3                     # generate key_sch[59]
+00224: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[59]
+                                
+00226: 4cd7 04fc               	    movm.l  (%sp),&0x04fc               # restore d2/d3/d4/d5/d6/d7/a2
+0022a: 4e5e                    	    unlk    %a6
+0022c: 4e75                    	    rts
+                                
+                                # key_size = 192 bits
+                                    align   4
+                                aes_set_key192_L%0:
+00230: 48ef 0060 000c          	    movm.l  &0x0060,(12,%sp)            # save d5/d6
+00236: 4ce8 0030 0010          	    movm.l  (16,%a0),&0x0030            # load key[4-5]
+0023c: 48e9 0030 0010          	    movm.l  &0x0030,(16,%a1)            # copy key[4-5] to key_sch[4-5]
+00242: 7c08                    	    movq    &8,%d6                      # rotate count
+00244: 43e9 0018               	    lea     (24,%a1),%a1                # adjust pointer to key_sch[6]
+00248: 41fa 0466               	    lea     (rcon.w,%pc),%a0            # pointer to rcon[0]
+                                
+                                    align   4
+0024c: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[5]
+00250: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+00254: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00258: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[0]
+0025c: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[0]
+00260: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[6]
+00264: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[6]
+00266: b181                    	    eor.l   %d0,%d1                     # generate key_sch[7]
+00268: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[7]
+0026a: b382                    	    eor.l   %d1,%d2                     # generate key_sch[8]
+0026c: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[8]
+0026e: b583                    	    eor.l   %d2,%d3                     # generate key_sch[9]
+00270: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[9]
+00272: b784                    	    eor.l   %d3,%d4                     # generate key_sch[10]
+00274: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[10]
+00276: b985                    	    eor.l   %d4,%d5                     # generate key_sch[11]
+00278: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[11]
+                                
+                                    align   4
+0027c: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[11]
+00280: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+00284: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00288: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[1]
+0028c: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[6]
+00290: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[12]
+00294: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[12]
+00296: b181                    	    eor.l   %d0,%d1                     # generate key_sch[13]
+00298: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[13]
+0029a: b382                    	    eor.l   %d1,%d2                     # generate key_sch[14]
+0029c: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[14]
+0029e: b583                    	    eor.l   %d2,%d3                     # generate key_sch[15]
+002a0: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[15]
+002a2: b784                    	    eor.l   %d3,%d4                     # generate key_sch[16]
+002a4: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[16]
+002a6: b985                    	    eor.l   %d4,%d5                     # generate key_sch[17]
+002a8: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[17]
+                                
+                                    align   4
+002ac: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[17]
+002b0: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+002b4: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+002b8: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[2]
+002bc: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[12]
+002c0: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[18]
+002c4: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[18]
+002c6: b181                    	    eor.l   %d0,%d1                     # generate key_sch[19]
+002c8: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[19]
+002ca: b382                    	    eor.l   %d1,%d2                     # generate key_sch[20]
+002cc: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[20]
+002ce: b583                    	    eor.l   %d2,%d3                     # generate key_sch[21]
+002d0: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[21]
+002d2: b784                    	    eor.l   %d3,%d4                     # generate key_sch[22]
+002d4: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[22]
+002d6: b985                    	    eor.l   %d4,%d5                     # generate key_sch[23]
+002d8: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[23]
+                                
+                                    align   4
+002dc: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[23]
+002e0: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+002e4: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+002e8: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[3]
+002ec: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[18]
+002f0: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[24]
+002f4: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[24]
+002f6: b181                    	    eor.l   %d0,%d1                     # generate key_sch[25]
+002f8: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[25]
+002fa: b382                    	    eor.l   %d1,%d2                     # generate key_sch[26]
+002fc: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[26]
+002fe: b583                    	    eor.l   %d2,%d3                     # generate key_sch[27]
+00300: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[27]
+00302: b784                    	    eor.l   %d3,%d4                     # generate key_sch[28]
+00304: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[28]
+00306: b985                    	    eor.l   %d4,%d5                     # generate key_sch[29]
+00308: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[29]
+                                
+                                    align   4
+0030c: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[29]
+00310: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+00314: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00318: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[4]
+0031c: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[24]
+00320: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[30]
+00324: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[30]
+00326: b181                    	    eor.l   %d0,%d1                     # generate key_sch[31]
+00328: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[31]
+0032a: b382                    	    eor.l   %d1,%d2                     # generate key_sch[32]
+0032c: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[32]
+0032e: b583                    	    eor.l   %d2,%d3                     # generate key_sch[33]
+00330: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[33]
+00332: b784                    	    eor.l   %d3,%d4                     # generate key_sch[34]
+00334: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[34]
+00336: b985                    	    eor.l   %d4,%d5                     # generate key_sch[35]
+00338: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[35]
+                                
+                                    align   4
+0033c: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[35]
+00340: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+00344: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00348: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[5]
+0034c: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[30]
+00350: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[36]
+00354: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[36]
+00356: b181                    	    eor.l   %d0,%d1                     # generate key_sch[37]
+00358: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[37]
+0035a: b382                    	    eor.l   %d1,%d2                     # generate key_sch[38]
+0035c: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[38]
+0035e: b583                    	    eor.l   %d2,%d3                     # generate key_sch[39]
+00360: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[39]
+00362: b784                    	    eor.l   %d3,%d4                     # generate key_sch[40]
+00364: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[40]
+00366: b985                    	    eor.l   %d4,%d5                     # generate key_sch[41]
+00368: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[41]
+                                
+                                    align   4
+0036c: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[41]
+00370: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+00374: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00378: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[6]
+0037c: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[36]
+00380: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[42]
+00384: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[42]
+00386: b181                    	    eor.l   %d0,%d1                     # generate key_sch[43]
+00388: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[43]
+0038a: b382                    	    eor.l   %d1,%d2                     # generate key_sch[44]
+0038c: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[44]
+0038e: b583                    	    eor.l   %d2,%d3                     # generate key_sch[45]
+00390: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[45]
+00392: b784                    	    eor.l   %d3,%d4                     # generate key_sch[46]
+00394: 22c4                    	    mov.l   %d4,(%a1)+                  # store key_sch[46]
+00396: b985                    	    eor.l   %d4,%d5                     # generate key_sch[47]
+00398: 22c5                    	    mov.l   %d5,(%a1)+                  # store key_sch[47]
+                                
+                                    align   4
+0039c: fc85 0011               	    cp0ld.l %d5,&LDR+CAA                # load CAU accumulator with key_sch[47]
+003a0: fc86 0071               	    cp0ld.l %d6,&ROTL+CAA               # rotate left by 8
+003a4: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+003a8: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[7]
+003ac: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[42]
+003b0: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[48]
+003b4: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[48]
+003b6: b181                    	    eor.l   %d0,%d1                     # generate key_sch[49]
+003b8: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[49]
+003ba: b382                    	    eor.l   %d1,%d2                     # generate key_sch[50]
+003bc: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[50]
+003be: b583                    	    eor.l   %d2,%d3                     # generate key_sch[51]
+003c0: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[51]
+                                
+003c2: 4cd7 007c               	    movm.l  (%sp),&0x007c               # restore d2/d3/d4/d5/d6
+003c6: 4e5e                    	    unlk    %a6
+003c8: 4e75                    	    rts
+                                
+                                # key_size = 128 bits
+                                    align   4
+                                aes_set_key128_L%0:
+003cc: 7808                    	    movq    &8,%d4                      # rotate count
+003ce: 43e9 0010               	    lea     (16,%a1),%a1                # adjust pointer to key_sch[4]
+003d2: 41fa 02dc               	    lea     (rcon.w,%pc),%a0            # pointer to rcon[0]
+                                
+                                    align   4
+003d8: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[3]
+003dc: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+003e0: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+003e4: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[0]
+003e8: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[0]
+003ec: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[4]
+003f0: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[4]
+003f2: b181                    	    eor.l   %d0,%d1                     # generate key_sch[5]
+003f4: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[5]
+003f6: b382                    	    eor.l   %d1,%d2                     # generate key_sch[6]
+003f8: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[6]
+003fa: b583                    	    eor.l   %d2,%d3                     # generate key_sch[7]
+003fc: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[7]
+                                
+                                    align   4
+00400: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[7]
+00404: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+00408: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+0040c: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[1]
+00410: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[4]
+00414: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[8]
+00418: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[8]
+0041a: b181                    	    eor.l   %d0,%d1                     # generate key_sch[9]
+0041c: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[9]
+0041e: b382                    	    eor.l   %d1,%d2                     # generate key_sch[10]
+00420: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[10]
+00422: b583                    	    eor.l   %d2,%d3                     # generate key_sch[11]
+00424: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[11]
+                                
+                                    align   4
+00428: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[11]
+0042c: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+00430: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00434: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[2]
+00438: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[8]
+0043c: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[12]
+00440: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[12]
+00442: b181                    	    eor.l   %d0,%d1                     # generate key_sch[13]
+00444: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[13]
+00446: b382                    	    eor.l   %d1,%d2                     # generate key_sch[14]
+00448: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[14]
+0044a: b583                    	    eor.l   %d2,%d3                     # generate key_sch[15]
+0044c: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[15]
+                                
+                                    align   4
+00450: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[15]
+00454: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+00458: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+0045c: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[3]
+00460: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[12]
+00464: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[16]
+00468: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[16]
+0046a: b181                    	    eor.l   %d0,%d1                     # generate key_sch[17]
+0046c: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[17]
+0046e: b382                    	    eor.l   %d1,%d2                     # generate key_sch[18]
+00470: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[18]
+00472: b583                    	    eor.l   %d2,%d3                     # generate key_sch[19]
+00474: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[19]
+                                
+                                    align   4
+00478: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[19]
+0047c: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+00480: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00484: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[4]
+00488: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[16]
+0048c: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[20]
+00490: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[20]
+00492: b181                    	    eor.l   %d0,%d1                     # generate key_sch[21]
+00494: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[21]
+00496: b382                    	    eor.l   %d1,%d2                     # generate key_sch[22]
+00498: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[22]
+0049a: b583                    	    eor.l   %d2,%d3                     # generate key_sch[23]
+0049c: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[23]
+                                
+                                    align   4
+004a0: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[23]
+004a4: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+004a8: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+004ac: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[5]
+004b0: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[20]
+004b4: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[24]
+004b8: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[24]
+004ba: b181                    	    eor.l   %d0,%d1                     # generate key_sch[25]
+004bc: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[25]
+004be: b382                    	    eor.l   %d1,%d2                     # generate key_sch[26]
+004c0: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[26]
+004c2: b583                    	    eor.l   %d2,%d3                     # generate key_sch[27]
+004c4: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[27]
+                                
+                                    align   4
+004c8: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[27]
+004cc: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+004d0: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+004d4: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[6]
+004d8: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[24]
+004dc: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[28]
+004e0: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[28]
+004e2: b181                    	    eor.l   %d0,%d1                     # generate key_sch[29]
+004e4: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[29]
+004e6: b382                    	    eor.l   %d1,%d2                     # generate key_sch[30]
+004e8: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[30]
+004ea: b583                    	    eor.l   %d2,%d3                     # generate key_sch[31]
+004ec: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[31]
+                                
+                                    align   4
+004f0: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[31]
+004f4: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+004f8: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+004fc: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[7]
+00500: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[28]
+00504: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[32]
+00508: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[32]
+0050a: b181                    	    eor.l   %d0,%d1                     # generate key_sch[33]
+0050c: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[33]
+0050e: b382                    	    eor.l   %d1,%d2                     # generate key_sch[34]
+00510: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[34]
+00512: b583                    	    eor.l   %d2,%d3                     # generate key_sch[35]
+00514: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[35]
+                                
+                                    align   4
+00518: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[35]
+0051c: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+00520: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+00524: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[8]
+00528: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[32]
+0052c: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[36]
+00530: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[36]
+00532: b181                    	    eor.l   %d0,%d1                     # generate key_sch[37]
+00534: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[37]
+00536: b382                    	    eor.l   %d1,%d2                     # generate key_sch[38]
+00538: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[38]
+0053a: b583                    	    eor.l   %d2,%d3                     # generate key_sch[39]
+0053c: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[39]
+                                
+                                    align   4
+00540: fc83 0011               	    cp0ld.l %d3,&LDR+CAA                # load CAU accumulator with key_sch[39]
+00544: fc84 0071               	    cp0ld.l %d4,&ROTL+CAA               # rotate left by 8
+00548: fc80 00a1               	    cp0ld.l &AESS+CAA                   # SubBytes
+0054c: fc98 0061               	    cp0ld.l (%a0)+,&XOR+CAA             # XOR rcon[9]
+00550: fc80 0061               	    cp0ld.l %d0,&XOR+CAA                # XOR key_sch[36]
+00554: fd80 0021               	    cp0st.l %d0,&STR+CAA                # get key_sch[40]
+00558: 22c0                    	    mov.l   %d0,(%a1)+                  # store key_sch[40]
+0055a: b181                    	    eor.l   %d0,%d1                     # generate key_sch[41]
+0055c: 22c1                    	    mov.l   %d1,(%a1)+                  # store key_sch[41]
+0055e: b382                    	    eor.l   %d1,%d2                     # generate key_sch[42]
+00560: 22c2                    	    mov.l   %d2,(%a1)+                  # store key_sch[42]
+00562: b583                    	    eor.l   %d2,%d3                     # generate key_sch[43]
+00564: 22c3                    	    mov.l   %d3,(%a1)+                  # store key_sch[43]
+                                
+00566: 4cd7 001c               	    movm.l  (%sp),&0x001c               # restore d2/d3/d4
+0056a: 4e5e                    	    unlk    %a6
+0056c: 4e75                    	    rts
+                                    
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # AES: Encrypts a single 16-byte block
+                                #   arguments
+                                #           *in         pointer to 16-byte block of input plaintext
+                                #           *key_sch    pointer to key schedule (44, 52, 60 longwords)
+                                #           nr          number of AES rounds (10, 12, 14 = f(key_schedule))
+                                #           *out        pointer to 16-byte block of output ciphertext
+                                #
+                                #   NOTE    Input and output blocks may overlap
+                                #
+                                #   calling convention
+                                #   void    cau_aes_encrypt (const unsigned char *in,
+                                #                            const unsigned char *key_sch,
+                                #                            const int            nr,
+                                #                            unsigned char       *out)
+                                
+                                    global  _cau_aes_encrypt
+                                    global  cau_aes_encrypt
+                                    align   4
+                                _cau_aes_encrypt:
+                                cau_aes_encrypt:
+00570: 226f 0004               	    mov.l   (4,%sp),%a1                 # get 1st argument: *in
+00574: 206f 0008               	    mov.l   (8,%sp),%a0                 # get 2nd argument: *key_sch
+                                
+00578: fc99 0012               	    cp0ld.l (%a1)+,&LDR+CA0             # load plain[0] -> CA0
+0057c: fc99 0013               	    cp0ld.l (%a1)+,&LDR+CA1             # load plain[1] -> CA1
+00580: fc99 0014               	    cp0ld.l (%a1)+,&LDR+CA2             # load plain[2] -> CA2
+00584: fc99 0015               	    cp0ld.l (%a1)+,&LDR+CA3             # load plain[3] -> CA3
+00588: fc98 0062               	    cp0ld.l (%a0)+,&XOR+CA0             # XOR keys
+0058c: fc98 0063               	    cp0ld.l (%a0)+,&XOR+CA1
+00590: fc98 0064               	    cp0ld.l (%a0)+,&XOR+CA2
+00594: fc98 0065               	    cp0ld.l (%a0)+,&XOR+CA3
+00598: 202f 000c               	    mov.l   (12,%sp),%d0                # get 3rd argument: nr
+0059c: 5380                    	    subq.l  &1,%d0                      # decrement the nr count
+                                
+                                    align   4
+                                aes_encrypt_key128_L%0:
+005a0: fc80 00a2               	    cp0ld.l &AESS+CA0                   # SubBytes
+005a4: fc80 00a3               	    cp0ld.l &AESS+CA1
+005a8: fc80 00a4               	    cp0ld.l &AESS+CA2
+005ac: fc80 00a5               	    cp0ld.l &AESS+CA3
+005b0: fc80 00e0               	    cp0ld.l &AESR                       # ShiftRows
+005b4: fc98 00c2               	    cp0ld.l (%a0)+,&AESC+CA0            # MixColumns
+005b8: fc98 00c3               	    cp0ld.l (%a0)+,&AESC+CA1
+005bc: fc98 00c4               	    cp0ld.l (%a0)+,&AESC+CA2
+005c0: fc98 00c5               	    cp0ld.l (%a0)+,&AESC+CA3
+005c4: 5380                    	    subq.l  &1,%d0
+005c6: 66d8                    	    bne.b   aes_encrypt_key128_L%0
+                                
+005c8: fc80 00a2               	    cp0ld.l &AESS+CA0                   # SubBytes
+005cc: fc80 00a3               	    cp0ld.l &AESS+CA1
+005d0: fc80 00a4               	    cp0ld.l &AESS+CA2
+005d4: fc80 00a5               	    cp0ld.l &AESS+CA3
+005d8: fc80 00e0               	    cp0ld.l &AESR                       # ShiftRows
+005dc: fc98 0062               	    cp0ld.l (%a0)+,&XOR+CA0             # XOR keys
+005e0: fc98 0063               	    cp0ld.l (%a0)+,&XOR+CA1
+005e4: fc98 0064               	    cp0ld.l (%a0)+,&XOR+CA2
+005e8: fc98 0065               	    cp0ld.l (%a0)+,&XOR+CA3
+                                
+005ec: 226f 0010               	    mov.l   (16,%sp),%a1                # get 4th argument: *out
+005f0: fd80 0022               	    cp0st.l %d0,&STR+CA0                # get ciphertext results
+005f4: fd81 0023               	    cp0st.l %d1,&STR+CA1
+005f8: 22c0                    	    mov.l   %d0,(%a1)+                  # store ciphertext[0]
+005fa: 22c1                    	    mov.l   %d1,(%a1)+                  # store ciphertext[1]
+005fc: fd80 0024               	    cp0st.l %d0,&STR+CA2                # get more ciphertext results
+00600: fd81 0025               	    cp0st.l %d1,&STR+CA3
+00604: 22c0                    	    mov.l   %d0,(%a1)+                  # store ciphertext[2]
+00606: 22c1                    	    mov.l   %d1,(%a1)+                  # store ciphertext[3]
+00608: 4e75                    	    rts
+                                
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # AES: Decrypts a single 16-byte block
+                                #   arguments
+                                #           *in         pointer to 16-byte block of input chiphertext
+                                #           *key_sch    pointer to key schedule (44, 52, 60 longwords)
+                                #           nr          number of AES rounds (10, 12, 14 = f(key_schedule))
+                                #           *out        pointer to 16-byte block of output plaintext
+                                #
+                                #   NOTE    Input and output blocks may overlap
+                                #
+                                #   calling convention
+                                #   void    cau_aes_decrypt (const unsigned char *in,
+                                #                            const unsigned char *key_sch,
+                                #                            const int            nr,
+                                #                            unsigned char       *out)
+                                
+                                    global  _cau_aes_decrypt
+                                    global  cau_aes_decrypt
+                                    align   4
+                                _cau_aes_decrypt:
+                                cau_aes_decrypt:
+0060c: 226f 0004               	    mov.l   (4,%sp),%a1                 # get 1st argument: *in
+00610: 206f 0008               	    mov.l   (8,%sp),%a0                 # get 2nd argument: *key_sch
+00614: 202f 000c               	    mov.l   (12,%sp),%d0                # get 3rd argument: nr
+00618: 2200                    	    mov.l   %d0,%d1                     # copy nr into d1
+0061a: e981                    	    asl.l   &4,%d1                      # form 16*nr 
+                                
+0061c: fc99 0012               	    cp0ld.l (%a1)+,&LDR+CA0             # load cipher[0] -> CA0
+00620: fc99 0013               	    cp0ld.l (%a1)+,&LDR+CA1             # load cipher[1] -> CA1
+00624: fc99 0014               	    cp0ld.l (%a1)+,&LDR+CA2             # load cipher[2] -> CA2
+00628: fc99 0015               	    cp0ld.l (%a1)+,&LDR+CA3             # load cipher[3] -> CA3
+                                
+                                # the key_sch pointer (%a0) is adjusted to define the end of the elements
+                                # the adjustment factor = f(nr) and defined by the expression:
+                                #   end of key_sch = (4*nr + 4) * 4 = 16*nr + 16 for nr = {10, 12, 14}
+0062c: 41f0 1810               	    lea     (16,%a0,%d1.l),%a0          # adjust key_sch ptr to end of elements
+00630: fca0 0065               	    cp0ld.l -(%a0),&XOR+CA3             # XOR keys
+00634: fca0 0064               	    cp0ld.l -(%a0),&XOR+CA2
+00638: fca0 0063               	    cp0ld.l -(%a0),&XOR+CA1
+0063c: fca0 0062               	    cp0ld.l -(%a0),&XOR+CA0
+00640: 5380                    	    subq.l  &1,%d0                      # form nr - 1 as loop count
+                                
+                                    align   4
+                                aes_decrypt_key128_L%0:
+00644: fc80 00f0               	    cp0ld.l &AESIR                      # InvShiftRows
+00648: fc80 00b5               	    cp0ld.l &AESIS+CA3                  # InvSubBytes
+0064c: fc80 00b4               	    cp0ld.l &AESIS+CA2
+00650: fc80 00b3               	    cp0ld.l &AESIS+CA1
+00654: fc80 00b2               	    cp0ld.l &AESIS+CA0
+00658: fca0 00d5               	    cp0ld.l -(%a0),&AESIC+CA3           # InvMixColumns
+0065c: fca0 00d4               	    cp0ld.l -(%a0),&AESIC+CA2
+00660: fca0 00d3               	    cp0ld.l -(%a0),&AESIC+CA1
+00664: fca0 00d2               	    cp0ld.l -(%a0),&AESIC+CA0
+00668: 5380                    	    subq.l  &1,%d0
+0066a: 66d8                    	    bne.b   aes_decrypt_key128_L%0
+                                
+0066c: fc80 00f0               	    cp0ld.l &AESIR                      # InvShiftRows
+00670: fc80 00b5               	    cp0ld.l &AESIS+CA3                  # InvSubBytes
+00674: fc80 00b4               	    cp0ld.l &AESIS+CA2
+00678: fc80 00b3               	    cp0ld.l &AESIS+CA1
+0067c: fc80 00b2               	    cp0ld.l &AESIS+CA0
+00680: fca0 0065               	    cp0ld.l -(%a0),&XOR+CA3             # XOR keys
+00684: fca0 0064               	    cp0ld.l -(%a0),&XOR+CA2
+00688: fca0 0063               	    cp0ld.l -(%a0),&XOR+CA1
+0068c: fca0 0062               	    cp0ld.l -(%a0),&XOR+CA0
+                                
+00690: 226f 0010               	    mov.l   (16,%sp),%a1                # get 4th argument: *out
+00694: fd80 0022               	    cp0st.l %d0,&STR+CA0                # get plaintext results
+00698: fd81 0023               	    cp0st.l %d1,&STR+CA1
+0069c: 22c0                    	    mov.l   %d0,(%a1)+                  # store plaintext[0]
+0069e: 22c1                    	    mov.l   %d1,(%a1)+                  # store plaintext[1]
+006a0: fd80 0024               	    cp0st.l %d0,&STR+CA2                # get more plaintext results
+006a4: fd81 0025               	    cp0st.l %d1,&STR+CA3
+006a8: 22c0                    	    mov.l   %d0,(%a1)+                  # store plaintext[2]
+006aa: 22c1                    	    mov.l   %d1,(%a1)+                  # store plaintext[3]
+006ac: 4e75                    	    rts
+                                
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # CAU Constant Data
+                                
+                                    align   16
+                                rcon:
+006b0: 01000000 02000000            long    0x01000000, 0x02000000, 0x04000000, 0x08000000
+006b8: 04000000 08000000
+006c0: 10000000 20000000            long    0x10000000, 0x20000000, 0x40000000, 0x80000000
+006c8: 40000000 80000000
+006d0: 1b000000 36000000            long    0x1b000000, 0x36000000

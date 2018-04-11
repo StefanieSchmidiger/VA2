@@ -1,0 +1,228 @@
+                                    set     CASR,0
+                                    set     CAA,1
+                                    set     CA0,2
+                                    set     CA1,3
+                                    set     CA2,4
+                                    set     CA3,5
+                                    set     CA4,6
+                                    set     CA5,7
+                                    set     CA6,8
+                                    set     CA7,9
+                                    set     CA8,10
+                                    set     CNOP,0x000
+                                    set     LDR,0x010
+                                    set     STR,0x020
+                                    set     ADR,0x030
+                                    set     RADR,0x040
+                                    set     ADRA,0x050
+                                    set     XOR,0x060
+                                    set     ROTL,0x070
+                                    set     MVRA,0x080
+                                    set     MVAR,0x090
+                                    set     AESS,0x0a0
+                                    set     AESIS,0x0b0
+                                    set     AESC,0x0c0
+                                    set     AESIC,0x0d0
+                                    set     AESR,0x0e0
+                                    set     AESIR,0x0f0
+                                    set     DESR,0x100
+                                    set     DESK,0x110
+                                    set     HASH,0x120
+                                    set     SHS,0x130
+                                    set     MDS,0x140
+                                    set     SHS2,0x150
+                                    set     ILL,0x1f0
+                                    set     IP,8
+                                    set     FP,4
+                                    set     DC,1
+                                    set     CP,2
+                                    set     KSL1,0
+                                    set     KSL2,1
+                                    set     KSR1,2
+                                    set     KSR2,3
+                                    set     HFF,0
+                                    set     HFG,1
+                                    set     HFH,2
+                                    set     HFI,3
+                                    set     HFP,2
+                                    set     HFC,4
+                                    set     HFM,5
+                                    set     HF2C,6
+                                    set     HF2M,7
+                                    set     HF2S,8
+                                    set     HF2T,9
+                                    set     HF2U,10
+                                    set     HF2V,11
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # NOTE: Code alignment for the CAU library functions in this file is carefully
+                                # constructed to maximize processor performance. The existing alignment should
+                                # be maintained for best results!!
+                                #
+                                # The individual code segments for the functions are presented first, followed
+                                # by a common read-only data area containing the required data constants.
+                                #
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # DES: Checks key parity
+                                #   arguments
+                                #           *key        pointer to 64-bit DES key with parity bits
+                                #
+                                #   return
+                                #           0           no error
+                                #           -1          parity error
+                                #
+                                #   calling convention
+                                #   int     cau_des_chk_parity (const unsigned char *key)
+                                
+                                    global  _cau_des_chk_parity
+                                    global  cau_des_chk_parity
+                                    align   4
+                                _cau_des_chk_parity:
+                                cau_des_chk_parity:
+00000: 206f 0004               	    mov.l   (4,%sp),%a0                 # get argument: *key
+                                
+                                # load the 64-bit key into the CAU's CA0/CA1 registers
+00004: fc98 0012               	    cp0ld.l (%a0)+,&LDR+CA0             # load key[i]   -> CA0
+00008: fc90 0013               	    cp0ld.l (%a0),&LDR+CA1              # load key[i+1] -> CA1
+                                
+                                #  perform the key schedule and check the parity bits
+0000c: fc80 0112               	    cp0ld.l &DESK+CP                    # key setup + parity check
+                                
+                                # the CAUSR[DPE] reflects the DES key parity check
+00010: fd80 0020               	    cp0st.l %d0,&STR+CASR               # store CAUSR -> d0
+00014: 0800 0001               	    btst    &1,%d0                      # test CAUSR[DPE]
+00018: 56c0                    	    sne     %d0                         # if DPE, then d0 = 0xff, else d0 = 0x00
+0001a: 49c0                    	    extb.l  %d0                         # return 32-bit int
+0001c: 4e75                    	    rts
+                                
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # DES: Encrypts a single 8-byte block
+                                #   arguments
+                                #           *in         pointer to 8-byte block of input plaintext
+                                #           *key        pointer to 64-bit DES key with parity bits
+                                #           *out        pointer to 8-byte block of output ciphertext
+                                #
+                                #   NOTE    Input and output blocks may overlap
+                                #
+                                #   calling convention
+                                #   void    cau_des_encrypt (constr unsigned char *in,
+                                #                            constr unsigned char *key,
+                                #                            unsigned char        *out)
+                                
+                                    global  _cau_des_encrypt
+                                    global  cau_des_encrypt
+                                    align   4
+                                _cau_des_encrypt:
+                                cau_des_encrypt:
+00020: 206f 0004               	    mov.l   (4,%sp),%a0                 # get 1st argument: *in
+00024: 226f 0008               	    mov.l   (8,%sp),%a1                 # get 2nd argument: *key
+                                
+                                # load the 64-bit plaintext input block into CAU's CA2/CA3 registers
+00028: fc98 0014               	    cp0ld.l (%a0)+,&LDR+CA2             # load plain[i]   -> CA2
+0002c: fc90 0015               	    cp0ld.l (%a0),&LDR+CA3              # load plain[i+1] -> CA3
+                                
+                                # load the 64-bit key into the CAU's CA0/CA1 registers
+00030: fc99 0012               	    cp0ld.l (%a1)+,&LDR+CA0             # load key[i]     -> CA0
+00034: fc91 0013               	    cp0ld.l (%a1),&LDR+CA1              # load key[i+1]   -> CA1
+00038: fc80 0110               	    cp0ld.l &DESK                       # key setup
+                                
+                                # perform the DES round operations
+0003c: fc80 0108               	    cp0ld.l &DESR+IP+KSL1
+00040: fc80 0101               	    cp0ld.l &DESR+KSL2
+00044: fc80 0101               	    cp0ld.l &DESR+KSL2
+00048: fc80 0101               	    cp0ld.l &DESR+KSL2
+0004c: fc80 0101               	    cp0ld.l &DESR+KSL2
+00050: fc80 0101               	    cp0ld.l &DESR+KSL2
+00054: fc80 0101               	    cp0ld.l &DESR+KSL2
+00058: fc80 0100               	    cp0ld.l &DESR+KSL1
+0005c: fc80 0101               	    cp0ld.l &DESR+KSL2
+00060: fc80 0101               	    cp0ld.l &DESR+KSL2
+00064: fc80 0101               	    cp0ld.l &DESR+KSL2
+00068: fc80 0101               	    cp0ld.l &DESR+KSL2
+0006c: fc80 0101               	    cp0ld.l &DESR+KSL2
+00070: fc80 0101               	    cp0ld.l &DESR+KSL2
+00074: fc80 0100               	    cp0ld.l &DESR+KSL1
+00078: fc80 0104               	    cp0ld.l &DESR+FP
+                                
+                                # store the 64-bit ciphertext output block into the CPU's d0/d1 registers
+0007c: 226f 000c               	    mov.l   (12,%sp),%a1                # get 3rd argument: *out
+00080: fd80 0024               	    cp0st.l %d0,&STR+CA2                # get 1st 4 bytes of result -> d0
+00084: fd81 0025               	    cp0st.l %d1,&STR+CA3                # get 2nd 4 bytes of result -> d1
+                                
+                                # store the 64-bit ciphertext output block into memory
+00088: 22c0                    	    mov.l   %d0,(%a1)+                  # store 1st 4 bytes of output ciphertext
+0008a: 2281                    	    mov.l   %d1,(%a1)                   # store 2nd 4 bytes of output ciphertext
+0008c: 4e75                    	    rts
+                                
+                                
+                                #*******************************************************************************
+                                #*******************************************************************************
+                                #
+                                # DES: Decrypts a single 8-byte block
+                                #   arguments
+                                #           *in         pointer to 8-byte block of input ciphertext
+                                #           *key        pointer to 64-bit DES key with parity bits
+                                #           *out        pointer to 8-byte block of output plaintext
+                                #
+                                #   NOTE    Input and output blocks may overlap
+                                #
+                                #   calling convention
+                                #   void    cau_des_decrypt (constr unsigned char *in,
+                                #                            constr unsigned char *key,
+                                #                            unsigned char        *out)
+                                
+                                    global  _cau_des_decrypt
+                                    global  cau_des_decrypt
+                                    align   4
+                                cau_des_decrypt:
+                                _cau_des_decrypt:
+00090: 206f 0004               	    mov.l   (4,%sp),%a0                 # get 1st argument: *in
+00094: 226f 0008               	    mov.l   (8,%sp),%a1                 # get 2nd argument: *key
+                                
+                                # load the 64-bit ciphertext input block into CAU's CA2/CA3 registers
+00098: fc98 0014               	    cp0ld.l (%a0)+,&LDR+CA2             # load cipher[i]   -> CA2
+0009c: fc90 0015               	    cp0ld.l (%a0),&LDR+CA3              # load cipher[i+1] -> CA3
+                                
+                                # load the 64-bit key into the CAU's CA0/CA1 registers
+000a0: fc99 0012               	    cp0ld.l (%a1)+,&LDR+CA0             # load key[i]     -> CA0
+000a4: fc91 0013               	    cp0ld.l (%a1),&LDR+CA1              # load key[i+1]   -> CA1
+000a8: fc80 0111               	    cp0ld.l &DESK+DC                    # key setup
+                                
+                                # perform the DES round operations
+000ac: fc80 010a               	    cp0ld.l &DESR+IP+KSR1
+000b0: fc80 0103               	    cp0ld.l &DESR+KSR2
+000b4: fc80 0103               	    cp0ld.l &DESR+KSR2
+000b8: fc80 0103               	    cp0ld.l &DESR+KSR2
+000bc: fc80 0103               	    cp0ld.l &DESR+KSR2
+000c0: fc80 0103               	    cp0ld.l &DESR+KSR2
+000c4: fc80 0103               	    cp0ld.l &DESR+KSR2
+000c8: fc80 0102               	    cp0ld.l &DESR+KSR1
+000cc: fc80 0103               	    cp0ld.l &DESR+KSR2
+000d0: fc80 0103               	    cp0ld.l &DESR+KSR2
+000d4: fc80 0103               	    cp0ld.l &DESR+KSR2
+000d8: fc80 0103               	    cp0ld.l &DESR+KSR2
+000dc: fc80 0103               	    cp0ld.l &DESR+KSR2
+000e0: fc80 0103               	    cp0ld.l &DESR+KSR2
+000e4: fc80 0102               	    cp0ld.l &DESR+KSR1
+000e8: fc80 0104               	    cp0ld.l &DESR+FP
+                                
+                                # store the 64-bit plaintext output block into the CPU's d0/d1 registers
+000ec: 226f 000c               	    mov.l   (12,%sp),%a1                # get 3rd argument: *out
+000f0: fd80 0024               	    cp0st.l %d0,&STR+CA2                # get 1st 4 bytes of result -> d0
+000f4: fd81 0025               	    cp0st.l %d1,&STR+CA3                # get 2nd 4 bytes of result -> d1
+                                
+                                # store the 64-bit plaintext output block into memory
+000f8: 22c0                    	    mov.l   %d0,(%a1)+                  # store 1st 4 bytes of output plaintext
+000fa: 2281                    	    mov.l   %d1,(%a1)                   # store 2nd 4 bytes of output plaintext
+000fc: 4e75                    	    rts

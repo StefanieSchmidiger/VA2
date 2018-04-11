@@ -1,0 +1,1619 @@
+ARM GAS  src/mmcau_sha1_functions.s 			page 1
+
+
+   1              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+   2              	#
+   3              	# Copyright (c) Freescale Semiconductor, Inc 2013.
+   4              	#
+   5              	# FILE NAME         : mmcau_sha1_functions.s
+   6              	# VERSION           : $Id:  $
+   7              	# TYPE              : Source Cortex-M0+ assembly library code
+   8              	# DEPARTMENT        : MCG R&D Core and Platforms
+   9              	# AUTHOR            : Anthony (Teejay) Ciancio
+  10              	# AUTHOR EMAIL      : teejay.ciancio@freescale.com
+  11              	#
+  12              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+  13              	#
+  14              	# VERSION   DATE        AUTHOR          DESCRIPTION
+  15              	# *******   ****        ******          ***********
+  16              	# 1.0       2013-11     Ciancio         initial release, using the ARMv6-M ISA
+  17              	#
+  18              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+  19              	
+  20              	
+  21              	    .include "cau2_defines.hdr"
+   1              	#ifndef _MMCAU_H_
+   2              	#define _MMCAU_H_
+   3              	
+   4              	    .equ    TL,0
+   5              	    .equ    TS,0
+   6              	    .equ    CASR,0
+   7              	    .equ    CAA,1
+   8              	    .equ    CA0,2
+   9              	    .equ    CA1,3
+  10              	    .equ    CA2,4
+  11              	    .equ    CA3,5
+  12              	    .equ    CA4,6
+  13              	    .equ    CA5,7
+  14              	    .equ    CA6,8
+  15              	    .equ    CA7,9
+  16              	    .equ    CA8,10
+  17              	    .equ    CNOP,0x000
+  18              	    .equ    LDR,0x010
+  19              	    .equ    STR,0x020
+  20              	    .equ    ADR,0x030
+  21              	    .equ    RADR,0x040
+  22              	    .equ    ADRA,0x050
+  23              	    .equ    XOR,0x060
+  24              	    .equ    ROTL,0x070
+  25              	    .equ    MVRA,0x080
+  26              	    .equ    MVAR,0x090
+  27              	    .equ    AESS,0x0a0
+  28              	    .equ    AESIS,0x0b0
+  29              	    .equ    AESC,0x0c0
+  30              	    .equ    AESIC,0x0d0
+  31              	    .equ    AESR,0x0e0
+  32              	    .equ    AESIR,0x0f0
+  33              	    .equ    DESR,0x100
+  34              	    .equ    DESK,0x110
+  35              	    .equ    HASH,0x120
+  36              	    .equ    SHS,0x130
+ARM GAS  src/mmcau_sha1_functions.s 			page 2
+
+
+  37              	    .equ    MDS,0x140
+  38              	    .equ    SHS2,0x150
+  39              	    .equ    ILL,0x1f0
+  40              	    .equ    IP,8
+  41              	    .equ    FP,4
+  42              	    .equ    DC,1
+  43              	    .equ    CP,2
+  44              	    .equ    KSL1,0
+  45              	    .equ    KSL2,1
+  46              	    .equ    KSR1,2
+  47              	    .equ    KSR2,3
+  48              	    .equ    HFF,0
+  49              	    .equ    HFG,1
+  50              	    .equ    HFH,2
+  51              	    .equ    HFI,3
+  52              	    .equ    HFP,2
+  53              	    .equ    HFC,4
+  54              	    .equ    HFM,5
+  55              	    .equ    HF2C,6
+  56              	    .equ    HF2M,7
+  57              	    .equ    HF2S,8
+  58              	    .equ    HF2T,9
+  59              	    .equ    HF2U,10
+  60              	    .equ    HF2V,11
+  61              	
+  62              	#endif
+  22              	    .syntax unified
+  23              	
+  24              	
+  25              	    .equ      MMCAU_PPB_DIRECT, 0xf0005000
+  26              	    .equ    MMCAU_PPB_INDIRECT, 0xf0005800
+  27              	    .equ           MMCAU_1_CMD, 0x80000000
+  28              	    .equ          MMCAU_2_CMDS, 0x80100000
+  29              	
+  30              	
+  31              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+  32              	#
+  33              	#   MMCAU_SHA1_INITIALIZE_OUTPUT
+  34              	#   Initializes the SHA1 state variables
+  35              	#
+  36              	#   ARGUMENTS
+  37              	#   *sha1_state     pointer to 160-bit block of SHA1 state variables: a,b,c,d,e
+  38              	#
+  39              	#   CALLING CONVENTION
+  40              	#   void mmcau_sha1_initialize_output (const unsigned int *sha1_state)
+  41              	#
+  42              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+  43              	#
+  44              	#    REGISTER  |  ALLOCATION (at the start of mmcau_sha1_initialize_output)
+  45              	#   -----------+------------------------------------------------------------
+  46              	#          r0  |  *sha1_state   (arg0)
+  47              	#              |
+  48              	#        > r0  |  irrelevant
+  49              	#
+  50              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+  51              	
+  52              	    .global _mmcau_sha1_initialize_output
+ARM GAS  src/mmcau_sha1_functions.s 			page 3
+
+
+  53              	    .global mmcau_sha1_initialize_output
+  54              	    .type   mmcau_sha1_initialize_output, %function
+  55              	    .align  4
+  56              	
+  57              	_mmcau_sha1_initialize_output:
+  58              	mmcau_sha1_initialize_output:
+  59              	
+  60              	# store regs r4-r5, we need to restore them at the end of the routine
+  61 0000 30B4     	    push    {r4-r5}                         @ store regs
+  62              	
+  63              	# initialize the hash variables, a-e, both in memory and in the CAU
+  64 0002 E549     	    ldr     r1, =sha1_initial_h
+  65 0004 3EC9     	    ldmia   r1, {r1-r5}                     @ load sha1_initial_h[0-4]
+  66 0006 3EC0     	    stmia   r0!, {r1-r5}                    @ store in sha1_state[0-4]
+  67              	
+  68 0008 30BC     	    pop     {r4-r5}                         @ restore regs
+  69 000a 7047     	    bx      lr                              @ exit routine
+  70              	
+  71              	
+  72              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+  73              	#
+  74              	#   MMCAU_SHA1_HASH_N
+  75              	#   Perform the hash and generate SHA1 state variables for one or more input
+  76              	#   message blocks
+  77              	#
+  78              	#   ARGUMENTS
+  79              	#   *msg_data       pointer to start of input message data
+  80              	#   num_blks        number of 512-bit blocks to process
+  81              	#   *sha1_state     pointer to 160-bit block of SHA1 state variables: a,b,c,d,e
+  82              	#
+  83              	#   NOTE
+  84              	#   Input message and digest output blocks must not overlap
+  85              	#
+  86              	#   CALLING CONVENTION
+  87              	#   void mmcau_sha1_hash_n     (const unsigned char     *msg_data,
+  88              	#                               const int               num_blks,
+  89              	#                               unsigned int            *sha1_state)
+  90              	#
+  91              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+  92              	#
+  93              	#    REGISTER  |  ALLOCATION (at the start of mmcau_sha1_hash_n)
+  94              	#   -----------+------------------------------------------------------------
+  95              	#          r0  |  *msg_data     (arg0)
+  96              	#          r1  |  num_blks      (arg1)
+  97              	#          r2  |  *sha1_state   (arg2)
+  98              	#              |
+  99              	#        > r2  |  irrelevant
+ 100              	#
+ 101              	#
+ 102              	#       STACK  |  ALLOCATION (throughout mmcau_sha1_hash_n)
+ 103              	#   -----------+------------------------------------------------------------
+ 104              	#        #356  |  *sha1_state
+ 105              	#        #352  |  num_blks
+ 106              	#        #348  |  *msg_data
+ 107              	#        #344  |  *sha1_k
+ 108              	#    #24-#340  |  w[i]
+ 109              	#      #0-#20  |  sha1_state[0-4]
+ARM GAS  src/mmcau_sha1_functions.s 			page 4
+
+
+ 110              	#
+ 111              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ 112              	
+ 113              	    .global _mmcau_sha1_hash_n
+ 114              	    .global mmcau_sha1_hash_n
+ 115              	    .type   mmcau_sha1_hash_n, %function
+ 116 000c C046C046 	    .align  4
+ 117              	
+ 118              	_mmcau_sha1_hash_n:
+ 119              	mmcau_sha1_hash_n:
+ 120              	
+ 121              	# store *msg_data, num_blks, and *sha1_state, we need them later in the routine
+ 122              	# store regs r4-r7, we need to restore them at the end of the routine
+ 123 0010 F7B4     	    push    {r0-r2, r4-r7}      @ store *msg_data, num_blks, *sha1_state, regs
+ 124              	
+ 125              	# initialize the hash variables, a-e, in the CAU
+ 126 0012 E249     	    ldr     r1, =MMCAU_PPB_INDIRECT+((LDR+CA0)<<2)
+ 127 0014 F8CA     	    ldmia   r2!, {r3-r7}                    @ load sha1_state[0-4]
+ 128 0016 F8C1     	    stmia   r1!, {r3-r7}                    @ store in CA[0-4]
+ 129              	
+ 130 0018 D7B0     	    sub     sp, #348                        @ reserve stack
+ 131              	
+ 132              	
+ 133 001a C046     	    .align  2
+ 134              	next_blk:
+ 135              	
+ 136 001c 00AA     	    add     r2, sp, #0                      @ set *sha1_state (on stack)
+ 137 001e F8C2     	    stmia   r2!, {r3-r7}                    @ store sha1_state[0-4]
+ 138              	
+ 139 0020 DF4C     	    ldr     r4, =MMCAU_PPB_INDIRECT+((LDR+CAA)<<2)
+ 140 0022 1B21     	    movs    r1, #27
+ 141 0024 CB41     	    rors    r3, r1                          @ ROTL(a,5)
+ 142 0026 2360     	    str     r3, [r4]                        @ store in CAA
+ 143              	
+ 144              	# prepare regs for loops
+ 145 0028 DE49     	    ldr     r1, =sha1_k
+ 146 002a DF4A     	    ldr     r2, =MMCAU_PPB_DIRECT
+ 147 002c 8034     	    adds    r4, #128                        @ mmcau_indirect_cmd(ADR+CAA)
+ 148 002e DF4D     	    ldr     r5, =MMCAU_1_CMD+((SHS)<<22)
+ 149 0030 DF4E     	    ldr     r6, =MMCAU_2_CMDS+((HASH+HFC)<<22)+((ADRA+CA4)<<11)
+ 150 0032 0F68     	    ldr     r7, [r1, #0<<2]                 @ load k[0]
+ 151 0034 5691     	    str     r1, [sp, #344]                  @ store *sha1_k
+ 152              	
+ 153              	
+ 154              	#   for (j = 0; j < 16; j++, k++)
+ 155              	#   {
+ 156              	#   w[i] = byterev(msg_data[k]);                            // w[i] = m[k]
+ 157              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(HASH+HFC,ADRA+CA4);  // + Ch(), + e
+ 158              	#   *(MMCAU_PPB_INDIRECT + (ADR+CAA))  = sha1_k[0];         // + k[0]
+ 159              	#   *(MMCAU_PPB_INDIRECT + (ADR+CAA))  = w[i++];            // + w[i]
+ 160              	#   *(MMCAU_PPB_DIRECT) = mmcau_1_cmd(SHS);                 // shift regs
+ 161              	#   }
+ 162              	#
+ 163              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+ 164              	#
+ 165              	#    REGISTER  |  ALLOCATION (throughout the first loop)
+ 166              	#   -----------+------------------------------------------------------------
+ARM GAS  src/mmcau_sha1_functions.s 			page 5
+
+
+ 167              	#          r0  |  *msg_data
+ 168              	#          r1  |  scratch
+ 169              	#          r2  |  *mmcau_direct_cmd()
+ 170              	#          r3  |  scratch
+ 171              	#          r4  |  mmcau_indirect_cmd(ADR+CAA)
+ 172              	#          r5  |  mmcau_1_cmd(SHS)
+ 173              	#          r6  |  mmcau_2_cmds(HASH+HFC,ADRA+CA4)
+ 174              	#          r7  |  k[0]
+ 175              	
+ 176 0036 02C8     	    ldmia   r0!, {r1}                       @ m[0], *msg_data++
+ 177 0038 09BA     	    rev     r1, r1                          @ w[0]
+ 178 003a 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 179 003c 0691     	    str     r1, [sp,  #0<<2+24]             @ store w[0]
+ 180 003e 3944     	    add     r1, r7                          @ w[0] + k[0]
+ 181 0040 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 182 0042 1560     	    str     r5, [r2]                        @ shift registers
+ 183              	
+ 184 0044 02C8     	    ldmia   r0!, {r1}                       @ m[1], *msg_data++
+ 185 0046 09BA     	    rev     r1, r1                          @ w[1]
+ 186 0048 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 187 004a 0791     	    str     r1, [sp,  #1<<2+24]             @ store w[1]
+ 188 004c 3944     	    add     r1, r7                          @ w[1] + k[0]
+ 189 004e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 190 0050 1560     	    str     r5, [r2]                        @ shift registers
+ 191              	
+ 192 0052 02C8     	    ldmia   r0!, {r1}                       @ m[2], *msg_data++
+ 193 0054 09BA     	    rev     r1, r1                          @ w[2]
+ 194 0056 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 195 0058 0891     	    str     r1, [sp,  #2<<2+24]             @ store w[2]
+ 196 005a 3944     	    add     r1, r7                          @ w[2] + k[0]
+ 197 005c 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 198 005e 1560     	    str     r5, [r2]                        @ shift registers
+ 199              	
+ 200 0060 02C8     	    ldmia   r0!, {r1}                       @ m[3], *msg_data++
+ 201 0062 09BA     	    rev     r1, r1                          @ w[3]
+ 202 0064 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 203 0066 0991     	    str     r1, [sp,  #3<<2+24]             @ store w[3]
+ 204 0068 3944     	    add     r1, r7                          @ w[3] + k[0]
+ 205 006a 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 206 006c 1560     	    str     r5, [r2]                        @ shift registers
+ 207              	
+ 208 006e 02C8     	    ldmia   r0!, {r1}                       @ m[4], *msg_data++
+ 209 0070 09BA     	    rev     r1, r1                          @ w[4]
+ 210 0072 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 211 0074 0A91     	    str     r1, [sp,  #4<<2+24]             @ store w[4]
+ 212 0076 3944     	    add     r1, r7                          @ w[4] + k[0]
+ 213 0078 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 214 007a 1560     	    str     r5, [r2]                        @ shift registers
+ 215              	
+ 216 007c 02C8     	    ldmia   r0!, {r1}                       @ m[5], *msg_data++
+ 217 007e 09BA     	    rev     r1, r1                          @ w[5]
+ 218 0080 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 219 0082 0B91     	    str     r1, [sp,  #5<<2+24]             @ store w[5]
+ 220 0084 3944     	    add     r1, r7                          @ w[5] + k[0]
+ 221 0086 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 222 0088 1560     	    str     r5, [r2]                        @ shift registers
+ 223              	
+ARM GAS  src/mmcau_sha1_functions.s 			page 6
+
+
+ 224 008a 02C8     	    ldmia   r0!, {r1}                       @ m[6], *msg_data++
+ 225 008c 09BA     	    rev     r1, r1                          @ w[6]
+ 226 008e 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 227 0090 0C91     	    str     r1, [sp,  #6<<2+24]             @ store w[6]
+ 228 0092 3944     	    add     r1, r7                          @ w[6] + k[0]
+ 229 0094 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 230 0096 1560     	    str     r5, [r2]                        @ shift registers
+ 231              	
+ 232 0098 02C8     	    ldmia   r0!, {r1}                       @ m[7], *msg_data++
+ 233 009a 09BA     	    rev     r1, r1                          @ w[7]
+ 234 009c 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 235 009e 0D91     	    str     r1, [sp,  #7<<2+24]             @ store w[7]
+ 236 00a0 3944     	    add     r1, r7                          @ w[7] + k[0]
+ 237 00a2 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 238 00a4 1560     	    str     r5, [r2]                        @ shift registers
+ 239              	
+ 240 00a6 02C8     	    ldmia   r0!, {r1}                       @ m[8], *msg_data++
+ 241 00a8 09BA     	    rev     r1, r1                          @ w[8]
+ 242 00aa 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 243 00ac 0E91     	    str     r1, [sp,  #8<<2+24]             @ store w[8]
+ 244 00ae 3944     	    add     r1, r7                          @ w[8] + k[0]
+ 245 00b0 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 246 00b2 1560     	    str     r5, [r2]                        @ shift registers
+ 247              	
+ 248 00b4 02C8     	    ldmia   r0!, {r1}                       @ m[9], *msg_data++
+ 249 00b6 09BA     	    rev     r1, r1                          @ w[9]
+ 250 00b8 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 251 00ba 0F91     	    str     r1, [sp,  #9<<2+24]             @ store w[9]
+ 252 00bc 3944     	    add     r1, r7                          @ w[9] + k[0]
+ 253 00be 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 254 00c0 1560     	    str     r5, [r2]                        @ shift registers
+ 255              	
+ 256 00c2 02C8     	    ldmia   r0!, {r1}                       @ m[10], *msg_data++
+ 257 00c4 09BA     	    rev     r1, r1                          @ w[10]
+ 258 00c6 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 259 00c8 1091     	    str     r1, [sp, #10<<2+24]             @ store w[10]
+ 260 00ca 3944     	    add     r1, r7                          @ w[10] + k[0]
+ 261 00cc 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 262 00ce 1560     	    str     r5, [r2]                        @ shift registers
+ 263              	
+ 264 00d0 02C8     	    ldmia   r0!, {r1}                       @ m[11], *msg_data++
+ 265 00d2 09BA     	    rev     r1, r1                          @ w[11]
+ 266 00d4 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 267 00d6 1191     	    str     r1, [sp, #11<<2+24]             @ store w[11]
+ 268 00d8 3944     	    add     r1, r7                          @ w[11] + k[0]
+ 269 00da 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 270 00dc 1560     	    str     r5, [r2]                        @ shift registers
+ 271              	
+ 272 00de 02C8     	    ldmia   r0!, {r1}                       @ m[12], *msg_data++
+ 273 00e0 09BA     	    rev     r1, r1                          @ w[12]
+ 274 00e2 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 275 00e4 1291     	    str     r1, [sp, #12<<2+24]             @ store w[12]
+ 276 00e6 3944     	    add     r1, r7                          @ w[12] + k[0]
+ 277 00e8 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 278 00ea 1560     	    str     r5, [r2]                        @ shift registers
+ 279              	
+ 280 00ec 02C8     	    ldmia   r0!, {r1}                       @ m[13], *msg_data++
+ARM GAS  src/mmcau_sha1_functions.s 			page 7
+
+
+ 281 00ee 09BA     	    rev     r1, r1                          @ w[13]
+ 282 00f0 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 283 00f2 1391     	    str     r1, [sp, #13<<2+24]             @ store w[13]
+ 284 00f4 3944     	    add     r1, r7                          @ w[13] + k[0]
+ 285 00f6 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 286 00f8 1560     	    str     r5, [r2]                        @ shift registers
+ 287              	
+ 288 00fa 02C8     	    ldmia   r0!, {r1}                       @ m[14], *msg_data++
+ 289 00fc 09BA     	    rev     r1, r1                          @ w[14]
+ 290 00fe 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 291 0100 1491     	    str     r1, [sp, #14<<2+24]             @ store w[14]
+ 292 0102 3944     	    add     r1, r7                          @ w[14] + k[0]
+ 293 0104 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 294 0106 1560     	    str     r5, [r2]                        @ shift registers
+ 295              	
+ 296 0108 02C8     	    ldmia   r0!, {r1}                       @ m[15], *msg_data++
+ 297 010a 09BA     	    rev     r1, r1                          @ w[15]
+ 298 010c 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 299 010e 1591     	    str     r1, [sp, #15<<2+24]             @ store w[15]
+ 300 0110 3944     	    add     r1, r7                          @ w[15] + k[0]
+ 301 0112 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 302 0114 1560     	    str     r5, [r2]                        @ shift registers
+ 303              	
+ 304 0116 5790     	    str     r0, [sp, #348]                  @ store *msg_data
+ 305 0118 1F23     	    movs    r3, #31                         @ set the amount to rotate
+ 306              	
+ 307              	
+ 308              	#   for (j = 0; j < 4; j++)
+ 309              	#   {
+ 310              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(HASH+HFC,ADRA+CA4);  // + Ch(), + e
+ 311              	#   *(MMCAU_PPB_INDIRECT + (ADR+CAA))  = sha1_k[0];         // + k[0]
+ 312              	#   *(MMCAU_PPB_INDIRECT + (LDR+CA5))  = w[i-16];           // CA5 = w[i-16]
+ 313              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-14];           // xor w[i-14]
+ 314              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-8];            // xor w[i-8]
+ 315              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-3];            // xor w[i-3]
+ 316              	#   *(MMCAU_PPB_INDIRECT + (ROTL+CA5)) = 1;                 // rotate 1
+ 317              	#   w[i++] = *(MMCAU_PPB_INDIRECT + (STR+CA5));             // store w[i]
+ 318              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(ADRA+CA5,SHS);       // + w[i], shift
+ 319              	#   }
+ 320              	#
+ 321              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+ 322              	#
+ 323              	#    REGISTER  |  ALLOCATION (throughout the second loop)
+ 324              	#   -----------+------------------------------------------------------------
+ 325              	#          r0  |  scratch
+ 326              	#          r1  |  scratch
+ 327              	#          r2  |  *mmcau_direct_cmd()
+ 328              	#          r3  |  amount to rotate = #31
+ 329              	#          r4  |  mmcau_indirect_cmd(ADR+CAA)
+ 330              	#          r5  |  mmcau_1_cmd(SHS)
+ 331              	#          r6  |  mmcau_2_cmds(HASH+HFC,ADRA+CA4)
+ 332              	#          r7  |  k[0]
+ 333              	
+ 334 011a 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 335 011c 0699     	    ldr     r1, [sp,  #0<<2+24]             @ w[0]
+ 336 011e 0898     	    ldr     r0, [sp,  #2<<2+24]             @ w[2]
+ 337 0120 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ARM GAS  src/mmcau_sha1_functions.s 			page 8
+
+
+ 338 0122 0E98     	    ldr     r0, [sp,  #8<<2+24]             @ w[8]
+ 339 0124 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 340 0126 1398     	    ldr     r0, [sp, #13<<2+24]             @ w[13]
+ 341 0128 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 342 012a D941     	    rors    r1, r3                          @ rotate left by 1
+ 343 012c 1691     	    str     r1, [sp, #16<<2+24]             @ store w[16]
+ 344 012e 3944     	    add     r1, r7                          @ w[16] + k[0]
+ 345 0130 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 346 0132 1560     	    str     r5, [r2]                        @ shift regs
+ 347              	
+ 348 0134 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 349 0136 0799     	    ldr     r1, [sp,  #1<<2+24]             @ w[1]
+ 350 0138 0998     	    ldr     r0, [sp,  #3<<2+24]             @ w[3]
+ 351 013a 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 352 013c 0F98     	    ldr     r0, [sp, #9<<2+24]              @ w[9]
+ 353 013e 4140     	    eors    r1, r0                          @ XOR w[i-9]
+ 354 0140 1498     	    ldr     r0, [sp, #14<<2+24]             @ w[14]
+ 355 0142 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 356 0144 D941     	    rors    r1, r3                          @ rotate left by 1
+ 357 0146 1791     	    str     r1, [sp, #17<<2+24]             @ store w[17]
+ 358 0148 3944     	    add     r1, r7                          @ w[17] + k[0]
+ 359 014a 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 360 014c 1560     	    str     r5, [r2]                        @ shift regs
+ 361              	
+ 362 014e 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 363 0150 0899     	    ldr     r1, [sp,  #2<<2+24]             @ w[2]
+ 364 0152 0A98     	    ldr     r0, [sp,  #4<<2+24]             @ w[4]
+ 365 0154 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 366 0156 1098     	    ldr     r0, [sp, #10<<2+24]             @ w[10]
+ 367 0158 4140     	    eors    r1, r0                          @ XOR w[i-9]
+ 368 015a 1598     	    ldr     r0, [sp, #15<<2+24]             @ w[15]
+ 369 015c 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 370 015e D941     	    rors    r1, r3                          @ rotate left by 1
+ 371 0160 1891     	    str     r1, [sp, #18<<2+24]             @ store w[18]
+ 372 0162 3944     	    add     r1, r7                          @ w[18] + k[0]
+ 373 0164 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 374 0166 1560     	    str     r5, [r2]                        @ shift regs
+ 375              	
+ 376 0168 1660     	    str     r6, [r2]                        @ + Ch(), + e
+ 377 016a 0999     	    ldr     r1, [sp,  #3<<2+24]             @ w[3]
+ 378 016c 0B98     	    ldr     r0, [sp,  #5<<2+24]             @ w[5]
+ 379 016e 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 380 0170 1198     	    ldr     r0, [sp, #11<<2+24]             @ w[11]
+ 381 0172 4140     	    eors    r1, r0                          @ XOR w[i-9]
+ 382 0174 1698     	    ldr     r0, [sp, #16<<2+24]             @ w[16]
+ 383 0176 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 384 0178 D941     	    rors    r1, r3                          @ rotate left by 1
+ 385 017a 1991     	    str     r1, [sp, #19<<2+24]             @ store w[19]
+ 386 017c 3944     	    add     r1, r7                          @ w[19] + k[0]
+ 387 017e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 388 0180 1560     	    str     r5, [r2]                        @ shift regs
+ 389              	
+ 390 0182 5699     	    ldr     r1, [sp, #344]                  @ restore *sha1_k
+ 391 0184 8B4E     	    ldr     r6, =MMCAU_2_CMDS+((HASH+HFP)<<22)+((ADRA+CA4)<<11)
+ 392 0186 4F68     	    ldr     r7, [r1, #1<<2]                 @ load k[1]
+ 393              	
+ 394              	
+ARM GAS  src/mmcau_sha1_functions.s 			page 9
+
+
+ 395              	#   for (j = 0; j < 20; j++)
+ 396              	#   {
+ 397              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(HASH+HFP,ADRA+CA4);  // + Parity(), + e
+ 398              	#   *(MMCAU_PPB_INDIRECT + (ADR+CAA))  = sha1_k[1];         // + k[1]
+ 399              	#   *(MMCAU_PPB_INDIRECT + (LDR+CA5))  = w[i-16];           // CA5 = w[i-16]
+ 400              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-14];           // xor w[i-14]
+ 401              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-8];            // xor w[i-8]
+ 402              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-3];            // xor w[i-3]
+ 403              	#   *(MMCAU_PPB_INDIRECT + (ROTL+CA5)) = 1;                 // rotate 1
+ 404              	#   w[i++] = *(MMCAU_PPB_INDIRECT + (STR+CA5));             // store w[i]
+ 405              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(ADRA+CA5,SHS);       // + w[i], shift
+ 406              	#   }
+ 407              	#
+ 408              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+ 409              	#
+ 410              	#    REGISTER  |  ALLOCATION (throughout the third loop)
+ 411              	#   -----------+------------------------------------------------------------
+ 412              	#          r0  |  scratch
+ 413              	#          r1  |  scratch
+ 414              	#          r2  |  *mmcau_direct_cmd()
+ 415              	#          r3  |  amount to rotate = #31
+ 416              	#          r4  |  mmcau_indirect_cmd(ADR+CAA)
+ 417              	#          r5  |  mmcau_1_cmd(SHS)
+ 418              	#          r6  |  mmcau_2_cmds(HASH+HFP,ADRA+CA4)
+ 419              	#          r7  |  k[1]
+ 420              	
+ 421 0188 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 422 018a 0A99     	    ldr     r1, [sp,  #4<<2+24]             @ w[i-16]
+ 423 018c 0C98     	    ldr     r0, [sp,  #6<<2+24]             @ w[i-14]
+ 424 018e 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 425 0190 1298     	    ldr     r0, [sp, #12<<2+24]             @ w[i-8]
+ 426 0192 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 427 0194 1798     	    ldr     r0, [sp, #17<<2+24]             @ w[i-3]
+ 428 0196 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 429 0198 D941     	    rors    r1, r3                          @ rotate left by 1
+ 430 019a 1A91     	    str     r1, [sp, #20<<2+24]             @ store w[20]
+ 431 019c 3944     	    add     r1, r7                          @ w[20] + k[1]
+ 432 019e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 433 01a0 1560     	    str     r5, [r2]                        @ shift regs
+ 434              	
+ 435 01a2 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 436 01a4 0B99     	    ldr     r1, [sp,  #5<<2+24]             @ w[i-16]
+ 437 01a6 0D98     	    ldr     r0, [sp,  #7<<2+24]             @ w[i-14]
+ 438 01a8 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 439 01aa 1398     	    ldr     r0, [sp, #13<<2+24]             @ w[i-8]
+ 440 01ac 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 441 01ae 1898     	    ldr     r0, [sp, #18<<2+24]             @ w[i-3]
+ 442 01b0 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 443 01b2 D941     	    rors    r1, r3                          @ rotate left by 1
+ 444 01b4 1B91     	    str     r1, [sp, #21<<2+24]             @ store w[21]
+ 445 01b6 3944     	    add     r1, r7                          @ w[21] + k[1]
+ 446 01b8 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 447 01ba 1560     	    str     r5, [r2]                        @ shift regs
+ 448              	
+ 449 01bc 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 450 01be 0C99     	    ldr     r1, [sp,  #6<<2+24]             @ w[i-16]
+ 451 01c0 0E98     	    ldr     r0, [sp,  #8<<2+24]             @ w[i-14]
+ARM GAS  src/mmcau_sha1_functions.s 			page 10
+
+
+ 452 01c2 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 453 01c4 1498     	    ldr     r0, [sp, #14<<2+24]             @ w[i-8]
+ 454 01c6 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 455 01c8 1998     	    ldr     r0, [sp, #19<<2+24]             @ w[i-3]
+ 456 01ca 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 457 01cc D941     	    rors    r1, r3                          @ rotate left by 1
+ 458 01ce 1C91     	    str     r1, [sp, #22<<2+24]             @ store w[22]
+ 459 01d0 3944     	    add     r1, r7                          @ w[22] + k[1]
+ 460 01d2 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 461 01d4 1560     	    str     r5, [r2]                        @ shift regs
+ 462              	
+ 463 01d6 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 464 01d8 0D99     	    ldr     r1, [sp,  #7<<2+24]             @ w[i-16]
+ 465 01da 0F98     	    ldr     r0, [sp,  #9<<2+24]             @ w[i-14]
+ 466 01dc 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 467 01de 1598     	    ldr     r0, [sp, #15<<2+24]             @ w[i-8]
+ 468 01e0 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 469 01e2 1A98     	    ldr     r0, [sp, #20<<2+24]             @ w[i-3]
+ 470 01e4 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 471 01e6 D941     	    rors    r1, r3                          @ rotate left by 1
+ 472 01e8 1D91     	    str     r1, [sp, #23<<2+24]             @ store w[23]
+ 473 01ea 3944     	    add     r1, r7                          @ w[23] + k[1]
+ 474 01ec 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 475 01ee 1560     	    str     r5, [r2]                        @ shift regs
+ 476              	
+ 477 01f0 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 478 01f2 0E99     	    ldr     r1, [sp,  #8<<2+24]             @ w[i-16]
+ 479 01f4 1098     	    ldr     r0, [sp, #10<<2+24]             @ w[i-14]
+ 480 01f6 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 481 01f8 1698     	    ldr     r0, [sp, #16<<2+24]             @ w[i-8]
+ 482 01fa 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 483 01fc 1B98     	    ldr     r0, [sp, #21<<2+24]             @ w[i-3]
+ 484 01fe 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 485 0200 D941     	    rors    r1, r3                          @ rotate left by 1
+ 486 0202 1E91     	    str     r1, [sp, #24<<2+24]             @ store w[24]
+ 487 0204 3944     	    add     r1, r7                          @ w[24] + k[1]
+ 488 0206 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 489 0208 1560     	    str     r5, [r2]                        @ shift regs
+ 490              	
+ 491 020a 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 492 020c 0F99     	    ldr     r1, [sp,  #9<<2+24]             @ w[i-16]
+ 493 020e 1198     	    ldr     r0, [sp, #11<<2+24]             @ w[i-14]
+ 494 0210 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 495 0212 1798     	    ldr     r0, [sp, #17<<2+24]             @ w[i-8]
+ 496 0214 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 497 0216 1C98     	    ldr     r0, [sp, #22<<2+24]             @ w[i-3]
+ 498 0218 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 499 021a D941     	    rors    r1, r3                          @ rotate left by 1
+ 500 021c 1F91     	    str     r1, [sp, #25<<2+24]             @ store w[25]
+ 501 021e 3944     	    add     r1, r7                          @ w[25] + k[1]
+ 502 0220 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 503 0222 1560     	    str     r5, [r2]                        @ shift regs
+ 504              	
+ 505 0224 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 506 0226 1099     	    ldr     r1, [sp, #10<<2+24]             @ w[i-16]
+ 507 0228 1298     	    ldr     r0, [sp, #12<<2+24]             @ w[i-14]
+ 508 022a 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ARM GAS  src/mmcau_sha1_functions.s 			page 11
+
+
+ 509 022c 1898     	    ldr     r0, [sp, #18<<2+24]             @ w[i-8]
+ 510 022e 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 511 0230 1D98     	    ldr     r0, [sp, #23<<2+24]             @ w[i-3]
+ 512 0232 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 513 0234 D941     	    rors    r1, r3                          @ rotate left by 1
+ 514 0236 2091     	    str     r1, [sp, #26<<2+24]             @ store w[26]
+ 515 0238 3944     	    add     r1, r7                          @ w[26] + k[1]
+ 516 023a 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 517 023c 1560     	    str     r5, [r2]                        @ shift regs
+ 518              	
+ 519 023e 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 520 0240 1199     	    ldr     r1, [sp, #11<<2+24]             @ w[i-16]
+ 521 0242 1398     	    ldr     r0, [sp, #13<<2+24]             @ w[i-14]
+ 522 0244 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 523 0246 1998     	    ldr     r0, [sp, #19<<2+24]             @ w[i-8]
+ 524 0248 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 525 024a 1E98     	    ldr     r0, [sp, #24<<2+24]             @ w[i-3]
+ 526 024c 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 527 024e D941     	    rors    r1, r3                          @ rotate left by 1
+ 528 0250 2191     	    str     r1, [sp, #27<<2+24]             @ store w[27]
+ 529 0252 3944     	    add     r1, r7                          @ w[27] + k[1]
+ 530 0254 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 531 0256 1560     	    str     r5, [r2]                        @ shift regs
+ 532              	
+ 533 0258 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 534 025a 1299     	    ldr     r1, [sp, #12<<2+24]             @ w[i-16]
+ 535 025c 1498     	    ldr     r0, [sp, #14<<2+24]             @ w[i-14]
+ 536 025e 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 537 0260 1A98     	    ldr     r0, [sp, #20<<2+24]             @ w[i-8]
+ 538 0262 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 539 0264 1F98     	    ldr     r0, [sp, #25<<2+24]             @ w[i-3]
+ 540 0266 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 541 0268 D941     	    rors    r1, r3                          @ rotate left by 1
+ 542 026a 2291     	    str     r1, [sp, #28<<2+24]             @ store w[28]
+ 543 026c 3944     	    add     r1, r7                          @ w[28] + k[1]
+ 544 026e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 545 0270 1560     	    str     r5, [r2]                        @ shift regs
+ 546              	
+ 547 0272 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 548 0274 1399     	    ldr     r1, [sp, #13<<2+24]             @ w[i-16]
+ 549 0276 1598     	    ldr     r0, [sp, #15<<2+24]             @ w[i-14]
+ 550 0278 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 551 027a 1B98     	    ldr     r0, [sp, #21<<2+24]             @ w[i-8]
+ 552 027c 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 553 027e 2098     	    ldr     r0, [sp, #26<<2+24]             @ w[i-3]
+ 554 0280 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 555 0282 D941     	    rors    r1, r3                          @ rotate left by 1
+ 556 0284 2391     	    str     r1, [sp, #29<<2+24]             @ store w[29]
+ 557 0286 3944     	    add     r1, r7                          @ w[29] + k[1]
+ 558 0288 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 559 028a 1560     	    str     r5, [r2]                        @ shift regs
+ 560              	
+ 561 028c 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 562 028e 1499     	    ldr     r1, [sp, #14<<2+24]             @ w[i-16]
+ 563 0290 1698     	    ldr     r0, [sp, #16<<2+24]             @ w[i-14]
+ 564 0292 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 565 0294 1C98     	    ldr     r0, [sp, #22<<2+24]             @ w[i-8]
+ARM GAS  src/mmcau_sha1_functions.s 			page 12
+
+
+ 566 0296 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 567 0298 2198     	    ldr     r0, [sp, #27<<2+24]             @ w[i-3]
+ 568 029a 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 569 029c D941     	    rors    r1, r3                          @ rotate left by 1
+ 570 029e 2491     	    str     r1, [sp, #30<<2+24]             @ store w[30]
+ 571 02a0 3944     	    add     r1, r7                          @ w[30] + k[1]
+ 572 02a2 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 573 02a4 1560     	    str     r5, [r2]                        @ shift regs
+ 574              	
+ 575 02a6 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 576 02a8 1599     	    ldr     r1, [sp, #15<<2+24]             @ w[i-16]
+ 577 02aa 1798     	    ldr     r0, [sp, #17<<2+24]             @ w[i-14]
+ 578 02ac 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 579 02ae 1D98     	    ldr     r0, [sp, #23<<2+24]             @ w[i-8]
+ 580 02b0 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 581 02b2 2298     	    ldr     r0, [sp, #28<<2+24]             @ w[i-3]
+ 582 02b4 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 583 02b6 D941     	    rors    r1, r3                          @ rotate left by 1
+ 584 02b8 2591     	    str     r1, [sp, #31<<2+24]             @ store w[31]
+ 585 02ba 3944     	    add     r1, r7                          @ w[31] + k[1]
+ 586 02bc 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 587 02be 1560     	    str     r5, [r2]                        @ shift regs
+ 588              	
+ 589 02c0 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 590 02c2 1699     	    ldr     r1, [sp, #16<<2+24]             @ w[i-16]
+ 591 02c4 1898     	    ldr     r0, [sp, #18<<2+24]             @ w[i-14]
+ 592 02c6 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 593 02c8 1E98     	    ldr     r0, [sp, #24<<2+24]             @ w[i-8]
+ 594 02ca 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 595 02cc 2398     	    ldr     r0, [sp, #29<<2+24]             @ w[i-3]
+ 596 02ce 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 597 02d0 D941     	    rors    r1, r3                          @ rotate left by 1
+ 598 02d2 2691     	    str     r1, [sp, #32<<2+24]             @ store w[32]
+ 599 02d4 3944     	    add     r1, r7                          @ w[32] + k[1]
+ 600 02d6 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 601 02d8 1560     	    str     r5, [r2]                        @ shift regs
+ 602              	
+ 603 02da 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 604 02dc 1799     	    ldr     r1, [sp, #17<<2+24]             @ w[i-16]
+ 605 02de 1998     	    ldr     r0, [sp, #19<<2+24]             @ w[i-14]
+ 606 02e0 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 607 02e2 1F98     	    ldr     r0, [sp, #25<<2+24]             @ w[i-8]
+ 608 02e4 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 609 02e6 2498     	    ldr     r0, [sp, #30<<2+24]             @ w[i-3]
+ 610 02e8 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 611 02ea D941     	    rors    r1, r3                          @ rotate left by 1
+ 612 02ec 2791     	    str     r1, [sp, #33<<2+24]             @ store w[33]
+ 613 02ee 3944     	    add     r1, r7                          @ w[33] + k[1]
+ 614 02f0 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 615 02f2 1560     	    str     r5, [r2]                        @ shift regs
+ 616              	
+ 617 02f4 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 618 02f6 1899     	    ldr     r1, [sp, #18<<2+24]             @ w[i-16]
+ 619 02f8 1A98     	    ldr     r0, [sp, #20<<2+24]             @ w[i-14]
+ 620 02fa 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 621 02fc 2098     	    ldr     r0, [sp, #26<<2+24]             @ w[i-8]
+ 622 02fe 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ARM GAS  src/mmcau_sha1_functions.s 			page 13
+
+
+ 623 0300 2598     	    ldr     r0, [sp, #31<<2+24]             @ w[i-3]
+ 624 0302 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 625 0304 D941     	    rors    r1, r3                          @ rotate left by 1
+ 626 0306 2891     	    str     r1, [sp, #34<<2+24]             @ store w[34]
+ 627 0308 3944     	    add     r1, r7                          @ w[34] + k[1]
+ 628 030a 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 629 030c 1560     	    str     r5, [r2]                        @ shift regs
+ 630              	
+ 631 030e 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 632 0310 1999     	    ldr     r1, [sp, #19<<2+24]             @ w[i-16]
+ 633 0312 1B98     	    ldr     r0, [sp, #21<<2+24]             @ w[i-14]
+ 634 0314 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 635 0316 2198     	    ldr     r0, [sp, #27<<2+24]             @ w[i-8]
+ 636 0318 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 637 031a 2698     	    ldr     r0, [sp, #32<<2+24]             @ w[i-3]
+ 638 031c 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 639 031e D941     	    rors    r1, r3                          @ rotate left by 1
+ 640 0320 2991     	    str     r1, [sp, #35<<2+24]             @ store w[35]
+ 641 0322 3944     	    add     r1, r7                          @ w[35] + k[1]
+ 642 0324 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 643 0326 1560     	    str     r5, [r2]                        @ shift regs
+ 644              	
+ 645 0328 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 646 032a 1A99     	    ldr     r1, [sp, #20<<2+24]             @ w[i-16]
+ 647 032c 1C98     	    ldr     r0, [sp, #22<<2+24]             @ w[i-14]
+ 648 032e 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 649 0330 2298     	    ldr     r0, [sp, #28<<2+24]             @ w[i-8]
+ 650 0332 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 651 0334 2798     	    ldr     r0, [sp, #33<<2+24]             @ w[i-3]
+ 652 0336 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 653 0338 D941     	    rors    r1, r3                          @ rotate left by 1
+ 654 033a 2A91     	    str     r1, [sp, #36<<2+24]             @ store w[36]
+ 655 033c 3944     	    add     r1, r7                          @ w[36] + k[1]
+ 656 033e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 657 0340 1560     	    str     r5, [r2]                        @ shift regs
+ 658              	
+ 659 0342 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 660 0344 1B99     	    ldr     r1, [sp, #21<<2+24]             @ w[i-16]
+ 661 0346 1D98     	    ldr     r0, [sp, #23<<2+24]             @ w[i-14]
+ 662 0348 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 663 034a 2398     	    ldr     r0, [sp, #29<<2+24]             @ w[i-8]
+ 664 034c 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 665 034e 2898     	    ldr     r0, [sp, #34<<2+24]             @ w[i-3]
+ 666 0350 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 667 0352 D941     	    rors    r1, r3                          @ rotate left by 1
+ 668 0354 2B91     	    str     r1, [sp, #37<<2+24]             @ store w[37]
+ 669 0356 3944     	    add     r1, r7                          @ w[37] + k[1]
+ 670 0358 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 671 035a 1560     	    str     r5, [r2]                        @ shift regs
+ 672              	
+ 673 035c 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 674 035e 1C99     	    ldr     r1, [sp, #22<<2+24]             @ w[i-16]
+ 675 0360 1E98     	    ldr     r0, [sp, #24<<2+24]             @ w[i-14]
+ 676 0362 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 677 0364 2498     	    ldr     r0, [sp, #30<<2+24]             @ w[i-8]
+ 678 0366 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 679 0368 2998     	    ldr     r0, [sp, #35<<2+24]             @ w[i-3]
+ARM GAS  src/mmcau_sha1_functions.s 			page 14
+
+
+ 680 036a 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 681 036c D941     	    rors    r1, r3                          @ rotate left by 1
+ 682 036e 2C91     	    str     r1, [sp, #38<<2+24]             @ store w[38]
+ 683 0370 3944     	    add     r1, r7                          @ w[38] + k[1]
+ 684 0372 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 685 0374 1560     	    str     r5, [r2]                        @ shift regs
+ 686              	
+ 687 0376 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 688 0378 1D99     	    ldr     r1, [sp, #23<<2+24]             @ w[i-16]
+ 689 037a 1F98     	    ldr     r0, [sp, #25<<2+24]             @ w[i-14]
+ 690 037c 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 691 037e 2598     	    ldr     r0, [sp, #31<<2+24]             @ w[i-8]
+ 692 0380 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 693 0382 2A98     	    ldr     r0, [sp, #36<<2+24]             @ w[i-3]
+ 694 0384 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 695 0386 D941     	    rors    r1, r3                          @ rotate left by 1
+ 696 0388 2D91     	    str     r1, [sp, #39<<2+24]             @ store w[39]
+ 697 038a 3944     	    add     r1, r7                          @ w[39] + k[1]
+ 698 038c 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 699 038e 1560     	    str     r5, [r2]                        @ shift regs
+ 700              	
+ 701 0390 5699     	    ldr     r1, [sp, #344]                  @ restore *sha1_k
+ 702 0392 094E     	    ldr     r6, =MMCAU_2_CMDS+((HASH+HFM)<<22)+((ADRA+CA4)<<11)
+ 703 0394 8F68     	    ldr     r7, [r1, #2<<2]                 @ load k[2]
+ 704 0396 11E0     	    b       next_blk_continued
+ 705 0398 00000000 	    .ltorg
+ 705      485800F0 
+ 705      445800F0 
+ 705      20000000 
+ 705      005000F0 
+ 706              	
+ 707              	
+ 708              	next_blk_continued:
+ 709              	
+ 710              	#   for (j = 0; j < 20; j++)
+ 711              	#   {
+ 712              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(HASH+HFM,ADRA+CA4);  // + Maj(), + e
+ 713              	#   *(MMCAU_PPB_INDIRECT + (ADR+CAA))  = sha1_k[2];         // + k[2]
+ 714              	#   *(MMCAU_PPB_INDIRECT + (LDR+CA5))  = w[i-16];           // CA5 = w[i-16]
+ 715              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-14];           // xor w[i-14]
+ 716              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-8];            // xor w[i-8]
+ 717              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-3];            // xor w[i-3]
+ 718              	#   *(MMCAU_PPB_INDIRECT + (ROTL+CA5)) = 1;                 // rotate 1
+ 719              	#   w[i++] = *(MMCAU_PPB_INDIRECT + (STR+CA5));             // store w[i]
+ 720              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(ADRA+CA5,SHS);       // + w[i], shift
+ 721              	#   }
+ 722              	#
+ 723              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+ 724              	#
+ 725              	#    REGISTER  |  ALLOCATION (throughout the fourth loop)
+ 726              	#   -----------+------------------------------------------------------------
+ 727              	#          r0  |  scratch
+ 728              	#          r1  |  amount to rotate = #31
+ 729              	#          r2  |  *mmcau_direct_cmd()
+ 730              	#          r3  |  scratch
+ 731              	#          r4  |  mmcau_indirect_cmd(ADR+CAA)
+ 732              	#          r5  |  mmcau_1_cmd(SHS)
+ARM GAS  src/mmcau_sha1_functions.s 			page 15
+
+
+ 733              	#          r6  |  mmcau_2_cmds(HASH+HFP,ADRA+CA4)
+ 734              	#          r7  |  k[2]
+ 735              	
+ 736 03bc 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 737 03be 1E99     	    ldr     r1, [sp, #24<<2+24]             @ w[i-16]
+ 738 03c0 2098     	    ldr     r0, [sp, #26<<2+24]             @ w[i-14]
+ 739 03c2 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 740 03c4 2698     	    ldr     r0, [sp, #32<<2+24]             @ w[i-8]
+ 741 03c6 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 742 03c8 2B98     	    ldr     r0, [sp, #37<<2+24]             @ w[i-3]
+ 743 03ca 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 744 03cc D941     	    rors    r1, r3                          @ rotate left by 1
+ 745 03ce 2E91     	    str     r1, [sp, #40<<2+24]             @ store w[40]
+ 746 03d0 3944     	    add     r1, r7                          @ w[40] + k[2]
+ 747 03d2 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 748 03d4 1560     	    str     r5, [r2]                        @ shift regs
+ 749              	
+ 750 03d6 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 751 03d8 1F99     	    ldr     r1, [sp, #25<<2+24]             @ w[i-16]
+ 752 03da 2198     	    ldr     r0, [sp, #27<<2+24]             @ w[i-14]
+ 753 03dc 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 754 03de 2798     	    ldr     r0, [sp, #33<<2+24]             @ w[i-8]
+ 755 03e0 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 756 03e2 2C98     	    ldr     r0, [sp, #38<<2+24]             @ w[i-3]
+ 757 03e4 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 758 03e6 D941     	    rors    r1, r3                          @ rotate left by 1
+ 759 03e8 2F91     	    str     r1, [sp, #41<<2+24]             @ store w[41]
+ 760 03ea 3944     	    add     r1, r7                          @ w[41] + k[2]
+ 761 03ec 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 762 03ee 1560     	    str     r5, [r2]                        @ shift regs
+ 763              	
+ 764 03f0 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 765 03f2 2099     	    ldr     r1, [sp, #26<<2+24]             @ w[i-16]
+ 766 03f4 2298     	    ldr     r0, [sp, #28<<2+24]             @ w[i-14]
+ 767 03f6 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 768 03f8 2898     	    ldr     r0, [sp, #34<<2+24]             @ w[i-8]
+ 769 03fa 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 770 03fc 2D98     	    ldr     r0, [sp, #39<<2+24]             @ w[i-3]
+ 771 03fe 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 772 0400 D941     	    rors    r1, r3                          @ rotate left by 1
+ 773 0402 3091     	    str     r1, [sp, #42<<2+24]             @ store w[42]
+ 774 0404 3944     	    add     r1, r7                          @ w[42] + k[2]
+ 775 0406 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 776 0408 1560     	    str     r5, [r2]                        @ shift regs
+ 777              	
+ 778 040a 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 779 040c 2199     	    ldr     r1, [sp, #27<<2+24]             @ w[i-16]
+ 780 040e 2398     	    ldr     r0, [sp, #29<<2+24]             @ w[i-14]
+ 781 0410 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 782 0412 2998     	    ldr     r0, [sp, #35<<2+24]             @ w[i-8]
+ 783 0414 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 784 0416 2E98     	    ldr     r0, [sp, #40<<2+24]             @ w[i-3]
+ 785 0418 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 786 041a D941     	    rors    r1, r3                          @ rotate left by 1
+ 787 041c 3191     	    str     r1, [sp, #43<<2+24]             @ store w[43]
+ 788 041e 3944     	    add     r1, r7                          @ w[43] + k[2]
+ 789 0420 2160     	    str     r1, [r4]                        @ add sum to CAA
+ARM GAS  src/mmcau_sha1_functions.s 			page 16
+
+
+ 790 0422 1560     	    str     r5, [r2]                        @ shift regs
+ 791              	
+ 792 0424 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 793 0426 2299     	    ldr     r1, [sp, #28<<2+24]             @ w[i-16]
+ 794 0428 2498     	    ldr     r0, [sp, #30<<2+24]             @ w[i-14]
+ 795 042a 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 796 042c 2A98     	    ldr     r0, [sp, #36<<2+24]             @ w[i-8]
+ 797 042e 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 798 0430 2F98     	    ldr     r0, [sp, #41<<2+24]             @ w[i-3]
+ 799 0432 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 800 0434 D941     	    rors    r1, r3                          @ rotate left by 1
+ 801 0436 3291     	    str     r1, [sp, #44<<2+24]             @ store w[44]
+ 802 0438 3944     	    add     r1, r7                          @ w[44] + k[2]
+ 803 043a 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 804 043c 1560     	    str     r5, [r2]                        @ shift regs
+ 805              	
+ 806 043e 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 807 0440 2399     	    ldr     r1, [sp, #29<<2+24]             @ w[i-16]
+ 808 0442 2598     	    ldr     r0, [sp, #31<<2+24]             @ w[i-14]
+ 809 0444 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 810 0446 2B98     	    ldr     r0, [sp, #37<<2+24]             @ w[i-8]
+ 811 0448 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 812 044a 3098     	    ldr     r0, [sp, #42<<2+24]             @ w[i-3]
+ 813 044c 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 814 044e D941     	    rors    r1, r3                          @ rotate left by 1
+ 815 0450 3391     	    str     r1, [sp, #45<<2+24]             @ store w[45]
+ 816 0452 3944     	    add     r1, r7                          @ w[45] + k[2]
+ 817 0454 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 818 0456 1560     	    str     r5, [r2]                        @ shift regs
+ 819              	
+ 820 0458 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 821 045a 2499     	    ldr     r1, [sp, #30<<2+24]             @ w[i-16]
+ 822 045c 2698     	    ldr     r0, [sp, #32<<2+24]             @ w[i-14]
+ 823 045e 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 824 0460 2C98     	    ldr     r0, [sp, #38<<2+24]             @ w[i-8]
+ 825 0462 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 826 0464 3198     	    ldr     r0, [sp, #43<<2+24]             @ w[i-3]
+ 827 0466 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 828 0468 D941     	    rors    r1, r3                          @ rotate left by 1
+ 829 046a 3491     	    str     r1, [sp, #46<<2+24]             @ store w[46]
+ 830 046c 3944     	    add     r1, r7                          @ w[46] + k[2]
+ 831 046e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 832 0470 1560     	    str     r5, [r2]                        @ shift regs
+ 833              	
+ 834 0472 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 835 0474 2599     	    ldr     r1, [sp, #31<<2+24]             @ w[i-16]
+ 836 0476 2798     	    ldr     r0, [sp, #33<<2+24]             @ w[i-14]
+ 837 0478 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 838 047a 2D98     	    ldr     r0, [sp, #39<<2+24]             @ w[i-8]
+ 839 047c 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 840 047e 3298     	    ldr     r0, [sp, #44<<2+24]             @ w[i-3]
+ 841 0480 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 842 0482 D941     	    rors    r1, r3                          @ rotate left by 1
+ 843 0484 3591     	    str     r1, [sp, #47<<2+24]             @ store w[47]
+ 844 0486 3944     	    add     r1, r7                          @ w[47] + k[2]
+ 845 0488 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 846 048a 1560     	    str     r5, [r2]                        @ shift regs
+ARM GAS  src/mmcau_sha1_functions.s 			page 17
+
+
+ 847              	
+ 848 048c 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 849 048e 2699     	    ldr     r1, [sp, #32<<2+24]             @ w[i-16]
+ 850 0490 2898     	    ldr     r0, [sp, #34<<2+24]             @ w[i-14]
+ 851 0492 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 852 0494 2E98     	    ldr     r0, [sp, #40<<2+24]             @ w[i-8]
+ 853 0496 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 854 0498 3398     	    ldr     r0, [sp, #45<<2+24]             @ w[i-3]
+ 855 049a 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 856 049c D941     	    rors    r1, r3                          @ rotate left by 1
+ 857 049e 3691     	    str     r1, [sp, #48<<2+24]             @ store w[48]
+ 858 04a0 3944     	    add     r1, r7                          @ w[48] + k[2]
+ 859 04a2 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 860 04a4 1560     	    str     r5, [r2]                        @ shift regs
+ 861              	
+ 862 04a6 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 863 04a8 2799     	    ldr     r1, [sp, #33<<2+24]             @ w[i-16]
+ 864 04aa 2998     	    ldr     r0, [sp, #35<<2+24]             @ w[i-14]
+ 865 04ac 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 866 04ae 2F98     	    ldr     r0, [sp, #41<<2+24]             @ w[i-8]
+ 867 04b0 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 868 04b2 3498     	    ldr     r0, [sp, #46<<2+24]             @ w[i-3]
+ 869 04b4 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 870 04b6 D941     	    rors    r1, r3                          @ rotate left by 1
+ 871 04b8 3791     	    str     r1, [sp, #49<<2+24]             @ store w[49]
+ 872 04ba 3944     	    add     r1, r7                          @ w[49] + k[2]
+ 873 04bc 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 874 04be 1560     	    str     r5, [r2]                        @ shift regs
+ 875              	
+ 876 04c0 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 877 04c2 2899     	    ldr     r1, [sp, #34<<2+24]             @ w[i-16]
+ 878 04c4 2A98     	    ldr     r0, [sp, #36<<2+24]             @ w[i-14]
+ 879 04c6 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 880 04c8 3098     	    ldr     r0, [sp, #42<<2+24]             @ w[i-8]
+ 881 04ca 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 882 04cc 3598     	    ldr     r0, [sp, #47<<2+24]             @ w[i-3]
+ 883 04ce 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 884 04d0 D941     	    rors    r1, r3                          @ rotate left by 1
+ 885 04d2 3891     	    str     r1, [sp, #50<<2+24]             @ store w[50]
+ 886 04d4 3944     	    add     r1, r7                          @ w[50] + k[2]
+ 887 04d6 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 888 04d8 1560     	    str     r5, [r2]                        @ shift regs
+ 889              	
+ 890 04da 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 891 04dc 2999     	    ldr     r1, [sp, #35<<2+24]             @ w[i-16]
+ 892 04de 2B98     	    ldr     r0, [sp, #37<<2+24]             @ w[i-14]
+ 893 04e0 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 894 04e2 3198     	    ldr     r0, [sp, #43<<2+24]             @ w[i-8]
+ 895 04e4 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 896 04e6 3698     	    ldr     r0, [sp, #48<<2+24]             @ w[i-3]
+ 897 04e8 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 898 04ea D941     	    rors    r1, r3                          @ rotate left by 1
+ 899 04ec 3991     	    str     r1, [sp, #51<<2+24]             @ store w[51]
+ 900 04ee 3944     	    add     r1, r7                          @ w[51] + k[2]
+ 901 04f0 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 902 04f2 1560     	    str     r5, [r2]                        @ shift regs
+ 903              	
+ARM GAS  src/mmcau_sha1_functions.s 			page 18
+
+
+ 904 04f4 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 905 04f6 2A99     	    ldr     r1, [sp, #36<<2+24]             @ w[i-16]
+ 906 04f8 2C98     	    ldr     r0, [sp, #38<<2+24]             @ w[i-14]
+ 907 04fa 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 908 04fc 3298     	    ldr     r0, [sp, #44<<2+24]             @ w[i-8]
+ 909 04fe 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 910 0500 3798     	    ldr     r0, [sp, #49<<2+24]             @ w[i-3]
+ 911 0502 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 912 0504 D941     	    rors    r1, r3                          @ rotate left by 1
+ 913 0506 3A91     	    str     r1, [sp, #52<<2+24]             @ store w[52]
+ 914 0508 3944     	    add     r1, r7                          @ w[52] + k[2]
+ 915 050a 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 916 050c 1560     	    str     r5, [r2]                        @ shift regs
+ 917              	
+ 918 050e 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 919 0510 2B99     	    ldr     r1, [sp, #37<<2+24]             @ w[i-16]
+ 920 0512 2D98     	    ldr     r0, [sp, #39<<2+24]             @ w[i-14]
+ 921 0514 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 922 0516 3398     	    ldr     r0, [sp, #45<<2+24]             @ w[i-8]
+ 923 0518 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 924 051a 3898     	    ldr     r0, [sp, #50<<2+24]             @ w[i-3]
+ 925 051c 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 926 051e D941     	    rors    r1, r3                          @ rotate left by 1
+ 927 0520 3B91     	    str     r1, [sp, #53<<2+24]             @ store w[53]
+ 928 0522 3944     	    add     r1, r7                          @ w[53] + k[2]
+ 929 0524 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 930 0526 1560     	    str     r5, [r2]                        @ shift regs
+ 931              	
+ 932 0528 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 933 052a 2C99     	    ldr     r1, [sp, #38<<2+24]             @ w[i-16]
+ 934 052c 2E98     	    ldr     r0, [sp, #40<<2+24]             @ w[i-14]
+ 935 052e 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 936 0530 3498     	    ldr     r0, [sp, #46<<2+24]             @ w[i-8]
+ 937 0532 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 938 0534 3998     	    ldr     r0, [sp, #51<<2+24]             @ w[i-3]
+ 939 0536 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 940 0538 D941     	    rors    r1, r3                          @ rotate left by 1
+ 941 053a 3C91     	    str     r1, [sp, #54<<2+24]             @ store w[54]
+ 942 053c 3944     	    add     r1, r7                          @ w[54] + k[2]
+ 943 053e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 944 0540 1560     	    str     r5, [r2]                        @ shift regs
+ 945              	
+ 946 0542 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 947 0544 2D99     	    ldr     r1, [sp, #39<<2+24]             @ w[i-16]
+ 948 0546 2F98     	    ldr     r0, [sp, #41<<2+24]             @ w[i-14]
+ 949 0548 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 950 054a 3598     	    ldr     r0, [sp, #47<<2+24]             @ w[i-8]
+ 951 054c 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 952 054e 3A98     	    ldr     r0, [sp, #52<<2+24]             @ w[i-3]
+ 953 0550 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 954 0552 D941     	    rors    r1, r3                          @ rotate left by 1
+ 955 0554 3D91     	    str     r1, [sp, #55<<2+24]             @ store w[55]
+ 956 0556 3944     	    add     r1, r7                          @ w[55] + k[2]
+ 957 0558 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 958 055a 1560     	    str     r5, [r2]                        @ shift regs
+ 959              	
+ 960 055c 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ARM GAS  src/mmcau_sha1_functions.s 			page 19
+
+
+ 961 055e 2E99     	    ldr     r1, [sp, #40<<2+24]             @ w[i-16]
+ 962 0560 3098     	    ldr     r0, [sp, #42<<2+24]             @ w[i-14]
+ 963 0562 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 964 0564 3698     	    ldr     r0, [sp, #48<<2+24]             @ w[i-8]
+ 965 0566 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 966 0568 3B98     	    ldr     r0, [sp, #53<<2+24]             @ w[i-3]
+ 967 056a 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 968 056c D941     	    rors    r1, r3                          @ rotate left by 1
+ 969 056e 3E91     	    str     r1, [sp, #56<<2+24]             @ store w[56]
+ 970 0570 3944     	    add     r1, r7                          @ w[56] + k[2]
+ 971 0572 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 972 0574 1560     	    str     r5, [r2]                        @ shift regs
+ 973              	
+ 974 0576 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 975 0578 2F99     	    ldr     r1, [sp, #41<<2+24]             @ w[i-16]
+ 976 057a 3198     	    ldr     r0, [sp, #43<<2+24]             @ w[i-14]
+ 977 057c 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 978 057e 3798     	    ldr     r0, [sp, #49<<2+24]             @ w[i-8]
+ 979 0580 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 980 0582 3C98     	    ldr     r0, [sp, #54<<2+24]             @ w[i-3]
+ 981 0584 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 982 0586 D941     	    rors    r1, r3                          @ rotate left by 1
+ 983 0588 3F91     	    str     r1, [sp, #57<<2+24]             @ store w[57]
+ 984 058a 3944     	    add     r1, r7                          @ w[57] + k[2]
+ 985 058c 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 986 058e 1560     	    str     r5, [r2]                        @ shift regs
+ 987              	
+ 988 0590 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 989 0592 3099     	    ldr     r1, [sp, #42<<2+24]             @ w[i-16]
+ 990 0594 3298     	    ldr     r0, [sp, #44<<2+24]             @ w[i-14]
+ 991 0596 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 992 0598 3898     	    ldr     r0, [sp, #50<<2+24]             @ w[i-8]
+ 993 059a 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 994 059c 3D98     	    ldr     r0, [sp, #55<<2+24]             @ w[i-3]
+ 995 059e 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 996 05a0 D941     	    rors    r1, r3                          @ rotate left by 1
+ 997 05a2 4091     	    str     r1, [sp, #58<<2+24]             @ store w[58]
+ 998 05a4 3944     	    add     r1, r7                          @ w[58] + k[2]
+ 999 05a6 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1000 05a8 1560     	    str     r5, [r2]                        @ shift regs
+ 1001              	
+ 1002 05aa 1660     	    str     r6, [r2]                        @ + Maj(), + e
+ 1003 05ac 3199     	    ldr     r1, [sp, #43<<2+24]             @ w[i-16]
+ 1004 05ae 3398     	    ldr     r0, [sp, #45<<2+24]             @ w[i-14]
+ 1005 05b0 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1006 05b2 3998     	    ldr     r0, [sp, #51<<2+24]             @ w[i-8]
+ 1007 05b4 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1008 05b6 3E98     	    ldr     r0, [sp, #56<<2+24]             @ w[i-3]
+ 1009 05b8 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1010 05ba D941     	    rors    r1, r3                          @ rotate left by 1
+ 1011 05bc 4191     	    str     r1, [sp, #59<<2+24]             @ store w[59]
+ 1012 05be 3944     	    add     r1, r7                          @ w[59] + k[2]
+ 1013 05c0 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1014 05c2 1560     	    str     r5, [r2]                        @ shift regs
+ 1015              	
+ 1016 05c4 5699     	    ldr     r1, [sp, #344]                  @ restore *sha1_k
+ 1017 05c6 944E     	    ldr     r6, =MMCAU_2_CMDS+((HASH+HFP)<<22)+((ADRA+CA4)<<11)
+ARM GAS  src/mmcau_sha1_functions.s 			page 20
+
+
+ 1018 05c8 CF68     	    ldr     r7, [r1, #3<<2]                 @ load k[3]
+ 1019              	
+ 1020              	
+ 1021              	#   for (j = 0; j < 20; j++)
+ 1022              	#   {
+ 1023              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(HASH+HFP,ADRA+CA4);  // + Par(), + e
+ 1024              	#   *(MMCAU_PPB_INDIRECT + (ADR+CAA))  = sha1_k[3];         // + k[3]
+ 1025              	#   *(MMCAU_PPB_INDIRECT + (LDR+CA5))  = w[i-16];           // CA5 = w[i-16]
+ 1026              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-14];           // xor w[i-14]
+ 1027              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-8];            // xor w[i-8]
+ 1028              	#   *(MMCAU_PPB_INDIRECT + (XOR+CA5))  = w[i-3];            // xor w[i-3]
+ 1029              	#   *(MMCAU_PPB_INDIRECT + (ROTL+CA5)) = 1;                 // rotate 1
+ 1030              	#   w[i++] = *(MMCAU_PPB_INDIRECT + (STR+CA5));             // store w[i]
+ 1031              	#   *(MMCAU_PPB_DIRECT) = mmcau_2_cmds(ADRA+CA5,SHS);       // + w[i], shift
+ 1032              	#   }
+ 1033              	#
+ 1034              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+ 1035              	#
+ 1036              	#    REGISTER  |  ALLOCATION (throughout the fifth/last loop)
+ 1037              	#   -----------+------------------------------------------------------------
+ 1038              	#          r0  |  scratch
+ 1039              	#          r1  |  scratch
+ 1040              	#          r2  |  *mmcau_direct_cmd()
+ 1041              	#          r3  |  amount to rotate = #31
+ 1042              	#          r4  |  mmcau_indirect_cmd(ADR+CAA)
+ 1043              	#          r5  |  mmcau_1_cmd(SHS)
+ 1044              	#          r6  |  mmcau_2_cmds(HASH+HFP,ADRA+CA4)
+ 1045              	#          r7  |  k[3]
+ 1046              	
+ 1047 05ca 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1048 05cc 3299     	    ldr     r1, [sp, #44<<2+24]             @ w[i-16]
+ 1049 05ce 3498     	    ldr     r0, [sp, #46<<2+24]             @ w[i-14]
+ 1050 05d0 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1051 05d2 3A98     	    ldr     r0, [sp, #52<<2+24]             @ w[i-8]
+ 1052 05d4 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1053 05d6 3F98     	    ldr     r0, [sp, #57<<2+24]             @ w[i-3]
+ 1054 05d8 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1055 05da D941     	    rors    r1, r3                          @ rotate left by 1
+ 1056 05dc 4291     	    str     r1, [sp, #60<<2+24]             @ store w[60]
+ 1057 05de 3944     	    add     r1, r7                          @ w[60] + k[3]
+ 1058 05e0 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1059 05e2 1560     	    str     r5, [r2]                        @ shift regs
+ 1060              	
+ 1061 05e4 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1062 05e6 3399     	    ldr     r1, [sp, #45<<2+24]             @ w[i-16]
+ 1063 05e8 3598     	    ldr     r0, [sp, #47<<2+24]             @ w[i-14]
+ 1064 05ea 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1065 05ec 3B98     	    ldr     r0, [sp, #53<<2+24]             @ w[i-8]
+ 1066 05ee 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1067 05f0 4098     	    ldr     r0, [sp, #58<<2+24]             @ w[i-3]
+ 1068 05f2 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1069 05f4 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1070 05f6 4391     	    str     r1, [sp, #61<<2+24]             @ store w[61]
+ 1071 05f8 3944     	    add     r1, r7                          @ w[61] + k[3]
+ 1072 05fa 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1073 05fc 1560     	    str     r5, [r2]                        @ shift regs
+ 1074              	
+ARM GAS  src/mmcau_sha1_functions.s 			page 21
+
+
+ 1075 05fe 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1076 0600 3499     	    ldr     r1, [sp, #46<<2+24]             @ w[i-16]
+ 1077 0602 3698     	    ldr     r0, [sp, #48<<2+24]             @ w[i-14]
+ 1078 0604 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1079 0606 3C98     	    ldr     r0, [sp, #54<<2+24]             @ w[i-8]
+ 1080 0608 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1081 060a 4198     	    ldr     r0, [sp, #59<<2+24]             @ w[i-3]
+ 1082 060c 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1083 060e D941     	    rors    r1, r3                          @ rotate left by 1
+ 1084 0610 4491     	    str     r1, [sp, #62<<2+24]             @ store w[62]
+ 1085 0612 3944     	    add     r1, r7                          @ w[62] + k[3]
+ 1086 0614 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1087 0616 1560     	    str     r5, [r2]                        @ shift regs
+ 1088              	
+ 1089 0618 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1090 061a 3599     	    ldr     r1, [sp, #47<<2+24]             @ w[i-16]
+ 1091 061c 3798     	    ldr     r0, [sp, #49<<2+24]             @ w[i-14]
+ 1092 061e 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1093 0620 3D98     	    ldr     r0, [sp, #55<<2+24]             @ w[i-8]
+ 1094 0622 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1095 0624 4298     	    ldr     r0, [sp, #60<<2+24]             @ w[i-3]
+ 1096 0626 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1097 0628 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1098 062a 4591     	    str     r1, [sp, #63<<2+24]             @ store w[63]
+ 1099 062c 3944     	    add     r1, r7                          @ w[63] + k[3]
+ 1100 062e 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1101 0630 1560     	    str     r5, [r2]                        @ shift regs
+ 1102              	
+ 1103 0632 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1104 0634 3699     	    ldr     r1, [sp, #48<<2+24]             @ w[i-16]
+ 1105 0636 3898     	    ldr     r0, [sp, #50<<2+24]             @ w[i-14]
+ 1106 0638 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1107 063a 3E98     	    ldr     r0, [sp, #56<<2+24]             @ w[i-8]
+ 1108 063c 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1109 063e 4398     	    ldr     r0, [sp, #61<<2+24]             @ w[i-3]
+ 1110 0640 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1111 0642 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1112 0644 4691     	    str     r1, [sp, #64<<2+24]             @ store w[64]
+ 1113 0646 3944     	    add     r1, r7                          @ w[64] + k[3]
+ 1114 0648 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1115 064a 1560     	    str     r5, [r2]                        @ shift regs
+ 1116              	
+ 1117 064c 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1118 064e 3799     	    ldr     r1, [sp, #49<<2+24]             @ w[i-16]
+ 1119 0650 3998     	    ldr     r0, [sp, #51<<2+24]             @ w[i-14]
+ 1120 0652 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1121 0654 3F98     	    ldr     r0, [sp, #57<<2+24]             @ w[i-8]
+ 1122 0656 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1123 0658 4498     	    ldr     r0, [sp, #62<<2+24]             @ w[i-3]
+ 1124 065a 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1125 065c D941     	    rors    r1, r3                          @ rotate left by 1
+ 1126 065e 4791     	    str     r1, [sp, #65<<2+24]             @ store w[65]
+ 1127 0660 3944     	    add     r1, r7                          @ w[65] + k[3]
+ 1128 0662 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1129 0664 1560     	    str     r5, [r2]                        @ shift regs
+ 1130              	
+ 1131 0666 1660     	    str     r6, [r2]                        @ + Par(), + e
+ARM GAS  src/mmcau_sha1_functions.s 			page 22
+
+
+ 1132 0668 3899     	    ldr     r1, [sp, #50<<2+24]             @ w[i-16]
+ 1133 066a 3A98     	    ldr     r0, [sp, #52<<2+24]             @ w[i-14]
+ 1134 066c 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1135 066e 4098     	    ldr     r0, [sp, #58<<2+24]             @ w[i-8]
+ 1136 0670 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1137 0672 4598     	    ldr     r0, [sp, #63<<2+24]             @ w[i-3]
+ 1138 0674 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1139 0676 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1140 0678 4891     	    str     r1, [sp, #66<<2+24]             @ store w[66]
+ 1141 067a 3944     	    add     r1, r7                          @ w[66] + k[3]
+ 1142 067c 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1143 067e 1560     	    str     r5, [r2]                        @ shift regs
+ 1144              	
+ 1145 0680 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1146 0682 3999     	    ldr     r1, [sp, #51<<2+24]             @ w[i-16]
+ 1147 0684 3B98     	    ldr     r0, [sp, #53<<2+24]             @ w[i-14]
+ 1148 0686 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1149 0688 4198     	    ldr     r0, [sp, #59<<2+24]             @ w[i-8]
+ 1150 068a 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1151 068c 4698     	    ldr     r0, [sp, #64<<2+24]             @ w[i-3]
+ 1152 068e 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1153 0690 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1154 0692 4991     	    str     r1, [sp, #67<<2+24]             @ store w[67]
+ 1155 0694 3944     	    add     r1, r7                          @ w[67] + k[3]
+ 1156 0696 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1157 0698 1560     	    str     r5, [r2]                        @ shift regs
+ 1158              	
+ 1159 069a 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1160 069c 3A99     	    ldr     r1, [sp, #52<<2+24]             @ w[i-16]
+ 1161 069e 3C98     	    ldr     r0, [sp, #54<<2+24]             @ w[i-14]
+ 1162 06a0 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1163 06a2 4298     	    ldr     r0, [sp, #60<<2+24]             @ w[i-8]
+ 1164 06a4 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1165 06a6 4798     	    ldr     r0, [sp, #65<<2+24]             @ w[i-3]
+ 1166 06a8 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1167 06aa D941     	    rors    r1, r3                          @ rotate left by 1
+ 1168 06ac 4A91     	    str     r1, [sp, #68<<2+24]             @ store w[68]
+ 1169 06ae 3944     	    add     r1, r7                          @ w[68] + k[3]
+ 1170 06b0 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1171 06b2 1560     	    str     r5, [r2]                        @ shift regs
+ 1172              	
+ 1173 06b4 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1174 06b6 3B99     	    ldr     r1, [sp, #53<<2+24]             @ w[i-16]
+ 1175 06b8 3D98     	    ldr     r0, [sp, #55<<2+24]             @ w[i-14]
+ 1176 06ba 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1177 06bc 4398     	    ldr     r0, [sp, #61<<2+24]             @ w[i-8]
+ 1178 06be 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1179 06c0 4898     	    ldr     r0, [sp, #66<<2+24]             @ w[i-3]
+ 1180 06c2 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1181 06c4 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1182 06c6 4B91     	    str     r1, [sp, #69<<2+24]             @ store w[69]
+ 1183 06c8 3944     	    add     r1, r7                          @ w[69] + k[3]
+ 1184 06ca 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1185 06cc 1560     	    str     r5, [r2]                        @ shift regs
+ 1186              	
+ 1187 06ce 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1188 06d0 3C99     	    ldr     r1, [sp, #54<<2+24]             @ w[i-16]
+ARM GAS  src/mmcau_sha1_functions.s 			page 23
+
+
+ 1189 06d2 3E98     	    ldr     r0, [sp, #56<<2+24]             @ w[i-14]
+ 1190 06d4 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1191 06d6 4498     	    ldr     r0, [sp, #62<<2+24]             @ w[i-8]
+ 1192 06d8 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1193 06da 4998     	    ldr     r0, [sp, #67<<2+24]             @ w[i-3]
+ 1194 06dc 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1195 06de D941     	    rors    r1, r3                          @ rotate left by 1
+ 1196 06e0 4C91     	    str     r1, [sp, #70<<2+24]             @ store w[70]
+ 1197 06e2 3944     	    add     r1, r7                          @ w[70] + k[3]
+ 1198 06e4 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1199 06e6 1560     	    str     r5, [r2]                        @ shift regs
+ 1200              	
+ 1201 06e8 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1202 06ea 3D99     	    ldr     r1, [sp, #55<<2+24]             @ w[i-16]
+ 1203 06ec 3F98     	    ldr     r0, [sp, #57<<2+24]             @ w[i-14]
+ 1204 06ee 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1205 06f0 4598     	    ldr     r0, [sp, #63<<2+24]             @ w[i-8]
+ 1206 06f2 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1207 06f4 4A98     	    ldr     r0, [sp, #68<<2+24]             @ w[i-3]
+ 1208 06f6 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1209 06f8 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1210 06fa 4D91     	    str     r1, [sp, #71<<2+24]             @ store w[71]
+ 1211 06fc 3944     	    add     r1, r7                          @ w[71] + k[3]
+ 1212 06fe 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1213 0700 1560     	    str     r5, [r2]                        @ shift regs
+ 1214              	
+ 1215 0702 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1216 0704 3E99     	    ldr     r1, [sp, #56<<2+24]             @ w[i-16]
+ 1217 0706 4098     	    ldr     r0, [sp, #58<<2+24]             @ w[i-14]
+ 1218 0708 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1219 070a 4698     	    ldr     r0, [sp, #64<<2+24]             @ w[i-8]
+ 1220 070c 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1221 070e 4B98     	    ldr     r0, [sp, #69<<2+24]             @ w[i-3]
+ 1222 0710 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1223 0712 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1224 0714 4E91     	    str     r1, [sp, #72<<2+24]             @ store w[72]
+ 1225 0716 3944     	    add     r1, r7                          @ w[72] + k[3]
+ 1226 0718 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1227 071a 1560     	    str     r5, [r2]                        @ shift regs
+ 1228              	
+ 1229 071c 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1230 071e 3F99     	    ldr     r1, [sp, #57<<2+24]             @ w[i-16]
+ 1231 0720 4198     	    ldr     r0, [sp, #59<<2+24]             @ w[i-14]
+ 1232 0722 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1233 0724 4798     	    ldr     r0, [sp, #65<<2+24]             @ w[i-8]
+ 1234 0726 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1235 0728 4C98     	    ldr     r0, [sp, #70<<2+24]             @ w[i-3]
+ 1236 072a 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1237 072c D941     	    rors    r1, r3                          @ rotate left by 1
+ 1238 072e 4F91     	    str     r1, [sp, #73<<2+24]             @ store w[73]
+ 1239 0730 3944     	    add     r1, r7                          @ w[73] + k[3]
+ 1240 0732 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1241 0734 1560     	    str     r5, [r2]                        @ shift regs
+ 1242              	
+ 1243 0736 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1244 0738 4099     	    ldr     r1, [sp, #58<<2+24]             @ w[i-16]
+ 1245 073a 4298     	    ldr     r0, [sp, #60<<2+24]             @ w[i-14]
+ARM GAS  src/mmcau_sha1_functions.s 			page 24
+
+
+ 1246 073c 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1247 073e 4898     	    ldr     r0, [sp, #66<<2+24]             @ w[i-8]
+ 1248 0740 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1249 0742 4D98     	    ldr     r0, [sp, #71<<2+24]             @ w[i-3]
+ 1250 0744 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1251 0746 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1252 0748 5091     	    str     r1, [sp, #74<<2+24]             @ store w[74]
+ 1253 074a 3944     	    add     r1, r7                          @ w[74] + k[3]
+ 1254 074c 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1255 074e 1560     	    str     r5, [r2]                        @ shift regs
+ 1256              	
+ 1257 0750 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1258 0752 4199     	    ldr     r1, [sp, #59<<2+24]             @ w[i-16]
+ 1259 0754 4398     	    ldr     r0, [sp, #61<<2+24]             @ w[i-14]
+ 1260 0756 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1261 0758 4998     	    ldr     r0, [sp, #67<<2+24]             @ w[i-8]
+ 1262 075a 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1263 075c 4E98     	    ldr     r0, [sp, #72<<2+24]             @ w[i-3]
+ 1264 075e 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1265 0760 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1266 0762 5191     	    str     r1, [sp, #75<<2+24]             @ store w[75]
+ 1267 0764 3944     	    add     r1, r7                          @ w[75] + k[3]
+ 1268 0766 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1269 0768 1560     	    str     r5, [r2]                        @ shift regs
+ 1270              	
+ 1271 076a 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1272 076c 4299     	    ldr     r1, [sp, #60<<2+24]             @ w[i-16]
+ 1273 076e 4498     	    ldr     r0, [sp, #62<<2+24]             @ w[i-14]
+ 1274 0770 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1275 0772 4A98     	    ldr     r0, [sp, #68<<2+24]             @ w[i-8]
+ 1276 0774 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1277 0776 4F98     	    ldr     r0, [sp, #73<<2+24]             @ w[i-3]
+ 1278 0778 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1279 077a D941     	    rors    r1, r3                          @ rotate left by 1
+ 1280 077c 5291     	    str     r1, [sp, #76<<2+24]             @ store w[76]
+ 1281 077e 3944     	    add     r1, r7                          @ w[76] + k[3]
+ 1282 0780 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1283 0782 1560     	    str     r5, [r2]                        @ shift regs
+ 1284              	
+ 1285 0784 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1286 0786 4399     	    ldr     r1, [sp, #61<<2+24]             @ w[i-16]
+ 1287 0788 4598     	    ldr     r0, [sp, #63<<2+24]             @ w[i-14]
+ 1288 078a 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1289 078c 4B98     	    ldr     r0, [sp, #69<<2+24]             @ w[i-8]
+ 1290 078e 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1291 0790 5098     	    ldr     r0, [sp, #74<<2+24]             @ w[i-3]
+ 1292 0792 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1293 0794 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1294 0796 5391     	    str     r1, [sp, #77<<2+24]             @ store w[77]
+ 1295 0798 3944     	    add     r1, r7                          @ w[77] + k[3]
+ 1296 079a 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1297 079c 1560     	    str     r5, [r2]                        @ shift regs
+ 1298              	
+ 1299 079e 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1300 07a0 4499     	    ldr     r1, [sp, #62<<2+24]             @ w[i-16]
+ 1301 07a2 4698     	    ldr     r0, [sp, #64<<2+24]             @ w[i-14]
+ 1302 07a4 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ARM GAS  src/mmcau_sha1_functions.s 			page 25
+
+
+ 1303 07a6 4C98     	    ldr     r0, [sp, #70<<2+24]             @ w[i-8]
+ 1304 07a8 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1305 07aa 5198     	    ldr     r0, [sp, #75<<2+24]             @ w[i-3]
+ 1306 07ac 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1307 07ae D941     	    rors    r1, r3                          @ rotate left by 1
+ 1308 07b0 5491     	    str     r1, [sp, #78<<2+24]             @ store w[78]
+ 1309 07b2 3944     	    add     r1, r7                          @ w[78] + k[3]
+ 1310 07b4 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1311 07b6 1560     	    str     r5, [r2]                        @ shift regs
+ 1312              	
+ 1313 07b8 1660     	    str     r6, [r2]                        @ + Par(), + e
+ 1314 07ba 4599     	    ldr     r1, [sp, #63<<2+24]             @ w[i-16]
+ 1315 07bc 4798     	    ldr     r0, [sp, #65<<2+24]             @ w[i-14]
+ 1316 07be 4140     	    eors    r1, r0                          @ XOR w[i-14]
+ 1317 07c0 4D98     	    ldr     r0, [sp, #71<<2+24]             @ w[i-8]
+ 1318 07c2 4140     	    eors    r1, r0                          @ XOR w[i-8]
+ 1319 07c4 5298     	    ldr     r0, [sp, #76<<2+24]             @ w[i-3]
+ 1320 07c6 4140     	    eors    r1, r0                          @ XOR w[i-3]
+ 1321 07c8 D941     	    rors    r1, r3                          @ rotate left by 1
+ 1322 07ca 5591     	    str     r1, [sp, #79<<2+24]             @ store w[79]
+ 1323 07cc 3944     	    add     r1, r7                          @ w[79] + k[3]
+ 1324 07ce 2160     	    str     r1, [r4]                        @ add sum to CAA
+ 1325 07d0 1560     	    str     r5, [r2]                        @ shift regs
+ 1326              	
+ 1327              	# after going through the loops
+ 1328 07d2 00AB     	    add     r3, sp, #0                      @ get *sha1_state (on stack)
+ 1329 07d4 1149     	    ldr     r1, =MMCAU_PPB_INDIRECT+((ADR+CA0)<<2)
+ 1330 07d6 F8CB     	    ldmia   r3, {r3-r7}                     @ load sha1_state[0-4]
+ 1331 07d8 F8C1     	    stmia   r1!, {r3-r7}                    @ add to CA[0-4]
+ 1332 07da 5439     	    subs    r1, #84                         @ mmcau_indirect_cmd(STR+CA0)
+ 1333 07dc F8C9     	    ldmia   r1!, {r3-r7}                    @ load sums
+ 1334              	
+ 1335              	# find out if next_blk should be repeated
+ 1336 07de 5899     	    ldr     r1, [sp, #352]                  @ restore num_blks
+ 1337 07e0 0139     	    subs    r1, #1                          @ decrement num_blks
+ 1338 07e2 04D1     	    bne     next_blk_repeat                 @ check num_blks
+ 1339              	
+ 1340              	# if num_blks = 0,
+ 1341 07e4 599A     	    ldr     r2, [sp, #356]                  @ restore *sha1_state
+ 1342 07e6 F8C2     	    stmia   r2!, {r3-r7}                    @ store CA[0-4] to sha1_state[0-4]
+ 1343 07e8 5AB0     	    add     sp, #360                        @ unreserve stack
+ 1344 07ea F0BC     	    pop     {r4-r7}                         @ restore regs
+ 1345 07ec 7047     	    bx      lr                              @ exit routine
+ 1346              	
+ 1347              	# else,
+ 1348              	next_blk_repeat:
+ 1349 07ee 5798     	    ldr     r0, [sp, #348]                  @ restore *msg_data
+ 1350 07f0 5891     	    str     r1, [sp, #352]                  @ store num_blks
+ 1351 07f2 13E4     	    b       next_blk                        @ repeat next_blk
+ 1352              	
+ 1353              	
+ 1354              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ 1355              	#
+ 1356              	#   MMCAU_SHA1_UPDATE
+ 1357              	#   Updates SHA1 state variables for one or more input message blocks
+ 1358              	#
+ 1359              	#   ARGUMENTS   
+ARM GAS  src/mmcau_sha1_functions.s 			page 26
+
+
+ 1360              	#   *msg_data       pointer to start of input message data
+ 1361              	#   num_blks        number of 512-bit blocks to process
+ 1362              	#   *sha1_state     pointer to 160-bit block of SHA1 state variables: a,b,c,d,e
+ 1363              	#
+ 1364              	#   CALLING CONVENTION
+ 1365              	#   void mmcau_sha1_update     (const unsigned char     *msg_data,
+ 1366              	#                               const int               num_blks,
+ 1367              	#                               unsigned int            *sha1_state)
+ 1368              	#
+ 1369              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+ 1370              	#
+ 1371              	#    REGISTER  |  ALLOCATION (at the start of mmcau_sha1_update)
+ 1372              	#   -----------+------------------------------------------------------------
+ 1373              	#          r0  |  *msg_data     (arg0)
+ 1374              	#          r1  |  num_blks      (arg1)
+ 1375              	#          r2  |  *sha1_state   (arg2)
+ 1376              	#              |
+ 1377              	#        > r2  |  irrelevant
+ 1378              	#
+ 1379              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ 1380              	
+ 1381              	    .global _mmcau_sha1_update
+ 1382              	    .global mmcau_sha1_update
+ 1383              	    .type   mmcau_sha1_update, %function
+ 1384 07f4 C046C046 	    .align  4
+ 1384      C046C046 
+ 1384      C046C046 
+ 1385              	
+ 1386              	_mmcau_sha1_update:
+ 1387              	mmcau_sha1_update:
+ 1388              	
+ 1389              	# store regs r4-r7 and r14, we need to restore them at the end of the routine
+ 1390 0800 F0B5     	    push    {r4-r7, lr}                     @ store regs
+ 1391              	
+ 1392 0802 074B     	    ldr     r3, =sha1_initial_h
+ 1393 0804 F8CB     	    ldmia   r3, {r3-r7}                     @ load sha1_initial_h[0-4]
+ 1394 0806 F8C2     	    stmia   r2!, {r3-r7}                    @ store in sha1_state[0-4]
+ 1395 0808 143A     	    subs    r2, #5<<2                       @ reset *sha1_state
+ 1396              	
+ 1397 080a FFF7FEFF 	    bl      mmcau_sha1_hash_n               @ do mmcau_sha1_hash_n
+ 1398              	
+ 1399 080e F0BD     	    pop     {r4-r7, pc}                     @ restore regs, exit routine
+ 1400              	
+ 1401              	
+ 1402              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ 1403              	#
+ 1404              	#   MMCAU_SHA1_HASH
+ 1405              	#   Perform the hash and generate SHA1 state variables for one input message 
+ 1406              	#   block
+ 1407              	#
+ 1408              	#   ARGUMENTS
+ 1409              	#   *msg_data       pointer to start of input message data
+ 1410              	#   *sha1_state     pointer to 160-bit block of SHA1 state variables: a,b,c,d,e
+ 1411              	#
+ 1412              	#   NOTE
+ 1413              	#   Input message and digest output blocks must not overlap
+ 1414              	#
+ARM GAS  src/mmcau_sha1_functions.s 			page 27
+
+
+ 1415              	#   CALLING CONVENTION
+ 1416              	#   void mmcau_sha1_hash    (const unsigned char    *msg_data,
+ 1417              	#                           unsigned int            *sha1_state)
+ 1418              	#
+ 1419              	#  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+ 1420              	#
+ 1421              	#    REGISTER  |  ALLOCATION (at the start of mmcau_sha1_hash_n)
+ 1422              	#   -----------+------------------------------------------------------------
+ 1423              	#          r0  |  *msg_data     (arg0)
+ 1424              	#          r1  |  *sha1_state   (arg1)
+ 1425              	#              |
+ 1426              	#        > r1  |  irrelevant
+ 1427              	#
+ 1428              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ 1429              	
+ 1430              	    .global _mmcau_sha1_hash
+ 1431              	    .global mmcau_sha1_hash
+ 1432              	    .type   mmcau_sha1_hash, %function
+ 1433              	    .align  4
+ 1434              	
+ 1435              	_mmcau_sha1_hash:
+ 1436              	mmcau_sha1_hash:
+ 1437              	
+ 1438 0810 0A46     	    mov     r2, r1                          @ move arg1 (*sha1_state) to arg2
+ 1439 0812 0121     	    movs    r1, #1                          @ set arg1 (num_blks) = 1
+ 1440              	
+ 1441 0814 034B     	    ldr     r3, =mmcau_sha1_hash_n
+ 1442 0816 1847     	    bx      r3                              @ do mmcau_sha1_hash_n
+ 1443              	
+ 1444              	
+ 1445              	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+ 1446              	
+ 1447              	    .data
+ 1448              	
+ 1449              	
+ 1450              	    .type   sha1_initial_h, %object
+ 1451              	    .align  4
+ 1452              	
+ 1453              	sha1_initial_h:
+ 1454 0000 01234567 	    .word   0x67452301  @ initial a
+ 1455 0004 89ABCDEF 	    .word   0xefcdab89  @ initial b
+ 1456 0008 FEDCBA98 	    .word   0x98badcfe  @ initial c
+ 1457 000c 76543210 	    .word   0x10325476  @ initial d
+ 1458 0010 F0E1D2C3 	    .word   0xc3d2e1f0  @ initial e
+ 1459              	
+ 1460              	
+ 1461              	    .type   sha1_k, %object
+ 1462 0014 00000000 	    .align  4
+ 1462      00000000 
+ 1462      00000000 
+ 1463              	
+ 1464              	sha1_k:
+ 1465 0020 9979825A 	    .word   0x5a827999
+ 1466 0024 A1EBD96E 	    .word   0x6ed9eba1
+ 1467 0028 DCBC1B8F 	    .word   0x8f1bbcdc
+ 1468 002c D6C162CA 	    .word   0xca62c1d6

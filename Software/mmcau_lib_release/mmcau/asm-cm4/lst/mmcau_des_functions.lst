@@ -1,0 +1,338 @@
+ARM GAS  src/asm/mmcau_des_functions.s 			page 1
+
+
+   1              	#*******************************************************************************
+   2              	#*******************************************************************************
+   3              	#
+   4              	# Copyright (c) Freescale Semiconductor, Inc 2011.
+   5              	#
+   6              	# FILE NAME      : mmcau_des_functions.s
+   7              	# VERSION        : $Id: mmcau_des_functions.s.rca 1.4 Thu Nov 21 14:17:23 2013 b40907 Experimental 
+   8              	# TYPE           : Source Cortex-Mx assembly library code
+   9              	# DEPARTMENT     : MSG R&D Core and Platforms
+  10              	# AUTHOR         : David Schimke
+  11              	# AUTHOR'S EMAIL : David.Schimke@freescale.com
+  12              	# AUTHOR         : Anthony (Teejay) Ciancio
+  13              	# AUTHOR'S EMAIL : teejay.ciancio@freescale.com
+  14              	# -----------------------------------------------------------------------------
+  15              	# Release history
+  16              	# VERSION  Date       AUTHOR           DESCRIPTION
+  17              	#          08-2010    David Schimke    Initial Release
+  18              	#          12-2010    David Schimke    Remove "global" on data objects
+  19              	#          01-2011    David Schimke    Add byte reverse to correct double word
+  20              	#                                      read of byte arrays for little endian,
+  21              	#                                      header added
+  22              	#          11-2013    Teejay Ciancio   Small performance improvements to
+  23              	#                                      encrypt and decrypt
+  24              	#
+  25              	#*******************************************************************************
+  26              	#*******************************************************************************
+  27              	
+  28              	    .include "cau2_defines.hdr"
+   1              	#ifndef _MMCAU_H_
+   2              	#define _MMCAU_H_
+   3              	
+   4              	    .equ    TL,0
+   5              	    .equ    TS,0
+   6              	    .equ    CASR,0
+   7              	    .equ    CAA,1
+   8              	    .equ    CA0,2
+   9              	    .equ    CA1,3
+  10              	    .equ    CA2,4
+  11              	    .equ    CA3,5
+  12              	    .equ    CA4,6
+  13              	    .equ    CA5,7
+  14              	    .equ    CA6,8
+  15              	    .equ    CA7,9
+  16              	    .equ    CA8,10
+  17              	    .equ    CNOP,0x000
+  18              	    .equ    LDR,0x010
+  19              	    .equ    STR,0x020
+  20              	    .equ    ADR,0x030
+  21              	    .equ    RADR,0x040
+  22              	    .equ    ADRA,0x050
+  23              	    .equ    XOR,0x060
+  24              	    .equ    ROTL,0x070
+  25              	    .equ    MVRA,0x080
+  26              	    .equ    MVAR,0x090
+  27              	    .equ    AESS,0x0a0
+  28              	    .equ    AESIS,0x0b0
+  29              	    .equ    AESC,0x0c0
+ARM GAS  src/asm/mmcau_des_functions.s 			page 2
+
+
+  30              	    .equ    AESIC,0x0d0
+  31              	    .equ    AESR,0x0e0
+  32              	    .equ    AESIR,0x0f0
+  33              	    .equ    DESR,0x100
+  34              	    .equ    DESK,0x110
+  35              	    .equ    HASH,0x120
+  36              	    .equ    SHS,0x130
+  37              	    .equ    MDS,0x140
+  38              	    .equ    SHS2,0x150
+  39              	    .equ    ILL,0x1f0
+  40              	    .equ    IP,8
+  41              	    .equ    FP,4
+  42              	    .equ    DC,1
+  43              	    .equ    CP,2
+  44              	    .equ    KSL1,0
+  45              	    .equ    KSL2,1
+  46              	    .equ    KSR1,2
+  47              	    .equ    KSR2,3
+  48              	    .equ    HFF,0
+  49              	    .equ    HFG,1
+  50              	    .equ    HFH,2
+  51              	    .equ    HFI,3
+  52              	    .equ    HFP,2
+  53              	    .equ    HFC,4
+  54              	    .equ    HFM,5
+  55              	    .equ    HF2C,6
+  56              	    .equ    HF2M,7
+  57              	    .equ    HF2S,8
+  58              	    .equ    HF2T,9
+  59              	    .equ    HF2U,10
+  60              	    .equ    HF2V,11
+  61              	
+  62              	#endif
+  29              	    .equ    MMCAU_PPB_DIRECT,0xe0081000
+  30              	    .equ    MMCAU_PPB_INDIRECT,0xe0081800
+  31              	    .equ    MMCAU_1_CMD,0x80000000
+  32              	    .equ    MMCAU_2_CMDS,0x80100000
+  33              	    .equ    MMCAU_3_CMDS,0x80100200
+  34              	
+  35              	    .syntax unified
+  36              	
+  37              	#*******************************************************************************
+  38              	#*******************************************************************************
+  39              	#
+  40              	# DES: Check key parity
+  41              	#   arguments
+  42              	#           *key        pointer to 64-bit DES key with parity bits
+  43              	#
+  44              	#   return
+  45              	#           0           no error
+  46              	#          -1           parity error
+  47              	#
+  48              	#   calling convention
+  49              	#   int     mmcau_des_chk_parity (const unsigned char *key)
+  50              	
+  51              	    .global _mmcau_des_chk_parity
+  52              	    .global mmcau_des_chk_parity
+ARM GAS  src/asm/mmcau_des_functions.s 			page 3
+
+
+  53              	    .type   mmcau_des_chk_parity, %function
+  54              	    .align  4
+  55              	
+  56              	_mmcau_des_chk_parity:
+  57              	mmcau_des_chk_parity:
+  58              	
+  59              	# load the 64-bit key into the CAU's CA0/CA1 registers
+  60 0000 41F64803 	    movw    r3, #:lower16:(MMCAU_PPB_INDIRECT+(LDR+CA0)<<2)
+  61 0004 90E80600 	    ldmia   r0, {r1-r2}                             @ get key[0-1]
+  62 0008 CEF20803 	    movt    r3, #:upper16:(MMCAU_PPB_INDIRECT+(LDR+CA0)<<2)
+  63 000c 83E80600 	    stmia   r3, {r1-r2}                             @ to CA0 & CA1
+  64              	
+  65              	# perform the key schedule and check the parity bits
+  66 0010 41F20001 	    movw    r1, #:lower16:MMCAU_PPB_DIRECT          @ r1 -> MMCAU_PPB_DIRECT
+  67 0014 40F20002 	    movw    r2, #:lower16:(MMCAU_1_CMD+(DESK+CP)<<22)@ r2 = mmcau_1_cmd(DESK+CP)
+  68 0018 CEF20801 	    movt    r1, #:upper16:MMCAU_PPB_DIRECT
+  69 001c CCF28042 	    movt    r2, #:upper16:(MMCAU_1_CMD+(DESK+CP)<<22)
+  70 0020 0A60     	    str     r2, [r1]                                @ mmcau_1_cmd(DESK+CP)
+  71              	
+  72              	# the CASR[DPE] reflects the DES key parity check
+  73 0022 986B     	    ldr     r0, [r3, $((STR+CASR)-(LDR+CA0))<<2]    @ get CAU status in r0
+  74 0024 10F00200 	    ands    r0, $2                                  @ test the DPE bit
+  75 0028 18BF     	    it      ne                                      @ if DPE set
+  76 002a 4FF0FF30 	    movne   r0, $-1                                 @ then return -1
+  77              	
+  78 002e 7047     	    bx  lr
+  79              	
+  80              	
+  81              	#*******************************************************************************
+  82              	#*******************************************************************************
+  83              	#
+  84              	# DES: Encrypts a single 8-byte block
+  85              	#   arguments
+  86              	#           *in         pointer to 8-byte block of input plaintext
+  87              	#           *key        pointer to 64-bit DES key with parity bits
+  88              	#           *out        pointer to 8-byte block of output ciphertext
+  89              	#
+  90              	#   NOTE    Input and output blocks may overlap
+  91              	#
+  92              	#   calling convention
+  93              	#   void    mmcau_des_encrypt (const unsigned char *in,
+  94              	#                              const unsigned char *key,
+  95              	#                              unsigned char       *out)
+  96              	
+  97              	    .global _mmcau_des_encrypt
+  98              	    .global mmcau_des_encrypt
+  99              	    .type   mmcau_des_encrypt, %function
+ 100              	    .align  4
+ 101              	
+ 102              	_mmcau_des_encrypt:
+ 103              	mmcau_des_encrypt:
+ 104              	
+ 105              	#  register allocation
+ 106              	# --------------------
+ 107              	#  r0      = scratch / *in  (arg0) / pointer to MMCAU_PPB_DIRECT
+ 108              	#  r1      = scratch / *key (arg1) / MMCAU_PPB_INDIRECT+(STR+CA2)<<2
+ 109              	#  r2      = scratch / *out (arg2)
+ARM GAS  src/asm/mmcau_des_functions.s 			page 4
+
+
+ 110              	#  r3      = scratch / mmcau_3_cmds(DESK,DESR+IP+KSL1,DESR+KSL2)
+ 111              	#  r4      = scratch / mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL2)
+ 112              	#  r5      = scratch / mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL1)
+ 113              	#  r6      = scratch / mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL2)
+ 114              	#  r7      = scratch / mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL2)
+ 115              	# r13 (sp) = stack pointer
+ 116              	# r14 (lr) = link register
+ 117              	
+ 118 0030 2DE9F000 	    stmdb   sp!, {r4-r7}                            @ save registers on stack
+ 119              	
+ 120              	# load the 64-bit key into the CAU's CA0/CA1 registers
+ 121              	# and the 64-bit plaintext input block into CA2/CA3
+ 122 0034 41F64807 	    movw    r7, #:lower16:(MMCAU_PPB_INDIRECT+((LDR+CA0)<<2))
+ 123 0038 CEF20807 	    movt    r7, #:upper16:(MMCAU_PPB_INDIRECT+((LDR+CA0)<<2))
+ 124 003c 91E81800 	    ldmia   r1, {r3-r4}                             @ copy key[0-1]
+ 125 0040 1BBA     	    rev     r3, r3                                  @ byte reverse
+ 126 0042 24BA     	    rev     r4, r4                                  @ byte reverse
+ 127 0044 90E86000 	    ldmia   r0, {r5-r6}                             @ and plaintext[0-1]
+ 128 0048 2DBA     	    rev     r5, r5                                  @ byte reverse
+ 129 004a 36BA     	    rev     r6, r6                                  @ byte reverse
+ 130 004c 87E87800 	    stmia   r7, {r3-r6}                             @ into CA0-CA3
+ 131              	
+ 132              	# load registers for mmcau commands
+ 133 0050 40F20000 	    movw    r0, #:lower16:encrypt_reg_data          @ get pointer to commands
+ 134 0054 C0F20000 	    movt    r0, #:upper16:encrypt_reg_data
+ 135 0058 FBC8     	    ldmia   r0, {r0-r1,r3-r7}                       @ load into registers
+ 136              	
+ 137              	#  send a series of 17 direct cau commands to perform the DES round operations
+ 138              	#   *(MMCAU_PPB_DIRECT + 0) = mmcau_3_cmds(DESK,DESR+IP+KSL1,DESR+KSL2);
+ 139              	#   *(MMCAU_PPB_DIRECT + 1) = mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL2);
+ 140              	#   *(MMCAU_PPB_DIRECT + 2) = mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL1);
+ 141              	#   *(MMCAU_PPB_DIRECT + 3) = mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL2);
+ 142              	#   *(MMCAU_PPB_DIRECT + 4) = mmcau_3_cmds(DESR+KSL2,DESR+KSL2,DESR+KSL2);
+ 143              	#   *(MMCAU_PPB_DIRECT + 5) = mmcau_2_cmds(DESR+KSL1,DESR+FP);
+ 144              	
+ 145 005a 80E87800 	    stmia   r0, {r3-r6}
+ 146 005e 80E8C000 	    stmia   r0, {r6-r7}
+ 147              	
+ 148              	# get ciphertext[0-1] from CA2/3 and save to output[0-1]
+ 149 0062 03C9     	    ldmia   r1, {r0-r1}                             @ get ciphertext[0-1]
+ 150 0064 00BA     	    rev     r0, r0                                  @ byte reverse
+ 151 0066 09BA     	    rev     r1, r1                                  @ byte reverse
+ 152 0068 82E80300 	    stmia   r2, {r0-r1}                             @ save to output[0-1]
+ 153              	
+ 154 006c F0BC     	    ldmia   sp!, {r4-r7}                            @ restore regs and return
+ 155 006e 7047     	    bx      lr
+ 156              	
+ 157              	#*******************************************************************************
+ 158              	#*******************************************************************************
+ 159              	#
+ 160              	# DES: Decrypts a single 8-byte block
+ 161              	#   arguments
+ 162              	#           *in         pointer to 8-byte block of input ciphertext
+ 163              	#           *key        pointer to 64-bit DES key with parity bits
+ 164              	#           *out        pointer to 8-byte block of output plaintext
+ 165              	#
+ 166              	#   NOTE    Input and output blocks may overlap
+ARM GAS  src/asm/mmcau_des_functions.s 			page 5
+
+
+ 167              	#
+ 168              	#   calling convention
+ 169              	#   void    mmcau_des_decrypt (const unsigned char *in,
+ 170              	#                              const unsigned char *key,
+ 171              	#                                    unsigned char *out)
+ 172              	
+ 173              	    .global _mmcau_des_decrypt
+ 174              	    .global mmcau_des_decrypt
+ 175              	    .type   mmcau_des_decrypt, %function
+ 176              	    .align  4
+ 177              	
+ 178              	_mmcau_des_decrypt:
+ 179              	mmcau_des_decrypt:
+ 180              	
+ 181              	#  register allocation
+ 182              	# --------------------
+ 183              	#  r0      = scratch / *in  (arg0) / pointer to MMCAU_PPB_DIRECT
+ 184              	#  r1      = scratch / *key (arg1) / MMCAU_PPB_INDIRECT+(STR+CA2)<<2
+ 185              	#  r2      = scratch / *out (arg2)
+ 186              	#  r3      = scratch / mmcau_3_cmds(DESK+DC,DESR+IP+KSR1,DESR+KSR2)
+ 187              	#  r4      = scratch / mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR2)
+ 188              	#  r5      = scratch / mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR1)
+ 189              	#  r6      = scratch / mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR2)
+ 190              	#  r7      = scratch / mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR2)
+ 191              	# r13 (sp) = stack pointer
+ 192              	# r14 (lr) = link register
+ 193              	
+ 194 0070 2DE9F000 	    stmdb   sp!, {r4-r7}                            @ save registers on stack
+ 195              	
+ 196              	# load the 64-bit key into the CAU's CA0/CA1 registers
+ 197              	# and the 64-bit ciphertext input block into CA2/CA3
+ 198 0074 41F64807 	    movw    r7, #:lower16:(MMCAU_PPB_INDIRECT+((LDR+CA0)<<2))
+ 199 0078 CEF20807 	    movt    r7, #:upper16:(MMCAU_PPB_INDIRECT+((LDR+CA0)<<2))
+ 200 007c 91E81800 	    ldmia   r1, {r3-r4}                             @ copy key[0-1]
+ 201 0080 1BBA     	    rev     r3, r3                                  @ byte reverse
+ 202 0082 24BA     	    rev     r4, r4                                  @ byte reverse
+ 203 0084 90E86000 	    ldmia   r0, {r5-r6}                             @ and ciphertext[0-1]
+ 204 0088 2DBA     	    rev     r5, r5                                  @ byte reverse
+ 205 008a 36BA     	    rev     r6, r6                                  @ byte reverse
+ 206 008c 87E87800 	    stmia   r7, {r3-r6}                             @ into CA0-CA3
+ 207              	
+ 208              	# load registers for mmcau commands
+ 209 0090 40F20000 	    movw    r0, #:lower16:decrypt_reg_data          @ get pointer to commands
+ 210 0094 C0F20000 	    movt    r0, #:upper16:decrypt_reg_data
+ 211 0098 FBC8     	    ldmia   r0, {r0-r1,r3-r7}                       @ load into registers
+ 212              	
+ 213              	#  send a series of 17 direct cau commands to perform the DES round operations
+ 214              	#   *(MMCAU_PPB_DIRECT + 0) = mmcau_3_cmds(DESK+DC,DESR+IP+KSR1,DESR+KSR2);
+ 215              	#   *(MMCAU_PPB_DIRECT + 1) = mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR2);
+ 216              	#   *(MMCAU_PPB_DIRECT + 2) = mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR1);
+ 217              	#   *(MMCAU_PPB_DIRECT + 3) = mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR2);
+ 218              	#   *(MMCAU_PPB_DIRECT + 4) = mmcau_3_cmds(DESR+KSR2,DESR+KSR2,DESR+KSR2);
+ 219              	#   *(MMCAU_PPB_DIRECT + 5) = mmcau_2_cmds(DESR+KSR1,DESR+FP);
+ 220              	
+ 221 009a 80E87800 	    stmia   r0, {r3-r6}
+ 222 009e 80E8C000 	    stmia   r0, {r6-r7}
+ 223              	
+ARM GAS  src/asm/mmcau_des_functions.s 			page 6
+
+
+ 224              	# get plaintext[0-1] from CA2/3 and store to output[0-1]
+ 225 00a2 03C9     	    ldmia   r1, {r0-r1}                             @ get plaintext[0-1]
+ 226 00a4 00BA     	    rev     r0, r0                                  @ byte reverse
+ 227 00a6 09BA     	    rev     r1, r1                                  @ byte reverse
+ 228 00a8 82E80300 	    stmia   r2, {r0-r1}                             @ save to output[0-1]
+ 229              	
+ 230 00ac F0BC     	    ldmia   sp!, {r4-r7}                            @ restore regs and return
+ 231 00ae 7047     	    bx      lr
+ 232              	
+ 233              	
+ 234              	    .data
+ 235              	    .type   encrypt_reg_data, %object
+ 236              	    .align  4
+ 237              	
+ 238              	encrypt_reg_data:
+ 239 0000 001008E0 	    .word   MMCAU_PPB_DIRECT                                        @r0
+ 240 0004 901808E0 	    .word   MMCAU_PPB_INDIRECT+((STR+CA2)<<2)                       @r1
+ 241 0008 014318C4 	    .word   MMCAU_3_CMDS+(DESK)<<22+(DESR+IP+KSL1)<<11+DESR+KSL2    @r3
+ 242 000c 010B58C0 	    .word   MMCAU_3_CMDS+(DESR+KSL2)<<22+(DESR+KSL2)<<11+DESR+KSL2  @r4
+ 243 0010 000B58C0 	    .word   MMCAU_3_CMDS+(DESR+KSL2)<<22+(DESR+KSL2)<<11+DESR+KSL1  @r5
+ 244 0014 010B58C0 	    .word   MMCAU_3_CMDS+(DESR+KSL2)<<22+(DESR+KSL2)<<11+DESR+KSL2  @r6
+ 245 0018 002018C0 	    .word   MMCAU_2_CMDS+(DESR+KSL1)<<22+(DESR+FP)<<11              @r7
+ 246              	
+ 247              	    .type   decrypt_reg_data, %object
+ 248 001c 00000000 	    .align  4
+ 249              	
+ 250              	decrypt_reg_data:
+ 251 0020 001008E0 	    .word   MMCAU_PPB_DIRECT                                        @r0
+ 252 0024 901808E0 	    .word   MMCAU_PPB_INDIRECT+((STR+CA2)<<2)                       @r1
+ 253 0028 035358C4 	    .word   MMCAU_3_CMDS+(DESK+DC)<<22+(DESR+IP+KSR1)<<11+DESR+KSR2 @r3
+ 254 002c 031BD8C0 	    .word   MMCAU_3_CMDS+(DESR+KSR2)<<22+(DESR+KSR2)<<11+DESR+KSR2  @r4
+ 255 0030 021BD8C0 	    .word   MMCAU_3_CMDS+(DESR+KSR2)<<22+(DESR+KSR2)<<11+DESR+KSR1  @r5
+ 256 0034 031BD8C0 	    .word   MMCAU_3_CMDS+(DESR+KSR2)<<22+(DESR+KSR2)<<11+DESR+KSR2  @r6
+ 257 0038 002098C0 	    .word   MMCAU_2_CMDS+(DESR+KSR1)<<22+(DESR+FP)<<11              @r7
+ 257      00000000 

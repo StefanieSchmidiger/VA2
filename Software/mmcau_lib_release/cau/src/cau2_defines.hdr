@@ -1,0 +1,60 @@
+#******************************************************************************
+#******************************************************************************
+#
+# Copyright (c) Freescale Semiconductor, Inc 2011.
+#
+    set     CASR,0
+    set     CAA,1
+    set     CA0,2
+    set     CA1,3
+    set     CA2,4
+    set     CA3,5
+    set     CA4,6
+    set     CA5,7
+    set     CA6,8
+    set     CA7,9
+    set     CA8,10
+    set     CNOP,0x000
+    set     LDR,0x010
+    set     STR,0x020
+    set     ADR,0x030
+    set     RADR,0x040
+    set     ADRA,0x050
+    set     XOR,0x060
+    set     ROTL,0x070
+    set     MVRA,0x080
+    set     MVAR,0x090
+    set     AESS,0x0a0
+    set     AESIS,0x0b0
+    set     AESC,0x0c0
+    set     AESIC,0x0d0
+    set     AESR,0x0e0
+    set     AESIR,0x0f0
+    set     DESR,0x100
+    set     DESK,0x110
+    set     HASH,0x120
+    set     SHS,0x130
+    set     MDS,0x140
+    set     SHS2,0x150
+    set     ILL,0x1f0
+    set     IP,8
+    set     FP,4
+    set     DC,1
+    set     CP,2
+    set     KSL1,0
+    set     KSL2,1
+    set     KSR1,2
+    set     KSR2,3
+    set     HFF,0
+    set     HFG,1
+    set     HFH,2
+    set     HFI,3
+    set     HFP,2
+    set     HFC,4
+    set     HFM,5
+    set     HF2C,6
+    set     HF2M,7
+    set     HF2S,8
+    set     HF2T,9
+    set     HF2U,10
+    set     HF2V,11
