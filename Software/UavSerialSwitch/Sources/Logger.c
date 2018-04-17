@@ -13,59 +13,87 @@
 /* global variables, only used in this file */
 static const char* const queueNameReceivedPackages[] = {"ReceivedPackagesForLogging0", "ReceivedPackagesForLogging1", "ReceivedPackagesForLogging2", "ReceivedPackagesForLogging3"};
 static const char* const queueNameSentPackages[] = {"SentPackagesForLogging0", "SentPackagesForLogging1", "SentPackagesForLogging2", "SentPackagesForLogging3"};
+static const char* const queueNameSentBytes[] = {"SentBytesForLogging0", "SentBytesForLogging1", "SentBytesForLogging2", "SentBytesForLogging3"};
+static const char* const queueNameReceivedBytes[] = {"ReceivedBytesForLogging0", "ReceivedBytesForLogging1", "ReceivedBytesForLogging2", "ReceivedBytesForLogging3"};
+
 static char filenameReceivedPackagesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
+static char filenameSentBytesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
+static char filenameReceivedBytesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
 static char filenameSentPackagesLogger[NUMBER_OF_UARTS][FILENAME_ARRAY_SIZE];
 static xQueueHandle queuePackagesToLog[2][NUMBER_OF_UARTS];  /* queuePackagesToLog[0] = received packages, queuePackagesToLog[1] = sent packages */
+static xQueueHandle queueBytesToLog[2][1]; /* queueBytesToLog[0] = received bytes, queueBytesToLog[1] = sent bytes */
 static FAT1_FATFS fileSystemObject;
 
 /* prototypes */
 static void initLoggerQueues(void);
 static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry);
-static bool writeLogHeader(FIL* filePointer, char* fileName);
+static bool writePackLogHeader(FIL* filePointer, char* fileName);
 static void packageToLogString(tWirelessPackage* pPack, char* logEntry, int logEntryStrSize);
 static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename);
+static bool logBytes(xQueueHandle queue, FIL* filepointer, char* filename);
 
 
 void logger_TaskEntry(void* p)
 {
 	uint32_t timestampLastLog;
-	static FIL fp[2][NUMBER_OF_UARTS]; /* static because of its size */
+	static FIL fpPacks[2][NUMBER_OF_UARTS]; /* static because of its size */
+	static FIL fpBytes[2][1]; /* static because of its size */
 
 	/* ------------- init logger ----------------------- */
 	(void) p; /* p not used -> no compiler warning */
 	/* open log files and write log header into all of them */
 	for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 	{
-		char fullFileName[FILENAME_ARRAY_SIZE];
+		char fullFileNamePacks[FILENAME_ARRAY_SIZE];
+		char fullFileNameBytes[FILENAME_ARRAY_SIZE];
 		tWirelessPackage pack;
 
 		/* append .log at end of filename */
-		UTIL1_strcpy(fullFileName, FILENAME_ARRAY_SIZE, filenameSentPackagesLogger[uartNr]);
-		UTIL1_strcat(fullFileName, FILENAME_ARRAY_SIZE, ".log");
+		UTIL1_strcpy(fullFileNamePacks, FILENAME_ARRAY_SIZE, filenameSentPackagesLogger[uartNr]);
+		UTIL1_strcat(fullFileNamePacks, FILENAME_ARRAY_SIZE, ".log");
 		/* open file and move to end of file */
-		if (FAT1_open(&fp[SENT_PACKAGE][uartNr], fullFileName, FA_OPEN_ALWAYS|FA_WRITE)!=FR_OK) /* open file */
+		if (FAT1_open(&fpPacks[SENT_PACKAGE][uartNr], fullFileNamePacks, FA_OPEN_ALWAYS|FA_WRITE)!=FR_OK) /* open file */
 			while(1){}
-		if (FAT1_lseek(&fp[SENT_PACKAGE][uartNr], FAT1_f_size(&fp[SENT_PACKAGE][uartNr])) != FR_OK || fp[SENT_PACKAGE][uartNr].fptr != FAT1_f_size(&fp[SENT_PACKAGE][uartNr])) /* move to the end of file */
+		if (FAT1_lseek(&fpPacks[SENT_PACKAGE][uartNr], FAT1_f_size(&fpPacks[SENT_PACKAGE][uartNr])) != FR_OK || fpPacks[SENT_PACKAGE][uartNr].fptr != FAT1_f_size(&fpPacks[SENT_PACKAGE][uartNr])) /* move to the end of file */
 			while(1){}
 
 
 		/* append .log at end of filename */
-		UTIL1_strcpy(fullFileName, FILENAME_ARRAY_SIZE, filenameReceivedPackagesLogger[uartNr]);
-		UTIL1_strcat(fullFileName, FILENAME_ARRAY_SIZE, ".log");
+		UTIL1_strcpy(fullFileNamePacks, FILENAME_ARRAY_SIZE, filenameReceivedPackagesLogger[uartNr]);
+		UTIL1_strcat(fullFileNamePacks, FILENAME_ARRAY_SIZE, ".log");
 		/* open file and move to end of file */
-		if (FAT1_open(&fp[RECEIVED_PACKAGE][uartNr], fullFileName, FA_OPEN_ALWAYS|FA_WRITE)!=FR_OK) /* open file */
+		if (FAT1_open(&fpPacks[RECEIVED_PACKAGE][uartNr], fullFileNamePacks, FA_OPEN_ALWAYS|FA_WRITE)!=FR_OK) /* open file */
 			while(1){}
-		if (FAT1_lseek(&fp[RECEIVED_PACKAGE][uartNr], FAT1_f_size(&fp[RECEIVED_PACKAGE][uartNr])) != FR_OK || fp[RECEIVED_PACKAGE][uartNr].fptr != FAT1_f_size(&fp[RECEIVED_PACKAGE][uartNr])) /* move to the end of file */
+		if (FAT1_lseek(&fpPacks[RECEIVED_PACKAGE][uartNr], FAT1_f_size(&fpPacks[RECEIVED_PACKAGE][uartNr])) != FR_OK || fpPacks[RECEIVED_PACKAGE][uartNr].fptr != FAT1_f_size(&fpPacks[RECEIVED_PACKAGE][uartNr])) /* move to the end of file */
 			while(1){}
 
-		/* write log header into both files */
-		if(writeLogHeader(&fp[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]))
+		/* append .log at end of filename */
+		UTIL1_strcpy(fullFileNameBytes, FILENAME_ARRAY_SIZE, filenameReceivedBytesLogger[uartNr]);
+		UTIL1_strcat(fullFileNameBytes, FILENAME_ARRAY_SIZE, ".log");
+		/* open file and move to end of file */
+		if (FAT1_open(&fpBytes[RECEIVED_PACKAGE][uartNr], fullFileNameBytes, FA_OPEN_ALWAYS|FA_WRITE)!=FR_OK) /* open file */
+			while(1){}
+		if (FAT1_lseek(&fpBytes[RECEIVED_PACKAGE][uartNr], FAT1_f_size(&fpBytes[RECEIVED_PACKAGE][uartNr])) != FR_OK || fpBytes[RECEIVED_PACKAGE][uartNr].fptr != FAT1_f_size(&fpBytes[RECEIVED_PACKAGE][uartNr])) /* move to the end of file */
+			while(1){}
+
+
+		/* append .log at end of filename */
+		UTIL1_strcpy(fullFileNameBytes, FILENAME_ARRAY_SIZE, filenameSentBytesLogger[uartNr]);
+		UTIL1_strcat(fullFileNameBytes, FILENAME_ARRAY_SIZE, ".log");
+		/* open file and move to end of file */
+		if (FAT1_open(&fpBytes[SENT_PACKAGE][uartNr], fullFileNameBytes, FA_OPEN_ALWAYS|FA_WRITE)!=FR_OK) /* open file */
+			while(1){}
+		if (FAT1_lseek(&fpBytes[SENT_PACKAGE][uartNr], FAT1_f_size(&fpBytes[SENT_PACKAGE][uartNr])) != FR_OK || fpBytes[SENT_PACKAGE][uartNr].fptr != FAT1_f_size(&fpBytes[SENT_PACKAGE][uartNr])) /* move to the end of file */
+			while(1){}
+
+		/* write log header into files */
+		if(writePackLogHeader(&fpPacks[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]))
 		{
-			FAT1_sync(&fp[SENT_PACKAGE][uartNr]);
+			FAT1_sync(&fpPacks[SENT_PACKAGE][uartNr]);
 		}
-		if(writeLogHeader(&fp[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]))
+		if(writePackLogHeader(&fpPacks[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]))
 		{
-			FAT1_sync(&fp[RECEIVED_PACKAGE][uartNr]);
+			FAT1_sync(&fpPacks[RECEIVED_PACKAGE][uartNr]);
 		}
 	}
 
@@ -81,13 +109,23 @@ void logger_TaskEntry(void* p)
 		for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 		{
 			/* write string of packages into buffer */
-			logPackages(queuePackagesToLog[SENT_PACKAGE][uartNr], &fp[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]);
-			logPackages(queuePackagesToLog[RECEIVED_PACKAGE][uartNr], &fp[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]);
+			logPackages(queuePackagesToLog[SENT_PACKAGE][uartNr], &fpPacks[SENT_PACKAGE][uartNr], filenameSentPackagesLogger[uartNr]);
+			logPackages(queuePackagesToLog[RECEIVED_PACKAGE][uartNr], &fpPacks[RECEIVED_PACKAGE][uartNr], filenameReceivedPackagesLogger[uartNr]);
+			if(uartNr==0)
+			{
+				logBytes(queueBytesToLog[SENT_PACKAGE][uartNr], &fpBytes[SENT_PACKAGE][uartNr], filenameSentBytesLogger[uartNr]);
+				logBytes(queueBytesToLog[RECEIVED_PACKAGE][uartNr], &fpBytes[RECEIVED_PACKAGE][uartNr], filenameReceivedBytesLogger[uartNr]);
+			}
 			/* SD_CARD_WRITE_INTERVAL_MS passed? -> sync file system*/
 			if(xTaskGetTickCount() - timestampLastLog >= pdMS_TO_TICKS(config.SdCardSyncInterval_s*1000) )
 			{
-				FAT1_sync(&fp[SENT_PACKAGE][uartNr]);
-				FAT1_sync(&fp[RECEIVED_PACKAGE][uartNr]);
+				if(uartNr == 0)
+				{
+					FAT1_sync(&fpBytes[SENT_PACKAGE][uartNr]);
+					FAT1_sync(&fpBytes[RECEIVED_PACKAGE][uartNr]);
+				}
+				FAT1_sync(&fpPacks[SENT_PACKAGE][uartNr]);
+				FAT1_sync(&fpPacks[RECEIVED_PACKAGE][uartNr]);
 				timestampLastLog = xTaskGetTickCount();
 			}
 		}
@@ -130,6 +168,10 @@ void logger_TaskInit(void)
 				while(1){}
 			if(XF1_xsprintf(filenameSentPackagesLogger[(int)(uartNr-'0')], "./txOnCon%c", uartNr) <= 0)
 				while(1){}
+			if(XF1_xsprintf(filenameReceivedBytesLogger[(int)(uartNr-'0')], "./rxBytWl%c", uartNr) <= 0)
+				while(1){}
+			if(XF1_xsprintf(filenameSentBytesLogger[(int)(uartNr-'0')], "./txBytWl%c", uartNr) <= 0)
+				while(1){}
 		}
 	}
 }
@@ -141,19 +183,32 @@ void logger_TaskInit(void)
 static void initLoggerQueues(void)
 {
 #if configSUPPORT_STATIC_ALLOCATION
-	static uint8_t xStaticQueueSentPacks[NUMBER_OF_UARTS][ QUEUE_NUM_OF_LOG_ENTRIES * sizeof(tWirelessPackage) ]; /* The variable used to hold the queue's data structure. */
-	static uint8_t xStaticQueueRecPacks[NUMBER_OF_UARTS][ QUEUE_NUM_OF_LOG_ENTRIES * sizeof(tWirelessPackage) ];
+	static uint8_t xStaticQueueSentPacks[NUMBER_OF_UARTS][ QUEUE_NUM_OF_PACK_LOG_ENTRIES * sizeof(tWirelessPackage) ]; /* The variable used to hold the queue's data structure. */
+	static uint8_t xStaticQueueRecPacks[NUMBER_OF_UARTS][ QUEUE_NUM_OF_PACK_LOG_ENTRIES * sizeof(tWirelessPackage) ];
+	static uint8_t xStaticQueueSentBytes[1][ QUEUE_NUM_OF_BYTE_LOG_ENTRIES * sizeof(uint8_t) ];
+	static uint8_t xStaticQueueRecBytes[1][ QUEUE_NUM_OF_BYTE_LOG_ENTRIES * sizeof(uint8_t) ];
 	static StaticQueue_t ucQueueStorageSentPacks[NUMBER_OF_UARTS]; /* The array to use as the queue's storage area. */
 	static StaticQueue_t ucQueueStorageRecPacks[NUMBER_OF_UARTS];
+	static StaticQueue_t ucQueueStorageSentBytes[1];
+	static StaticQueue_t ucQueueStorageRecBytes[1];
+
+	queueBytesToLog[SENT_PACKAGE][0] = xQueueCreateStatic( QUEUE_NUM_OF_BYTE_LOG_ENTRIES, sizeof(uint8_t), xStaticQueueSentBytes[0], &ucQueueStorageSentBytes[0]);
+	queueBytesToLog[RECEIVED_PACKAGE][0] = xQueueCreateStatic( QUEUE_NUM_OF_BYTE_LOG_ENTRIES, sizeof(uint8_t), xStaticQueueRecBytes[0], &ucQueueStorageRecBytes[0]);
+	if(queueBytesToLog[SENT_PACKAGE][0] == NULL)
+		while(true){} /* malloc for queue failed */
+	vQueueAddToRegistry(queueBytesToLog[SENT_PACKAGE][0], queueNameSentBytes[0]);
+	if(queueBytesToLog[RECEIVED_PACKAGE][0] == NULL)
+		while(true){} /* malloc for queue failed */
+	vQueueAddToRegistry(queueBytesToLog[RECEIVED_PACKAGE][0], queueNameReceivedBytes[0]);
 #endif
 	for(int uartNr = 0; uartNr<NUMBER_OF_UARTS; uartNr++)
 	{
 #if configSUPPORT_STATIC_ALLOCATION
-		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueSentPacks[uartNr], &ucQueueStorageSentPacks[uartNr]);
-		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueRecPacks[uartNr], &ucQueueStorageRecPacks[uartNr]);
+		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_PACK_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueSentPacks[uartNr], &ucQueueStorageSentPacks[uartNr]);
+		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreateStatic( QUEUE_NUM_OF_PACK_LOG_ENTRIES, sizeof(tWirelessPackage), xStaticQueueRecPacks[uartNr], &ucQueueStorageRecPacks[uartNr]);
 #else
-		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage));
-		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_LOG_ENTRIES, sizeof(tWirelessPackage));
+		queuePackagesToLog[SENT_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_PACK_LOG_ENTRIES, sizeof(tWirelessPackage));
+		queuePackagesToLog[RECEIVED_PACKAGE][uartNr] = xQueueCreate( QUEUE_NUM_OF_PACK_LOG_ENTRIES, sizeof(tWirelessPackage));
 #endif
 		if(queuePackagesToLog[SENT_PACKAGE][uartNr] == NULL)
 			while(true){} /* malloc for queue failed */
@@ -204,6 +259,45 @@ static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
 }
 
 /*!
+* \fn static bool logPackages(xQueueHandle queue, FIL* filepointer, char* filename)
+* \brief Writes the package content to a log file
+* \param queue: queue where package is pulled from for logging
+* \param filePointer: Pointer to the file where header should be written into
+* \param fileName: name of the file where log header is written into, fileName without the .log ending
+* \return true if successful, false if unsuccessful:
+*/
+static bool logBytes(xQueueHandle queue, FIL* filepointer, char* filename)
+{
+	uint8_t data;
+	uint16_t nofBytesInQueue = uxQueueMessagesWaiting(queue);
+
+	/* no bytes to log? */
+	if(nofBytesInQueue <= 0)
+		return false;
+
+	/* allocate string memory for byte to string conversion */
+	char* logString = (char*) FRTOS_pvPortMalloc(nofBytesInQueue*3); /* 1 byte of data = 2 characters in hex plus the semicolon */
+	if(logString == NULL)
+		return false;
+	logString[0] = 0; /* empty string */
+
+	/* concat string for all packages in queue */
+	for(int i=0; i<nofBytesInQueue; i++)
+	{
+		/* convert data bytes to string */
+		if(xQueueReceive(queue, &data, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_MS) ) == pdTRUE) /* pop package from queue */
+		{
+			char strSingleByte[] = {0,0,0,0}; /* strSingleByte = empty */
+			UTIL1_strcatNum8Hex(strSingleByte, sizeof(strSingleByte), data); /* convert data byte to hex */
+			UTIL1_strcat(logString, nofBytesInQueue*3, strSingleByte); /* append to log string */
+			UTIL1_strcat(logString, nofBytesInQueue*3, ";"); /* append semicolon to log string */
+		}
+	}
+	writeToFile(filepointer, filename, logString);
+	vPortFree(logString);
+}
+
+/*!
 * \fn static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry)
 * \brief Writes a string into a file
 * \param filePointer: Pointer to the file where header should be written into
@@ -241,13 +335,13 @@ static bool writeToFile(FIL* filePointer, char* fileName, char* logEntry)
 }
 
 /*!
-* \fn static bool writeLogHeader(FIL* filePointer, char* fileName)
+* \fn static bool writePackLogHeader(FIL* filePointer, char* fileName)
 * \brief Writes the log header into the file pointed to by filePointer with the name fileName
 * \param filePointer: Pointer to the file where header should be written into
 * \param fileName: name of the file where log header is written into, fileName without the .log ending
 * \return true if successful, false if unsuccessful:
 */
-static bool writeLogHeader(FIL* filePointer, char* fileName)
+static bool writePackLogHeader(FIL* filePointer, char* fileName)
 {
 	char logHeader[] = "\r\n\r\nPackageType;DeviceNumber;SessionNumber;SystemTime;PayloadSize;CRC8_Header;Payload;CRC16_Payload\r\n";
 	return writeToFile(filePointer, fileName, logHeader);
@@ -338,3 +432,17 @@ BaseType_t pushPackageToLoggerQueue(tWirelessPackage* pPackage, tRxTxPackage rxT
 	return pdTRUE; /* return success*/
 }
 
+
+BaseType_t pushByteToLoggerQueue(uint8_t byte, tRxTxPackage rxTxPackage, tUartNr wlConnNr)
+{
+	if((wlConnNr >= 1) || (rxTxPackage > SENT_PACKAGE)) /* invalid arguments -> return immediately */
+	{
+		return pdFAIL;
+	}
+
+	if(xQueueSendToBack(queuePackagesToLog[rxTxPackage][wlConnNr], &byte, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_LOGGER_QUEUE_OPERATION_MS) ) != pdTRUE) /* pushing successful? */
+	{
+		return pdFAIL;
+	}
+	return pdTRUE; /* return success*/
+}

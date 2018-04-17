@@ -80,12 +80,12 @@ static bool createAllTasks(void)
 	}
 
 	/* create SPI handler task */
-	if (xTaskCreateStatic(spiHandler_TaskEntry, "SPI_Handler", SPI_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+3, puxStackBufferSpiHandler, &pxTaskBufferSpiHandler) == NULL) {
+	if (xTaskCreateStatic(spiHandler_TaskEntry, "SPI_Handler", SPI_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+4, puxStackBufferSpiHandler, &pxTaskBufferSpiHandler) == NULL) {
 	    for(;;) {}} /* error */
 
 
 	/* create package handler task */
-	if (xTaskCreateStatic(packageHandler_TaskEntry, "Package_Handler", PACKAGE_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferPackageHandler, &pxTaskBufferPackageHandler) == NULL) {
+	if (xTaskCreateStatic(packageHandler_TaskEntry, "Package_Handler", PACKAGE_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+3, puxStackBufferPackageHandler, &pxTaskBufferPackageHandler) == NULL) {
 		for(;;) {}} /* error */
 
 

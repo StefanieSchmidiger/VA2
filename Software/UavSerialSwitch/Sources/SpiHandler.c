@@ -52,7 +52,7 @@ void configureHwBufBaudrate(tSpiSlaves spiSlave, tUartNr uartNr, unsigned int ba
 void initSpiHandlerQueues(void);
 static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue);
 static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQueueHandle queue, uint16_t numOfBytesToWrite);
-static void generateDebugData(xQueueHandle queue);
+static void generateDebugData(xQueueHandle queue, uint8_t uartNr);
 
 /*!
 * \fn void spiHandler_TaskEntry(void)
@@ -66,7 +66,8 @@ void spiHandler_TaskEntry(void* p)
 
 	for(;;)
 	{
-		vTaskDelayUntil( &lastWakeTime, taskInterval ); /* Wait for the next cycle */
+		/* Wait for the next cycle */
+		vTaskDelayUntil( &lastWakeTime, taskInterval );
 		/* read all data and write it to queue */
 		for(int uartNr = 0; uartNr < NUMBER_OF_UARTS; uartNr++)
 		{
@@ -74,7 +75,7 @@ void spiHandler_TaskEntry(void* p)
 			/* read data from device spi interface */
 			if(config.EnableStressTest)
 			{
-				generateDebugData(RxDeviceBytes[uartNr]);
+				generateDebugData(RxDeviceBytes[uartNr], uartNr);
 			}
 			else
 			{
@@ -525,7 +526,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			/* queue is full -> delete enough old bytes to fit new ones in */
 			for(int i = 0; i < nofReadBytesToProcess - freeSpaceInQueue; i++)
 			{
-				static uint8_t data;
+				uint8_t data;
 				if(xQueueReceive(queue, &data, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) != pdTRUE)
 				{
 					nofReadBytesToProcess = i;
@@ -565,11 +566,13 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 * \brief Pushed 10 bytes of data onto the queue passed as an argument
 * \param queue: queue where debug data should be pushed to
 */
-static void generateDebugData(xQueueHandle queue)
+static void generateDebugData(xQueueHandle queue, uint8_t uartNr)
 {
-	for(char i='0'; i<='9'; i++)
+	static unsigned char cnt[NUMBER_OF_UARTS]; /* initialized with 0 per default */
+	for(char i=0; i<=9; i++)
 	{
-		xQueueSendToBack(queue, &i, ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
+		xQueueSendToBack(queue, &cnt[uartNr], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) );
+		cnt[uartNr]++;
 	}
 }
 

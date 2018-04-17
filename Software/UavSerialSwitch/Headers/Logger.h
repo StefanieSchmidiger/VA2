@@ -41,10 +41,15 @@ BaseType_t pushPackageToLoggerQueue(tWirelessPackage* pPackage, tRxTxPackage rxT
 */
 #define SD_CARD_WRITE_INTERVAL_MS							(5000)
 
+/*! \def QUEUE_NUM_OF_PACK_LOG_ENTRIES
+*  \brief Size of queue for log entries.
+*  */
+#define QUEUE_NUM_OF_PACK_LOG_ENTRIES			(40)
+
 /*! \def QUEUE_NUM_OF_LOG_ENTRIES
 *  \brief Size of queue for log entries.
 *  */
-#define QUEUE_NUM_OF_LOG_ENTRIES			(40)
+#define QUEUE_NUM_OF_BYTE_LOG_ENTRIES			(2048)
 
 /*! \def MAX_LOG_FILE_SIZE_BYTES
 *  \brief Maximum size of one log file before it is renamed and a new file is started.
