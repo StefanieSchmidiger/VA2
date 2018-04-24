@@ -269,7 +269,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 		//showError(__FUNCTION__, "invalid parameter");
 	}
 	/* read incoming character and react based on the state of the state machine */
-	while (popFromByteQueue(MAX_14830_WIRELESS_SIDE, wlConn, &chr))
+	while (popFromByteQueue(MAX_14830_WIRELESS_SIDE, wlConn, &chr) == pdTRUE)
 	{
 		switch (currentRecHandlerState[wlConn])
 		{
@@ -418,6 +418,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 			if (checkForPackStartReplacement(&data[wlConn][0], &dataCntr[wlConn], &patternReplaced[wlConn]) == true)
 			{
 				/* start of package detected, restart reading header */
+				/*
 				XF1_xsprintf(infoBuf, "Last 100 bytes = ");
 				for(int i=100; i>0;i--)
 				{
@@ -425,6 +426,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				}
 				UTIL1_strcat(infoBuf, sizeof(infoBuf), "\r\n");
 				pushMsgToShellQueue(infoBuf);
+				*/
 				dataCntr[wlConn] = 0;
 				currentRecHandlerState[wlConn] = STATE_READ_HEADER;
 				numberOfInvalidPackages[wlConn]++;

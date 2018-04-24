@@ -30,6 +30,7 @@
 #include "Events.h"
 #include "Init_Config.h"
 #include "PDD_Includes.h"
+#include "Pin33.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,6 +103,7 @@ void FRTOS_vApplicationTickHook(void)
   /* Called for every RTOS tick. */
   TMOUT1_AddTick();
   TmDt1_AddTick();
+  Pin33_NegVal();
 }
 
 /*

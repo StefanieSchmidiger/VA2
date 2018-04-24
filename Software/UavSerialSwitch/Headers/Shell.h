@@ -35,7 +35,7 @@ BaseType_t pushMsgToShellQueue(char* pMsg);
 /*! \def MAX_NUMBER_OF_MESSAGES_STORED
 *  \brief Size of queue for messages to be printed in shell.
 */
-#define MAX_NUMBER_OF_MESSAGES_STORED		50
+#define MAX_NUMBER_OF_MESSAGES_STORED		100
 
 
 /*! \def MAX_NUMBER_OF_CHARS_PER_MESSAGE
@@ -47,7 +47,7 @@ BaseType_t pushMsgToShellQueue(char* pMsg);
 /*! \def MAX_DELAY_SHELL_MS
 *  \brief Maximal delay on queue operations inside Shell task.
 */
-#define MAX_DELAY_SHELL_MS					(5)
+#define MAX_DELAY_SHELL_MS					(0)
 
 
 #endif /* SHELL_H_ */
