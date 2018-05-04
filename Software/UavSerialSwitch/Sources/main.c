@@ -67,9 +67,10 @@
 #include "nResetWirelessSide.h"
 #include "BitIoLdd8.h"
 #include "HF1.h"
-#include "SYS1.h"
 #include "CRC1.h"
 #include "RNG.h"
+#include "Pin33.h"
+#include "BitIoLdd9.h"
 #include "PTRC1.h"
 /* Including shared modules, which are used for whole project */
 #include "PE_Types.h"
@@ -80,6 +81,7 @@
 #include "Init_Config.h"
 /* User includes (#include below this line is not maintained by Processor Expert) */
 #include "Application.h"
+#include "cau_api.h"
 
 /*lint -save  -e970 Disable MISRA rule (6.3) checking. */
 int main(void)
@@ -93,6 +95,7 @@ int main(void)
 
   /* Write your code here */
   APP_Run();
+  cau_des_chk_parity(NULL);
   /* For example: for(;;) { } */
 
   /*** Don't write any code pass this line, or it will be deleted during code generation. ***/

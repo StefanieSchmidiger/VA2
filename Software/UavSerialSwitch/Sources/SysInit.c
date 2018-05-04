@@ -6,6 +6,7 @@
 #include "SpiHandler.h" // to create spi handler task, bool
 #include "PackageHandler.h"
 #include "NetworkHandler.h"
+#include "ApplicationHandler.h"
 #include "Blinky.h"
 #include "ThroughputPrintout.h"
 #include "Logger.h"
@@ -50,6 +51,7 @@ static bool createAllTasks(void)
 	spiHandler_TaskInit(); /* 10kB when queuelength = 512, 2x4x2x(queueLength)x1B */
 	packageHandler_TaskInit(); /* 2x4x(queueLength)x56B = 3kB */
 	networkHandler_TaskInit(); /* 2x4x(queueLength)x56B = 3kB */
+	applicationHandler_TaskInit();
 
 #if configSUPPORT_STATIC_ALLOCATION
 
@@ -58,6 +60,7 @@ static bool createAllTasks(void)
 	static StackType_t puxStackBufferSpiHandler[SPI_HANDLER_STACK_SIZE];
 	static StackType_t puxStackBufferPackageHandler[PACKAGE_HANDLER_STACK_SIZE];
 	static StackType_t puxStackBufferNetworkHandler[NETWORK_HANDLER_STACK_SIZE];
+	static StackType_t puxStackBufferApplicationHandler[APPLICATION_HANDLER_STACK_SIZE];
 	static StackType_t puxStackBufferThroughputPrintout[THROUGHPUT_PRINTOUT_STACK_SIZE];
 	static StackType_t puxStackBufferLogger[LOGGER_STACK_SIZE];
 	static StackType_t puxStackBufferBlinky[BLINKY_STACK_SIZE];
@@ -67,6 +70,7 @@ static bool createAllTasks(void)
 	static StaticTask_t pxTaskBufferSpiHandler;
 	static StaticTask_t pxTaskBufferPackageHandler;
 	static StaticTask_t pxTaskBufferNetworkHandler;
+	static StaticTask_t pxTaskBufferApplicationHandler;
 	static StaticTask_t pxTaskBufferThroughputPrintout;
 	static StaticTask_t pxTaskBufferLogger;
 	static StaticTask_t pxTaskBufferBlinky;
@@ -80,17 +84,21 @@ static bool createAllTasks(void)
 	}
 
 	/* create SPI handler task */
-	if (xTaskCreateStatic(spiHandler_TaskEntry, "SPI_Handler", SPI_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+4, puxStackBufferSpiHandler, &pxTaskBufferSpiHandler) == NULL) {
+	if (xTaskCreateStatic(spiHandler_TaskEntry, "SPI_Handler", SPI_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+3, puxStackBufferSpiHandler, &pxTaskBufferSpiHandler) == NULL) {
 	    for(;;) {}} /* error */
 
 
 	/* create package handler task */
-	if (xTaskCreateStatic(packageHandler_TaskEntry, "Package_Handler", PACKAGE_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+3, puxStackBufferPackageHandler, &pxTaskBufferPackageHandler) == NULL) {
+	if (xTaskCreateStatic(packageHandler_TaskEntry, "Package_Handler", PACKAGE_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferPackageHandler, &pxTaskBufferPackageHandler) == NULL) {
 		for(;;) {}} /* error */
 
 
 	/* create network handler task */
 	if (xTaskCreateStatic(networkHandler_TaskEntry, "Network_Handler", NETWORK_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferNetworkHandler, &pxTaskBufferNetworkHandler) == NULL) {
+		for(;;) {}} /* error */
+
+	/* create network handler task */
+	if (xTaskCreateStatic(applicationHandler_TaskEntry, "Application_Handler", APPLICATION_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferNetworkHandler, &pxTaskBufferApplicationHandler) == NULL) {
 		for(;;) {}} /* error */
 
 	/* create throughput printout task */

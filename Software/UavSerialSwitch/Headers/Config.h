@@ -4,13 +4,12 @@
 #include <stdbool.h>
 #include "SpiHandler.h"
 
-typedef enum ePackageNumbering
+typedef enum ePayloadNumbering
 {
-	PACKAGE_NUMBER_IGNORED = 0x01,
-	WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK = 0x02,
-	PACKAGE_REORDERING = 0x03,
-	ONLY_SEND_OUT_NEW_PACKAGES = 0x04
-} tPackageNumbering;
+	PAYLOAD_NUMBER_IGNORED = 0x01,
+	PAYLOAD_REORDERING = 0x02,
+	ONLY_SEND_OUT_NEW_PAYLOAD = 0x03
+} tPayloadNumbering;
 
 typedef enum eDebugOutput
 {
@@ -34,8 +33,9 @@ typedef struct Configurations {
    int DelayDismissOldPackagePerDev[NUMBER_OF_UARTS];
    bool SendAckPerWirelessConn[NUMBER_OF_UARTS];
    bool UseCtsPerWirelessConn[NUMBER_OF_UARTS];
-   tPackageNumbering PackNumberingProcessingMode[NUMBER_OF_UARTS]; /* per device side, NOT per wireless side */
-   int PackReorderingTimeout[NUMBER_OF_UARTS];
+   tPayloadNumbering PayloadNumberingProcessingMode[NUMBER_OF_UARTS]; /* per device side, NOT per wireless side */
+   int PayloadReorderingTimeout[NUMBER_OF_UARTS];
+   bool SyncMessagingModeEnabledPerWlConn[NUMBER_OF_UARTS];
    bool UseGolayPerWlConn[NUMBER_OF_UARTS];
    /* SoftwareConfiguration */
    bool TestHwLoopbackOnly;
@@ -46,6 +46,7 @@ typedef struct Configurations {
    int SpiHandlerTaskInterval; // [ms]
    int PackageHandlerTaskInterval; // [ms]
    int NetworkHandlerTaskInterval; // [ms]
+   int ApplicationHandlerTaskInterval; // [ms]
    int ToggleGreenLedInterval; // [ms]
    int ThroughputPrintoutTaskInterval_s; // [sec]
    int ShellTaskInterval; // [ms]

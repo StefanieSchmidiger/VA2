@@ -1,0 +1,7 @@
+Logging enabled
+Percepio Trace enabled
+SPI Handler: 10ms Task Interval
+All other handler: 20ms Task Interval
+Shell running, full debug output
+Toggling viewed on Off-Board Serial Switch (QGC connected)
+Setup upon QGC Link establishment

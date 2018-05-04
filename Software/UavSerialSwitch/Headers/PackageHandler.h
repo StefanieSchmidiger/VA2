@@ -14,7 +14,13 @@
 /*! \def QUEUE_NUM_OF_WL_PACK_RECEIVED
 *  \brief Number of wireless packages that should have find space within a single queue.
 */
-#define QUEUE_NUM_OF_WL_PACK_RECEIVED			10 /* about 550 bytes per wireless package, not including the dynamically allocated memory for payload */
+#define QUEUE_NUM_OF_WL_PACK_TO_ASSEMBLE			10 /* about 550 bytes per wireless package, not including the dynamically allocated memory for payload */
+
+/*! \def QUEUE_NUM_OF_WL_PACK_TO_DISASSEMBLE
+*  \brief Number of wireless packages that should have find space within a single queue.
+*/
+#define QUEUE_NUM_OF_WL_PACK_TO_DISASSEMBLE			20 /* about 550 bytes per wireless package, not including the dynamically allocated memory for payload */
+
 
 /*! \def PACK_START
 *  \brief Definition of the mark of a beginn of a wireless package.
@@ -77,7 +83,8 @@ typedef struct sWirelessPackage
 	tPackType packType;
 	uint8_t devNum;
 	uint8_t sessionNr;
-	uint32_t sysTime;
+	uint16_t packNr;
+	uint16_t payloadNr;
 	uint16_t payloadSize;
 	uint8_t crc8Header;
 	// data
@@ -113,7 +120,7 @@ void packageHandler_TaskInit(void);
 * \param pPackage: The location where the package should be stored
 * \return Status if xQueueReceive has been successful, pdFAIL if uartNr was invalid or pop unsuccessful
 */
-BaseType_t popReceivedPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage);
+BaseType_t popAssembledPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage);
 
 /*!
 * \fn ByseType_t peekAtReceivedPackQueue(tUartNr uartNr, tWirelessPackage *pPackage)
@@ -122,7 +129,7 @@ BaseType_t popReceivedPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage);
 * \param pPackage: The location where the package should be stored
 * \return Status if xQueuePeek has been successful, pdFAIL if uartNr was invalid or pop unsuccessful
 */
-BaseType_t peekAtReceivedPackQueue(tUartNr uartNr, tWirelessPackage *pPackage);
+BaseType_t peekAtAssembledPackQueue(tUartNr uartNr, tWirelessPackage *pPackage);
 
 /*!
 * \fn uint16_t numberOfPacksInReceivedPacksQueue(tUartNr uartNr)
@@ -130,7 +137,26 @@ BaseType_t peekAtReceivedPackQueue(tUartNr uartNr, tWirelessPackage *pPackage);
 * \param uartNr: UART number the packages should be read from.
 * \return Number of packages waiting to be processed/received
 */
-uint16_t numberOfPacksInReceivedPacksQueue(tUartNr uartNr);
+uint16_t nofAssembledPacksInQueue(tUartNr uartNr);
+
+
+/*!
+* \fn ByseType_t pushToSentPackagesForDisassemblingQueue(tUartNr wlConn, tWirelessPackage package)
+* \brief Stores the sent package in correct queue.
+* \param wlConn: UART number where package was received.
+* \param package: The package that was sent
+* \return Status if xQueueSendToBack has been successful, pdFAIL if push unsuccessful
+*/
+BaseType_t pushToSentPackagesForDisassemblingQueue(tUartNr wlConn, tWirelessPackage* pPackage);
+
+
+/*!
+* \fn uint16_t freeSpaceInPackagesToDisassembleQueue(tUartNr uartNr)
+* \brief Returns the number of packages that can still be stored in this queue
+* \param wlConn: WL conn where package should be transmitted to.
+* \return Free space in this queue
+*/
+uint16_t freeSpaceInPackagesToDisassembleQueue(tUartNr wlConn);
 
 
 #endif /* HEADERS_PACKAGEHANDLER_H_ */

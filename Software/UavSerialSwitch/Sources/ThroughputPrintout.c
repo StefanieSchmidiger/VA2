@@ -68,40 +68,40 @@ void throughputPrintout_TaskEntry(void* p)
 		res = XF1_xsprintf(buf, "----------------------------------------------------------- \r\n");
 		res = pushMsgToShellQueue(buf);
 		/* print throughput information */
-		res = XF1_xsprintf(buf, "Wireless: Sent packages [packages/s]: %lu,%lu,%lu,%lu; Received packages: [packages/s] %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "NetworkHandler: Sent packages [packages/s]: %lu,%lu,%lu,%lu; Received packages: [packages/s] %lu,%lu,%lu,%lu \r\n",
 				averagePacksSent[0], averagePacksSent[1], averagePacksSent[2], averagePacksSent[3],
 				averagePacksReceived[0], averagePacksReceived[1], averagePacksReceived[2], averagePacksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Average payload sent [bytes/pack]: %lu,%lu,%lu,%lu; Average payload received: [bytes/pack] %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "NetworkHandler: Average payload sent [bytes/pack]: %lu,%lu,%lu,%lu; Average payload received: [bytes/pack] %lu,%lu,%lu,%lu \r\n",
 				averagePayloadSent[0], averagePayloadSent[1], averagePayloadSent[2], averagePayloadSent[3],
 				averagePayloadReceived[0], averagePayloadReceived[1], averagePayloadReceived[2], averagePayloadReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Sent acknowledges [acks/s]: %lu,%lu,%lu,%lu; Received acknowledges: [acks/s] %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "NetworkHandler: Sent acknowledges [acks/s]: %lu,%lu,%lu,%lu; Received acknowledges: [acks/s] %lu,%lu,%lu,%lu \r\n",
 				averageAcksSent[0], averageAcksSent[1], averageAcksSent[2], averageAcksSent[3],
 				averageAcksReceived[0], averageAcksReceived[1], averageAcksReceived[2], averageAcksReceived[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from device side[bytes/s]: %lu,%lu,%lu,%lu; Average bytes sent to device side: [bytes/s] %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "SpiHandler: Average bytes read from device side[bytes/s]: %lu,%lu,%lu,%lu; Average bytes sent to device side: [bytes/s] %lu,%lu,%lu,%lu \r\n",
 				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][0], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][1], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][2], averageUartBytesReceived[MAX_14830_DEVICE_SIDE][3],
 				averageUartBytesSent[MAX_14830_DEVICE_SIDE][0], averageUartBytesSent[MAX_14830_DEVICE_SIDE][1], averageUartBytesSent[MAX_14830_DEVICE_SIDE][2], averageUartBytesSent[MAX_14830_DEVICE_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "HW Buffer: Average bytes read from wireless side[bytes/s]: %lu,%lu,%lu,%lu; Average bytes sent to wireless side: [bytes/s] %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "SpiHandler: Average bytes read from wireless side[bytes/s]: %lu,%lu,%lu,%lu; Average bytes sent to wireless side: [bytes/s] %lu,%lu,%lu,%lu \r\n",
 				averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][0], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][1], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][2], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][3],
 				averageUartBytesSent[MAX_14830_WIRELESS_SIDE][0], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][1], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][2], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Application: Total number of dropped packages per device input: %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "NetworkHandler: Total number of dropped packages per device input: %lu,%lu,%lu,%lu \r\n",
 				numberOfDroppedPackages[0], numberOfDroppedPackages[1], numberOfDroppedPackages[2], numberOfDroppedPackages[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Application: Total number of dropped acknowledges per wireless input: %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "NetworkHandler: Total number of dropped acknowledges per wireless input: %lu,%lu,%lu,%lu \r\n",
 				numberOfDroppedAcks[0], numberOfDroppedAcks[1], numberOfDroppedAcks[2], numberOfDroppedAcks[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "BER: Total number of invalid packages per wireless input: %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "PackageHandler: Total number of invalid packages per wireless input: %lu,%lu,%lu,%lu \r\n",
 				numberOfInvalidPackages[0], numberOfInvalidPackages[1], numberOfInvalidPackages[2], numberOfInvalidPackages[3]);
 		res = pushMsgToShellQueue(buf);
 
@@ -109,15 +109,31 @@ void throughputPrintout_TaskEntry(void* p)
 				numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][0], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][1], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][2], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "SPI Handler: Total number of dropped bytes per wireless byte input: %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "SpiHandler: Total number of dropped bytes per wireless byte input: %lu,%lu,%lu,%lu \r\n",
 				numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][0], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][1], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][2], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Total number of payload bytes sent over wireless: %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "SPI Handler: Total number of received bytes per device byte input (x2 if golay enabled): %lu,%lu,%lu,%lu \r\n",
+				numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][0], numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][1], numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][2], numberOfRxBytesHwBuf[MAX_14830_DEVICE_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "SpiHandler: Total number of received bytes per wireless byte input (x2 if golay enabled): %lu,%lu,%lu,%lu \r\n",
+				numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][0], numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][1], numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][2], numberOfRxBytesHwBuf[MAX_14830_WIRELESS_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "SPI Handler: Total number of sent bytes per device byte input (x2 if golay enabled): %lu,%lu,%lu,%lu \r\n",
+				numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][0], numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][1], numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][2], numberOfTxBytesHwBuf[MAX_14830_DEVICE_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "SpiHandler: Total number of sent bytes per wireless byte input (x2 if golay enabled): %lu,%lu,%lu,%lu \r\n",
+				numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][0], numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][1], numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][2], numberOfTxBytesHwBuf[MAX_14830_WIRELESS_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "NetworkHandler: Total number of payload bytes sent over wireless: %lu,%lu,%lu,%lu \r\n",
 				numberOfPayloadBytesSent[0], numberOfPayloadBytesSent[1], numberOfPayloadBytesSent[2], numberOfPayloadBytesSent[3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "Wireless: Total number of payload bytes received over wireless: %lu,%lu,%lu,%lu \r\n",
+		res = XF1_xsprintf(buf, "NetworkHandler: Total number of payload bytes received over wireless: %lu,%lu,%lu,%lu \r\n",
 				numberOfPayloadBytesExtracted[0], numberOfPayloadBytesExtracted[1], numberOfPayloadBytesExtracted[2], numberOfPayloadBytesExtracted[3]);
 		res = pushMsgToShellQueue(buf);
 

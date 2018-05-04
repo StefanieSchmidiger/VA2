@@ -76,9 +76,10 @@
 #include "nResetWirelessSide.h"
 #include "BitIoLdd8.h"
 #include "HF1.h"
-#include "SYS1.h"
 #include "CRC1.h"
 #include "RNG.h"
+#include "Pin33.h"
+#include "BitIoLdd9.h"
 #include "PTRC1.h"
 
 #ifdef __cplusplus

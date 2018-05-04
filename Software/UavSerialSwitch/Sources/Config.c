@@ -14,6 +14,7 @@
 void csvToInt(char inputString[], int outputArray[]);
 void csvToBool(char inputString[], bool outputArray[]);
 void setDefaultConfigValues(void);
+void validateSwConfiguration(void);
 
 /* global variables */
 Configuration config;
@@ -104,7 +105,7 @@ bool readTestConfig(void)
 }
 
 /*!
-* \fn uint16_t numberOfBytesInRxByteQueue(tSpiSlaves spiSlave, tUartNr uartNr)
+* \fn bool readConfig(void)
 * \brief Reads config file and stores it in global variable
 */
 bool readConfig(void)
@@ -114,7 +115,6 @@ bool readConfig(void)
 	char copiedCsv[TEMP_CSV_SIZE];
   	char fileName[] = "serialSwitch_Config.ini";
 
-#if PL_HAS_SD_CARD
   	/* -------- BaudRateConfiguration -------- */
   	/* BAUD_RATES_WIRELESS_CONN */
   	numberOfCharsCopied = MINI_ini_gets("BaudRateConfiguration", "BAUD_RATES_WIRELESS_CONN",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
@@ -201,33 +201,34 @@ bool readConfig(void)
   	csvToBool(copiedCsv, config.UseCtsPerWirelessConn);
 
   	/* PACK_NUMBERING_PROCESSING_MODE */
-  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "PACK_NUMBERING_PROCESSING_MODE",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
+  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "PAYLOAD_NUMBERING_PROCESSING_MODE",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
   	csvToInt(copiedCsv, tmpIntArr);
   	for(int i=0; i<NUMBER_OF_UARTS; i++)
   	{
   		switch(tmpIntArr[i])
   		{
-  			case PACKAGE_NUMBER_IGNORED:
-  				config.PackNumberingProcessingMode[i] = PACKAGE_NUMBER_IGNORED;
+  			case PAYLOAD_NUMBER_IGNORED:
+  				config.PayloadNumberingProcessingMode[i] = PAYLOAD_NUMBER_IGNORED;
   		  		break;
-  			case WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK:
-  				config.PackNumberingProcessingMode[i] = WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK;
+  			case PAYLOAD_REORDERING:
+  				config.PayloadNumberingProcessingMode[i] = PAYLOAD_REORDERING;
   				break;
-  			case PACKAGE_REORDERING:
-  				config.PackNumberingProcessingMode[i] = PACKAGE_REORDERING;
-  				break;
-  			case ONLY_SEND_OUT_NEW_PACKAGES:
-  				config.PackNumberingProcessingMode[i] = ONLY_SEND_OUT_NEW_PACKAGES;
+  			case ONLY_SEND_OUT_NEW_PAYLOAD:
+  				config.PayloadNumberingProcessingMode[i] = ONLY_SEND_OUT_NEW_PAYLOAD;
   				break;
   			default:
-  				config.PackNumberingProcessingMode[i] = PACKAGE_NUMBER_IGNORED;
+  				config.PayloadNumberingProcessingMode[i] = PAYLOAD_NUMBER_IGNORED;
   				break;
   		}
   	}
 
   	/* PACK_REORDERING_TIMEOUT */
-  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "PACK_REORDERING_TIMEOUT",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
-  	csvToInt(copiedCsv, config.PackReorderingTimeout);
+  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "PAYLOAD_REORDERING_TIMEOUT",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
+  	csvToInt(copiedCsv, config.PayloadReorderingTimeout);
+
+  	/* SYNC_MESSAGING_MODE_ENABLED_PER_WL_CONN */
+  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "SYNC_MESSAGING_MODE_ENABLED_PER_WL_CONN",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
+  	csvToBool(copiedCsv, config.SyncMessagingModeEnabledPerWlConn);
 
   	/* USE_GOLAY_ERROR_CORRECTING_CODE */
   	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "USE_GOLAY_ERROR_CORRECTING_CODE",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
@@ -267,6 +268,9 @@ bool readConfig(void)
   	/* NETWORK_HANDLER_TASK_INTERVAL */
     config.NetworkHandlerTaskInterval = MINI_ini_getl("SoftwareConfiguration", "NETWORK_HANDLER_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
+    /* APPLICATION_HANDLER_TASK_INTERVAL */
+    config.ApplicationHandlerTaskInterval = MINI_ini_getl("SoftwareConfiguration", "APPLICATION_HANDLER_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
+
   	/* TOGGLE_GREEN_LED_INTERVAL */
   	config.ToggleGreenLedInterval = MINI_ini_getl("SoftwareConfiguration", "TOGGLE_GREEN_LED_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
@@ -279,175 +283,23 @@ bool readConfig(void)
 	/* LOGGER_TASK_INTERVAL */
 	config.LoggerTaskInterval = MINI_ini_getl("SoftwareConfiguration", "LOGGER_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
+	validateSwConfiguration();
+
   	return true;
-#else
-  	setDefaultConfigValues();
-  	return true;
-#endif
+
 }
 
-
-void setDefaultConfigValues(void)
+/*!
+* \fn void validateSwConfiguration(void)
+* \brief Validates config file and makes sure no impossible SW configurations are made
+*/
+void validateSwConfiguration(void)
 {
-
-  	/* -------- BaudRateConfiguration -------- */
-  	/* BAUD_RATES_WIRELESS_CONN */
-  	config.BaudRatesWirelessConn[0] = 9600;
-  	config.BaudRatesWirelessConn[1] = 9600;
-  	config.BaudRatesWirelessConn[2] = 9600;
-  	config.BaudRatesWirelessConn[3] = 9600;
-
-  	/* BAUD_RATES_DEVICE_CONN */
-    config.BaudRatesDeviceConn[0] = 9600;
-    config.BaudRatesDeviceConn[1] = 9600;
-    config.BaudRatesDeviceConn[2] = 9600;
-    config.BaudRatesDeviceConn[3] = 9600;
-
-
-  	/* -------- ConnectionConfiguration -------- */
-  	/* PRIO_WIRELESS_CONN_DEV_0 */
-  	config.PrioWirelessConnDev[0][0] = 1;
-  	config.PrioWirelessConnDev[0][1] = 0;
-  	config.PrioWirelessConnDev[0][2] = 0;
-  	config.PrioWirelessConnDev[0][3] = 0;
-
-
-  	/* PRIO_WIRELESS_CONN_DEV_1 */
-  	config.PrioWirelessConnDev[1][0] = 0;
-  	config.PrioWirelessConnDev[1][1] = 1;
-  	config.PrioWirelessConnDev[1][2] = 0;
-  	config.PrioWirelessConnDev[1][3] = 0;
-
-  	/* PRIO_WIRELESS_CONN_DEV_2 */
-  	config.PrioWirelessConnDev[2][0] = 0;
-  	config.PrioWirelessConnDev[2][1] = 0;
-  	config.PrioWirelessConnDev[2][2] = 1;
-  	config.PrioWirelessConnDev[2][3] = 0;
-
-  	/* PRIO_WIRELESS_CONN_DEV_3 */
-  	config.PrioWirelessConnDev[3][0] = 0;
-  	config.PrioWirelessConnDev[3][1] = 0;
-  	config.PrioWirelessConnDev[3][2] = 0;
-  	config.PrioWirelessConnDev[3][3] = 1;
-
-  	/* SEND_CNT_WIRELESS_CONN_DEV_0 */
-  	config.SendCntWirelessConnDev[0][0] = 1;
-  	config.SendCntWirelessConnDev[0][1] = 0;
-  	config.SendCntWirelessConnDev[0][2] = 0;
-  	config.SendCntWirelessConnDev[0][3] = 0;
-
-  	/* SEND_CNT_WIRELESS_CONN_DEV_1 */
-  	config.SendCntWirelessConnDev[1][0] = 0;
-  	config.SendCntWirelessConnDev[1][1] = 1;
-  	config.SendCntWirelessConnDev[1][2] = 0;
-  	config.SendCntWirelessConnDev[1][3] = 0;
-
-  	/* SEND_CNT_WIRELESS_CONN_DEV_2 */
-  	config.SendCntWirelessConnDev[2][0] = 0;
-  	config.SendCntWirelessConnDev[2][1] = 0;
-  	config.SendCntWirelessConnDev[2][2] = 1;
-  	config.SendCntWirelessConnDev[2][3] = 0;
-
-  	/* SEND_CNT_WIRELESS_CONN_DEV_3 */
-  	config.SendCntWirelessConnDev[3][0] = 0;
-  	config.SendCntWirelessConnDev[3][1] = 0;
-  	config.SendCntWirelessConnDev[3][2] = 0;
-  	config.SendCntWirelessConnDev[3][3] = 1;
-
-  	/* -------- TransmissionConfiguration -------- */
-  	/* PRIO_WIRELESS_CONN_DEV_0 */
-  	config.ResendDelayWirelessConnDev[0][0] = 5;
-  	config.ResendDelayWirelessConnDev[0][1] = 5;
-  	config.ResendDelayWirelessConnDev[0][2] = 5;
-  	config.ResendDelayWirelessConnDev[0][3] = 5;
-
-
-  	/* PRIO_WIRELESS_CONN_DEV_1 */
-  	config.ResendDelayWirelessConnDev[1][0] = 5;
-  	config.ResendDelayWirelessConnDev[1][1] = 5;
-  	config.ResendDelayWirelessConnDev[1][2] = 5;
-  	config.ResendDelayWirelessConnDev[1][3] = 5;
-
-  	/* PRIO_WIRELESS_CONN_DEV_2 */
-  	config.ResendDelayWirelessConnDev[2][0] = 5;
-  	config.ResendDelayWirelessConnDev[2][1] = 5;
-  	config.ResendDelayWirelessConnDev[2][2] = 5;
-  	config.ResendDelayWirelessConnDev[2][3] = 5;
-
-  	/* PRIO_WIRELESS_CONN_DEV_3 */
-  	config.ResendDelayWirelessConnDev[3][0] = 5;
-  	config.ResendDelayWirelessConnDev[3][1] = 5;
-  	config.ResendDelayWirelessConnDev[3][2] = 5;
-  	config.ResendDelayWirelessConnDev[3][3] = 5;
-
-  	/* MAX_THROUGHPUT_WIRELESS_CONN */
-  	config.MaxThroughputWirelessConn[0] = 5000;
-  	config.MaxThroughputWirelessConn[1] = 5000;
-  	config.MaxThroughputWirelessConn[2] = 5000;
-  	config.MaxThroughputWirelessConn[3] = 5000;
-
-  	/* USUAL_PACKET_SIZE_DEVICE_CONN */
-  	config.UsualPacketSizeDeviceConn[0] = 20;
-  	config.UsualPacketSizeDeviceConn[1] = 20;
-  	config.UsualPacketSizeDeviceConn[2] = 20;
-  	config.UsualPacketSizeDeviceConn[3] = 20;
-
-  	/* PACKAGE_GEN_MAX_TIMEOUT */
-  	config.PackageGenMaxTimeout[0] = 5;
-  	config.PackageGenMaxTimeout[1] = 5;
-  	config.PackageGenMaxTimeout[2] = 5;
-  	config.PackageGenMaxTimeout[3] = 5;
-
-  	/* DELAY_DISMISS_OLD_PACK_PER_DEV */
-  	config.DelayDismissOldPackagePerDev[0] = 500;
-  	config.DelayDismissOldPackagePerDev[1] = 500;
-  	config.DelayDismissOldPackagePerDev[2] = 500;
-  	config.DelayDismissOldPackagePerDev[3] = 500;
-
-  	/* SEND_ACK_PER_WIRELESS_CONN */
-  	config.SendAckPerWirelessConn[0] = 0;
-  	config.SendAckPerWirelessConn[1] = 0;
-  	config.SendAckPerWirelessConn[2] = 0;
-  	config.SendAckPerWirelessConn[3] = 0;
-
-  	/* USE_CTS_PER_WIRELESS_CONN */
-  	config.UseCtsPerWirelessConn[0] = 0;
-  	config.UseCtsPerWirelessConn[1] = 0;
-  	config.UseCtsPerWirelessConn[2] = 0;
-  	config.UseCtsPerWirelessConn[3] = 0;
-
-
-  	/* -------- SoftwareConfiguration -------- */
-  	/* TEST_HW_LOOPBACK_ONLY */
-  	config.TestHwLoopbackOnly = 0;
-
-  	/* GENERATE_DEBUG_OUTPUT */
-  	config.GenerateDebugOutput = 0;
-
-  	/* ENABLE_STRESS_TEST */
-  	config.EnableStressTest = 0;
-
-  	/* LOGGING_ENABLED */
-  	config.LoggingEnabled = 0;
-
-  	/* SPI_HANDLER_TASK_INTERVAL */
-  	config.SpiHandlerTaskInterval = 5;
-
-  	/* PACKAGE_GENERATOR_TASK_INTERVAL */
-  	config.PackageHandlerTaskInterval = 5;
-
-  	/* NETWORK_HANDLER_TASK_INTERVAL */
-    config.NetworkHandlerTaskInterval = 5;
-
-  	/* TOGGLE_GREEN_LED_INTERVAL */
-  	config.ToggleGreenLedInterval = 500;
-
-  	/* THROUGHPUT_PRINTOUT_TASK_INTERVAL */
-	config.ThroughputPrintoutTaskInterval_s = 5;
-
-	/* SHELL_TASK_INTERVAL */
-	config.ShellTaskInterval = 50;
-
-	/* LOGGER_TASK_INTERVAL */
-	config.LoggerTaskInterval = 5000;
+	for(int devNr=0; devNr < NUMBER_OF_UARTS; devNr++)
+	{
+		if(config.SendAckPerWirelessConn[devNr] != true)
+		{
+			config.PayloadNumberingProcessingMode[devNr] = PAYLOAD_NUMBER_IGNORED;
+		}
+	}
 }

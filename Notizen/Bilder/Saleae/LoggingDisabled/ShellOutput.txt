@@ -1,0 +1,179 @@
+Wireless: Sent packages [packages/s]: 0,0,0,0; Received packages: [packages/s] 1,0,0,0
+Wireless: Average payload sent [bytes/pack]: 0,0,0,0; Average payload received: [bytes/pack] 17,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 0,0,0,0; Average bytes sent to device side: [bytes/s] 17,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 32,0,0,0; Average bytes sent to wireless side: [bytes/s] 0,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 68,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 10787,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 313,0,0,0
+Wireless: Total number of payload bytes received over wireless: 10680,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 1,0,0,0; Received packages: [packages/s] 7,0,0,0
+Wireless: Average payload sent [bytes/pack]: 17,0,0,0; Average payload received: [bytes/pack] 73,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 17,0,0,0; Average bytes sent to device side: [bytes/s] 321,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 616,0,0,0; Average bytes sent to wireless side: [bytes/s] 32,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 68,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 10787,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 330,0,0,0
+Wireless: Total number of payload bytes received over wireless: 11191,0,0,0
+----------------------------------------------------------
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 114, SysTime = 5216, SessionNr = 24
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 116, SysTime = 5218, SessionNr = 24
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5226, SessionNr = 24
+Warning: Cleaning 78 bytes on wireless side, UART number 0
+Warning: Cleaning 95 bytes on wireless side, UART number 0
+Warning: Cleaning 104 bytes on wireless side, UART number 0
+Warning: Cleaning 81 bytes on wireless side, UART number 0
+Warning: Cleaning 48 bytes on wireless side, UART number 0
+Warning: Cleaning 58 bytes on wireless side, UART number 0
+Warning: Cleaning 58 bytes on wireless side, UART number 0
+Warning: Cleaning 69 bytes on wireless side, UART number 0
+Warning: Cleaning 21 bytes on wireless side, UART number 0
+Warning: Cleaning 36 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5238, SessionNr = 24
+Warning: Cleaning 21 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5239, SessionNr = 24
+Warning: Cleaning 45 bytes on wireless side, UART number 0
+Info: Invalid header CRC received, but continuing anyway (debug)
+invalid header, but CRC8 was right - implementation error?
+Warning: Cleaning 25 bytes on wireless side, UART number 0
+Warning: Cleaning 29 bytes on wireless side, UART number 0
+Info: Invalid payload CRC received, but continuing anyway (debug)
+Warning: Cleaning 46 bytes on wireless side, UART number 0
+Warning: Cleaning 36 bytes on wireless side, UART number 0
+Warning: Cleaning 66 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5244, SessionNr = 24
+Warning: Cleaning 101 bytes on wireless side, UART number 0
+Warning: Cleaning 123 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5245, SessionNr = 24
+Warning: Cleaning 83 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5247, SessionNr = 24
+Warning: Cleaning 85 bytes on wireless side, UART number 0
+Info: Invalid header CRC received, but continuing anyway (debug)
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5248, SessionNr = 24
+Warning: Cleaning 21 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5249, SessionNr = 24
+Warning: Cleaning 59 bytes on wireless side, UART number 0
+Info: Invalid header CRC received, but continuing anyway (debug)
+invalid header, but CRC8 was right - implementation error?
+Warning: Cleaning 55 bytes on wireless side, UART number 0
+Info: Invalid header CRC received, but continuing anyway (debug)
+invalid header, but CRC8 was right - implementation error?
+Warning: Cleaning 50 bytes on wireless side, UART number 0
+Info: Invalid header CRC received, but continuing anyway (debug)
+invalid header, but CRC8 was right - implementation error?
+Warning: Cleaning 64 bytes on wireless side, UART number 0
+Warning: Cleaning 45 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5254, SessionNr = 24
+Warning: Cleaning 47 bytes on wireless side, UART number 0
+Warning: Cleaning 28 bytes on wireless side, UART number 0
+Info: Invalid payload CRC received, but continuing anyway (debug)
+Warning: Cleaning 17 bytes on wireless side, UART number 0
+Info: Invalid header CRC received, but continuing anyway (debug)
+invalid header, but CRC8 wa right - implementation error?
+Warning: Cleaning 55 bytes on wireless side, UART number 0
+Warning: Cleaning 74 bytes on wireless side, UART number 0
+Warning: Cleaning 94 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5260, SessionNr = 24
+Warning: Cleaning 81 bytes on wireless side, UART number 0
+Warning: Cleaning 86 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5261, SessionNr = 24
+Warning: Cleaning 72 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5263, SessionNr = 24
+Warning: Cleaning 76 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5264, SessionNr = 24
+Warning: Cleaning 84 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_EAD_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5265, SessionNr = 24
+Warning: Cleaning 78 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5266, SessionNr = 24
+Warning: Cleaning 85 bytes on wireless side, UART number 0
+Info: Invalid header CRC received, but continuing anyway (debug)
+invalid header, but CRC8 was right - implementation error?
+Warning: Cleaning 84 bytes on wireless side, UART number 0
+Warning: Cleaning 78 bytes on wireless side, UART number 0
+Warning: Cleaning 69 bytes on wireless side, UART number 0
+Warning: Cleaning 60 bytes on wireless side, UART number 0
+Warning: Cleaning 64 bytes on wireless side, UART number 0
+Warning: Cleaning 67 bytes on wireless side, UART number 0
+Info: Restart state machine in STATE_READ_PAYLOAD 0, start of package detected
+PayloadSize = 121, SysTime = 5272, SessionNr = 24
+Warning: Cleaning 82 bytes on wireless side, UART number 0
+Warning: Cleaning 82 bytes on wireless side, UART number 0
+Warning: Cleaning 90 bytes on wireless side, UART number 0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 184,0,0,0; Average bytes sent to device side: [bytes/s] 4114,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 23870,0,0,0; Average bytes sent to wireless side: [bytes/s] 306,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 148,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 21082,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 514,0,0,0
+Wireless: Total number of payload bytes received over wireless: 15418,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 0,0,0,0; Received packages: [packages/s] 0,0,0,0
+Wireless: Average payload sent [bytes/pack]: 0,0,0,0; Average payload received: [bytes/pack] 0,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 0,0,0,0; Average bytes sent to device side: [bytes/s] 36,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 0,00,0; Average bytes sent to wireless side: [bytes/s] 0,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 148,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 21082,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 514,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 1,0,0,0; Received packages: [packages/s] 3,0,0,0
+Wireless: Average payload sent [bytes/pack]: 17,0,0,0; Average payload received: [bytes/pack] 48,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 17,0,0,0; Average bytes sent to device side: [bytes/s] 308,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 191,0,0,0; Average bytes sent to wireless side: [bytes/s] 32,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 148,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 21082,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 531,0,0,0
+Wireless: Total number of payload bytes received over wireless: 15564,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 1,0,0,0; Received packages: [packages/s] 2,0,0,0
+Wireless: Average payload sent [bytes/pack]: 17,0,0,0; Average payload received: [bytes/pack] 52,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 17,0,0,0; Average bytes sent to device side: [bytes/s] 104,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 134,0,0,0; Average bytes sent to wireless side: [bytes/s] 32,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 148,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 21082,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 548,0,0,0
+Wireless: Total number of payload bytes received over wireless: 15668,0,0,0
+-----------------------------------------------------------

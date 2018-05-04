@@ -30,6 +30,7 @@
 #include "Events.h"
 #include "Init_Config.h"
 #include "PDD_Includes.h"
+#include "Pin33.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,6 +103,7 @@ void FRTOS_vApplicationTickHook(void)
   /* Called for every RTOS tick. */
   TMOUT1_AddTick();
   TmDt1_AddTick();
+  Pin33_NegVal();
 }
 
 /*
@@ -237,7 +239,7 @@ void RNG_OnError(LDD_TUserData *UserDataPtr)
 */
 void PTRC1_OnTraceWrap(void)
 {
-#if 0 /* default implementation for gdb below ... */
+#if 1 /* default implementation for gdb below ... */
   /* Write your code here ... */
   uint8_t buf[64];
 

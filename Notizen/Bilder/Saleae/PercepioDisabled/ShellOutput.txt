@@ -1,0 +1,98 @@
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 0,0,0,0; Received packages: [packages/s] 4,0,0,0
+Wireless: Average payload sent [bytes/pack]: 0,0,0,0; Average payload received: [bytes/pack] 32,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 0,0,0,0; Average bytes sent to device side: [bytes/s] 104,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 192,0,0,0; Average bytes sent to wireless side: [bytes/s] 0,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 0,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 289,0,0,0
+Wireless: Total number of payload bytes received over wireless: 3483,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 0,0,0,0; Received packages: [packages/s] 4,0,0,0
+Wireless: Average payload sent [bytes/pack]: 0,0,0,0; Average payload received: [bytes/pack] 55,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 0,0,0,0; Average bytes sent to device side: [bytes/s] 247,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 281,0,0,0; Average bytes sent to wireless side: [bytes/s] 0,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 0,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 289,0,0,0
+Wireless: Total number of payload bytes received over wireless: 3704,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 3,0,0,0; Received packages: [packages/s] 4,0,0,0
+Wireless: Average payload sent [bytes/pack]: 28,0,0,0; Average payload received: [bytes/pack] 40,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 85,0,0,0; Average bytes sent to device side: [bytes/s] 163,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 223,0,0,0; Average bytes sent to wireless side: [bytes/s] 107,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 0,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 374,0,0,0
+Wireless: Total number of payload bytes received over wireless: 3867,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 3,0,0,0; Received packages: [packages/s] 27,0,0,0
+Wireless: Average payload sent [bytes/pack]: 23,0,0,0; Average payload received: [bytes/pack] 108,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 69,0,0,0; Average bytes sent to device side: [bytes/s] 2923,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 3336,0,0,0; Average bytes sent to wireless side: [bytes/s] 114,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 0,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 443,0,0,0
+Wireless: Total number of paload bytes received over wireless: 6790,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 1,0,0,0; Received packages: [packages/s] 3,0,0,0
+Wireless: Average payload sent [bytes/pack]: 17,0,0,0; Average payload received: [bytes/pack] 34,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 17,0,0,0; Average bytes sent to device side: [bytes/s] 104,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 149,0,0,0; Average bytes sent to wireless side: [bytes/s] 32,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 0,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 460,0,0,0
+Wireless: Total number of payload bytes received over wireless: 6894,0,0,0
+----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 1,0,0,0; Received packages: [packages/s] 5,0,0,0
+Wireless: Average payload sent [bytes/pack]: 17,0,0,0; Average payload received: [bytes/pack] 49,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 17,0,0,0; Average bytes sent to device side: [bytes/s] 247,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 322,0,0,0; Average bytes sent to wireless side: [bytes/s] 32,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 0,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 477,0,0,0
+Wireless: Total number of payload bytes received over wireless: 7141,0,0,0
+-----------------------------------------------------------
+-----------------------------------------------------------
+Wireless: Sent packages [packages/s]: 1,0,0,0; Received packages: [packages/s] 2,0,0,0
+Wireless: Average payload sent [bytes/pack]: 17,0,0,0; Average payload received: [bytes/pack] 52,0,0,0
+Wireless: Sent acknowledges [acks/s]: 0,0,0,0; Received acknowledges: [acks/s] 0,0,0,0
+HW Buffer: Average bytes read from device side[bytes/s]: 17,0,0,0; Average bytes sent to device side: [bytes/s] 104,0,0,0
+HW Buffer: Average bytes read from wireless side[bytes/s]: 134,0,0,0; Average bytes sent to wireless side: [bytes/s] 32,0,0,0
+Application: Total number of dropped packages per device input: 0,0,0,0
+Application: Total number of dropped acknowledges per wireless input: 0,0,0,0
+BER: Total number of invalid packages per wireless input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per device byte input: 0,0,0,0
+SPI Handler: Total number of dropped bytes per wireless byte input: 0,0,0,0
+Wireless: Total number of payload bytes sent over wireless: 494,0,0,0
+Wireless: Total number of payload bytes received over wireles: 7245,0,0,0
+-----------------------------------------------------------
