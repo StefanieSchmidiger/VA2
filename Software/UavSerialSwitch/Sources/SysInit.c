@@ -14,6 +14,7 @@
 #include "LedGreen.h"
 #include "LedRed.h"
 #include "LedOrange.h"
+#include "WAIT1.h"
 
 /* prototypes for functions that are only within this file scope */
 static bool createAllTasks(void);
@@ -97,10 +98,11 @@ static bool createAllTasks(void)
 	if (xTaskCreateStatic(networkHandler_TaskEntry, "Network_Handler", NETWORK_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferNetworkHandler, &pxTaskBufferNetworkHandler) == NULL) {
 		for(;;) {}} /* error */
 
+#if 0
 	/* create network handler task */
-	if (xTaskCreateStatic(applicationHandler_TaskEntry, "Application_Handler", APPLICATION_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferNetworkHandler, &pxTaskBufferApplicationHandler) == NULL) {
+	if (xTaskCreateStatic(applicationHandler_TaskEntry, "Application_Handler", APPLICATION_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferApplicationHandler, &pxTaskBufferApplicationHandler) == NULL) {
 		for(;;) {}} /* error */
-
+#endif
 	/* create throughput printout task */
 	if(config.GenerateDebugOutput == DEBUG_OUTPUT_FULLLY_ENABLED)
 	{
@@ -114,6 +116,7 @@ static bool createAllTasks(void)
 		if (xTaskCreateStatic(logger_TaskEntry, "Logger", LOGGER_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferLogger, &pxTaskBufferLogger) == NULL) {
 			for(;;) {}} /* error */
 	}
+
 
 	/* create blinky task last to let user know that all init methods and mallocs were successful when LED blinks */
 	if (xTaskCreateStatic(blinky_TaskEntry, "Blinky", BLINKY_STACK_SIZE, NULL, tskIDLE_PRIORITY+1, puxStackBufferBlinky, &pxTaskBufferBlinky) == NULL) {

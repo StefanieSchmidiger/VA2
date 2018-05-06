@@ -134,7 +134,7 @@ static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr w
 {
 	char infoBuf[70];
 
-	if(pushToSentPackagesForDisassemblingQueue(wlConn, pPackage) != pdTRUE)
+	if(pushToPacksToDisassembleQueue(wlConn, pPackage) != pdTRUE)
 	{
 		XF1_xsprintf(infoBuf, "%u: Warning: Couldn't push newly generated package from device %u to package queue on wl conn %u \r\n", xTaskGetTickCount(), pPackage->devNum, wlConn);
 		pushMsgToShellQueue(infoBuf);
@@ -249,7 +249,7 @@ static bool processAssembledPackage(tUartNr wlConn)
 				pushMsgToShellQueue(infoBuf);
 				numberOfDroppedAcks[wlConn]++;
 			}
-			if(pushToSentPackagesForDisassemblingQueue(wlConn, &ackPackage) != pdTRUE) // ToDo: try sending ACK package out on wireless connection configured (just like data package, iterate through priorities) */
+			if(pushToPacksToDisassembleQueue(wlConn, &ackPackage) != pdTRUE) // ToDo: try sending ACK package out on wireless connection configured (just like data package, iterate through priorities) */
 			{
 				XF1_xsprintf(infoBuf, "%u: Warning: ACK for wireless number %u could not be pushed to queue\r\n", xTaskGetTickCount(), wlConn);
 				pushMsgToShellQueue(infoBuf);
@@ -409,7 +409,7 @@ static void handleResendingOfUnacknowledgedPackages(void)
 							resendPack.payload[cnt] = pPack->payload[cnt];
 						}
 						/* send resendPack */
-						if(pushToSentPackagesForDisassemblingQueue(wlConn, &resendPack) == pdTRUE)
+						if(pushToPacksToDisassembleQueue(wlConn, &resendPack) == pdTRUE)
 						{
 							pPack->sendAttemptsLeftPerWirelessConnection[wlConn]--;
 							pPack->timestampLastSendAttempt[wlConn] = tickCount;

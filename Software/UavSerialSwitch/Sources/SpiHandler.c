@@ -221,8 +221,8 @@ void initSpiHandlerQueues(void)
 
 #if configSUPPORT_STATIC_ALLOCATION
 	/* The variable used to hold the queue's data structure. */
-	static uint8_t __attribute__((section (configHEAP_SECTION_NAME_STRING))) xStaticQueueRxWlBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
-	static uint8_t __attribute__((section (configHEAP_SECTION_NAME_STRING))) xStaticQueueTxWlBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
+	static uint8_t /* __attribute__((section (configHEAP_SECTION_NAME_STRING))) */ xStaticQueueRxWlBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
+	static uint8_t /* __attribute__((section (configHEAP_SECTION_NAME_STRING))) */ xStaticQueueTxWlBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
 	static uint8_t xStaticQueueRxDevBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
 	static uint8_t xStaticQueueTxDevBytes[NUMBER_OF_UARTS][ BYTE_QUEUE_SIZE * sizeof(uint8_t) ];
 	/* The array to use as the queue's storage area. */

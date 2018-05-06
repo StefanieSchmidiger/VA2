@@ -15,6 +15,7 @@
 #include "ThroughputPrintout.h"
 #include "Shell.h"
 #include "LedRed.h"
+#include "Platform.h"
 
 /* --------------- prototypes ------------------- */
 static bool processReceivedPayload(tWirelessPackage* pPackage);
@@ -41,6 +42,9 @@ static uint16_t minSysTimeOfStoredPackagesForReordering[NUMBER_OF_UARTS];
 static tWirelessPackage reorderingPacks[NUMBER_OF_UARTS][REORDERING_PACKAGES_BUFFER_SIZE];
 static bool reorderingPacksOccupiedAtIndex[NUMBER_OF_UARTS][REORDERING_PACKAGES_BUFFER_SIZE];
 static uint32_t nofReorderingPacksStored[NUMBER_OF_UARTS];
+#if PL_HAS_PERCEPIO
+traceString appHandlerUserEvent[10];
+#endif
 
 
 /*!
@@ -59,6 +63,7 @@ void applicationHandler_TaskEntry(void* p)
 	for(;;)
 	{
 		vTaskDelayUntil( &xLastWakeTime, taskInterval ); /* Wait for the next cycle */
+#if 0
 		/* generate data packages and put those into the package queue */
 		for(int deviceNr = 0; deviceNr<NUMBER_OF_UARTS; deviceNr++)
 		{
@@ -92,7 +97,9 @@ void applicationHandler_TaskEntry(void* p)
 				}
 			}
 
+
 		}
+#endif
 	}
 }
 
@@ -103,6 +110,15 @@ void applicationHandler_TaskEntry(void* p)
 void applicationHandler_TaskInit(void)
 {
 	initApplicationHandlerQueues();
+
+#if PL_HAS_PERCEPIO
+	appHandlerUserEvent[0] = xTraceRegisterString("GenerateDataPackageEnter");
+	appHandlerUserEvent[1] = xTraceRegisterString("GenerateDataPackageExit");
+	appHandlerUserEvent[2] = xTraceRegisterString("readHwBufAndWriteToQueue");
+	appHandlerUserEvent[3] = xTraceRegisterString("before for-loop");
+	appHandlerUserEvent[4] = xTraceRegisterString("popping one byte");
+	appHandlerUserEvent[5] = xTraceRegisterString("queue empty");
+#endif
 }
 
 
@@ -169,6 +185,7 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage)
 		 * When reading data from HW buf but no space in byte queue, oldest bytes will be popped from queue and dropped.
 		 * Hopefully, this will do and no dropping of data on purpose is needed anywhere else for Rx side. */
 		/* limit payload of package */
+		//vTracePrint(appHandlerUserEvent[0], "enter");
 		if(numberOfBytesInRxQueue > PACKAGE_MAX_PAYLOAD_SIZE)
 		{
 			numberOfBytesInRxQueue = PACKAGE_MAX_PAYLOAD_SIZE;
@@ -202,6 +219,8 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage)
 		tickTimeSinceFirstCharReceived[deviceNr] = 0;
 		/* reset flag that timestamp was updated */
 		dataWaitingToBeSent[deviceNr] = false;
+		//vTracePrint(appHandlerUserEvent[1], "exit");
+		return true;
 	}
 	else if(numberOfBytesInRxQueue > 0)
 	{
@@ -218,6 +237,7 @@ static bool generateDataPackage(tUartNr deviceNr, tWirelessPackage* pPackage)
 		/* package was not generated */
 		return false;
 	}
+	return false;
 }
 
 

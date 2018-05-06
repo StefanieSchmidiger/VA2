@@ -20,7 +20,7 @@ void APP_Run(void)
 	/* Task reads ini file from SD card. The ini file content is needed by other tasks upon their taskentry.
 	 * This is the reason that only SysInit task is created on startup and all other tasks are created within SysInit task
 	 * once the SD card has been read */
-  if (xTaskCreate(SysInit_TaskEntry, "Init", 2000/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+1,  NULL) != pdPASS) {
+  if (xTaskCreate(SysInit_TaskEntry, "Init", 4000/sizeof(StackType_t), NULL, tskIDLE_PRIORITY+2,  NULL) != pdPASS) {
           for(;;){}} /* error */
 
 

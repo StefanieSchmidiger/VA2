@@ -114,25 +114,25 @@ void packageHandler_TaskEntry(void* p);
 void packageHandler_TaskInit(void);
 
 /*!
-* \fn ByseType_t popReadyToSendPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage)
+* \fn ByseType_t popAssembledPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage)
 * \brief Stores a single byte from the selected queue in pData.
 * \param uartNr: UART number the package should be transmitted to.
-* \param pPackage: The location where the package should be stored
+* \param pPackage: The location where the received package should be stored
 * \return Status if xQueueReceive has been successful, pdFAIL if uartNr was invalid or pop unsuccessful
 */
 BaseType_t popAssembledPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage);
 
 /*!
-* \fn ByseType_t peekAtReceivedPackQueue(tUartNr uartNr, tWirelessPackage *pPackage)
+* \fn ByseType_t peekAtAssembledPackQueue(tUartNr uartNr, tWirelessPackage *pPackage)
 * \brief Package that will be popped next is stored in pPackage but not removed from queue.
 * \param uartNr: UART number the package should be transmitted to.
-* \param pPackage: The location where the package should be stored
+* \param pPackage: The location where the received package should be stored
 * \return Status if xQueuePeek has been successful, pdFAIL if uartNr was invalid or pop unsuccessful
 */
 BaseType_t peekAtAssembledPackQueue(tUartNr uartNr, tWirelessPackage *pPackage);
 
 /*!
-* \fn uint16_t numberOfPacksInReceivedPacksQueue(tUartNr uartNr)
+* \fn uint16_t nofAssembledPacksInQueue(tUartNr uartNr)
 * \brief Returns the number of packages stored in the queue that are ready to be received/processed by this program
 * \param uartNr: UART number the packages should be read from.
 * \return Number of packages waiting to be processed/received
@@ -141,13 +141,13 @@ uint16_t nofAssembledPacksInQueue(tUartNr uartNr);
 
 
 /*!
-* \fn ByseType_t pushToSentPackagesForDisassemblingQueue(tUartNr wlConn, tWirelessPackage package)
+* \fn ByseType_t pushToPacksToDisassembleQueue(tUartNr wlConn, tWirelessPackage package)
 * \brief Stores the sent package in correct queue.
 * \param wlConn: UART number where package was received.
-* \param package: The package that was sent
+* \param pPackage: The package that will be sent
 * \return Status if xQueueSendToBack has been successful, pdFAIL if push unsuccessful
 */
-BaseType_t pushToSentPackagesForDisassemblingQueue(tUartNr wlConn, tWirelessPackage* pPackage);
+BaseType_t pushToPacksToDisassembleQueue(tUartNr wlConn, tWirelessPackage* pPackage);
 
 
 /*!

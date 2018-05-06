@@ -31,9 +31,9 @@ static bool sendNonPackStartCharacter(tUartNr uartNr, uint8_t* pCharToSend);
 static void readAndExtractWirelessData(uint8_t wlConn);
 static bool checkForPackStartReplacement(uint8_t* ptrToData, uint16_t* dataCntr, uint16_t* patternReplaced);
 static BaseType_t pushToAssembledPackagesQueue(tUartNr wlConn, tWirelessPackage* pPackage);
-static BaseType_t peekAtPackageToDisassemble(tUartNr uartNr, tWirelessPackage *pPackage);
+static BaseType_t peekAtPackToDisassemble(tUartNr uartNr, tWirelessPackage *pPackage);
 static uint16_t nofDisassembledPacksInQueue(tUartNr uartNr);
-static BaseType_t popFromPackagesToDisassembleQueue(tUartNr uartNr, tWirelessPackage* pPackage);
+static BaseType_t popFromPacksToDisassembleQueue(tUartNr uartNr, tWirelessPackage* pPackage);
 
 
 /*! \struct sWiReceiveHandlerStates
@@ -67,14 +67,14 @@ void packageHandler_TaskEntry(void* p)
 			while(nofDisassembledPacksInQueue(wlConn) > 0)
 			{
 				/* check how much space is needed for next data package */
-				if(peekAtPackageToDisassemble(wlConn, &package) != pdTRUE)
+				if(peekAtPackToDisassemble(wlConn, &package) != pdTRUE)
 				{
 					break; /* leave inner while-loop if queue access unsuccessful and continue with next wlConn */
 				}
 				/* enough space for next package available? */
 				if(freeSpaceInTxByteQueue(MAX_14830_WIRELESS_SIDE, wlConn) > (TOTAL_WL_PACKAGE_SIZE + package.payloadSize))
 				{
-					if(popFromPackagesToDisassembleQueue(wlConn, &package) == pdTRUE) /* there is a package ready for sending */
+					if(popFromPacksToDisassembleQueue(wlConn, &package) == pdTRUE) /* there is a package ready for sending */
 					{
 						if(sendPackageToWirelessQueue(wlConn, &package) != true) /* ToDo: handle resending of package */
 						{
@@ -726,7 +726,7 @@ uint16_t nofAssembledPacksInQueue(tUartNr uartNr)
 * \param pPackage: The location where the package should be stored
 * \return Status if xQueueReceive has been successful, pdFAIL if uartNr was invalid or pop unsuccessful
 */
-static BaseType_t popFromPackagesToDisassembleQueue(tUartNr uartNr, tWirelessPackage* pPackage)
+static BaseType_t popFromPacksToDisassembleQueue(tUartNr uartNr, tWirelessPackage* pPackage)
 {
 	if(uartNr < NUMBER_OF_UARTS)
 	{
@@ -742,7 +742,7 @@ static BaseType_t popFromPackagesToDisassembleQueue(tUartNr uartNr, tWirelessPac
 * \param pPackage: The location where the package should be stored
 * \return Status if xQueuePeek has been successful, pdFAIL if uartNr was invalid or pop unsuccessful
 */
-static BaseType_t peekAtPackageToDisassemble(tUartNr uartNr, tWirelessPackage *pPackage)
+static BaseType_t peekAtPackToDisassemble(tUartNr uartNr, tWirelessPackage *pPackage)
 {
 	if( (uartNr < NUMBER_OF_UARTS) && (uxQueueMessagesWaiting(queuePackagesToDisassemble[uartNr]) > 0) )
 	{
@@ -790,7 +790,7 @@ uint16_t freeSpaceInPackagesToDisassembleQueue(tUartNr wlConn)
 * \param package: The package that was sent
 * \return Status if xQueueSendToBack has been successful, pdFAIL if push unsuccessful
 */
-BaseType_t pushToSentPackagesForDisassemblingQueue(tUartNr wlConn, tWirelessPackage* pPackage)
+BaseType_t pushToPacksToDisassembleQueue(tUartNr wlConn, tWirelessPackage* pPackage)
 {
 	if(xQueueSendToBack(queuePackagesToDisassemble[wlConn], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) ) == pdTRUE)
 	{
