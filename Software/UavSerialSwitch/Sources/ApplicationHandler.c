@@ -63,7 +63,6 @@ void applicationHandler_TaskEntry(void* p)
 	for(;;)
 	{
 		vTaskDelayUntil( &xLastWakeTime, taskInterval ); /* Wait for the next cycle */
-#if 0
 		/* generate data packages and put those into the package queue */
 		for(int deviceNr = 0; deviceNr<NUMBER_OF_UARTS; deviceNr++)
 		{
@@ -73,6 +72,7 @@ void applicationHandler_TaskEntry(void* p)
 				if(pushToReadyToSendPacksQueue(deviceNr, &package) != pdTRUE)
 				{
 					vPortFree(package.payload);
+					package.payload = NULL;
 				}
 			}
 
@@ -85,6 +85,7 @@ void applicationHandler_TaskEntry(void* p)
 					processReceivedPayload(&package);
 					popFromReceivedPayloadPacksQueue(deviceNr, &package);
 					vPortFree(package.payload);
+					package.payload = NULL;
 				}
 			}
 
@@ -99,7 +100,6 @@ void applicationHandler_TaskEntry(void* p)
 
 
 		}
-#endif
 	}
 }
 
@@ -345,6 +345,7 @@ static bool pushNextStoredPackOut(tUartNr uartNr)
 			{
 				pushPayloadOut(&nextPack);
 				vPortFree(nextPack.payload);
+				nextPack.payload = NULL;
 				reorderingPacksOccupiedAtIndex[uartNr][i] = 0;
 				nofReorderingPacksStored[uartNr]--;
 				sysTimeLastPushedOutPack[uartNr] = nextPack.packNr;
@@ -501,7 +502,6 @@ BaseType_t pushToReceivedPayloadPacksQueue(tUartNr uartNr, tWirelessPackage* pPa
 	{
 		return xQueueSendToBack(queueReceivedPayloadPacks[uartNr], pPackage, ( TickType_t ) pdMS_TO_TICKS(APPLICATION_HANDLER_QUEUE_DELAY) );
 	}
-
 	return pdFAIL; /* if uartNr was not in range */
 }
 

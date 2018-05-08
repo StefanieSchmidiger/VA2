@@ -230,6 +230,25 @@ bool readConfig(void)
   	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "SYNC_MESSAGING_MODE_ENABLED_PER_WL_CONN",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
   	csvToBool(copiedCsv, config.SyncMessagingModeEnabledPerWlConn);
 
+  	/* LOAD_BALANCING_MODE */
+  	config.LoadBalancingMode = MINI_ini_getl("TransmissionConfiguration", "LOAD_BALANCING_MODE",  DEFAULT_BOOL, "serialSwitch_Config.ini");
+  	switch(config.LoadBalancingMode)
+  	{
+  		case LOAD_BALANCING_AS_CONFIGURED:
+  			config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED;
+  	  		break;
+  	 	case LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED:
+  	  		config.LoadBalancingMode = LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED;
+  	  		break;
+  	 	case LOAD_BALANCING_USE_ALGORITHM:
+  	  		config.LoadBalancingMode = LOAD_BALANCING_USE_ALGORITHM;
+  	  		break;
+  	 	default:
+  	  		config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED;
+  	  		break;
+
+  	 }
+
   	/* USE_GOLAY_ERROR_CORRECTING_CODE */
   	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "USE_GOLAY_ERROR_CORRECTING_CODE",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
   	csvToBool(copiedCsv, config.UseGolayPerWlConn);
@@ -242,7 +261,7 @@ bool readConfig(void)
   	config.EnableStressTest = MINI_ini_getbool("SoftwareConfiguration", "ENABLE_STRESS_TEST",  DEFAULT_BOOL, "serialSwitch_Config.ini");
 
   	/* GENERATE_DEBUG_OUTPUT */
-  	config.GenerateDebugOutput = MINI_ini_getl("SoftwareConfiguration", "GENERATE_DEBUG_OUTPUT",  DEFAULT_INT, "serialSwitch_Config.ini");
+  	config.GenerateDebugOutput = MINI_ini_getl("SoftwareConfiguration", "GENERATE_DEBUG_OUTPUT",  DEFAULT_BOOL, "serialSwitch_Config.ini");
   	switch(config.GenerateDebugOutput)
   	{
 		case DEBUG_OUTPUT_NONE:
@@ -254,7 +273,7 @@ bool readConfig(void)
   	}
 
   	/* LOGGING_ENABLED */
-  	config.LoggingEnabled = MINI_ini_getl("SoftwareConfiguration", "LOGGING_ENABLED",  DEFAULT_INT, "serialSwitch_Config.ini");
+  	config.LoggingEnabled = MINI_ini_getl("SoftwareConfiguration", "LOGGING_ENABLED",  DEFAULT_BOOL, "serialSwitch_Config.ini");
 
   	/* SD_CARD_SYNC_INTERVAL */
   	config.SdCardSyncInterval_s = MINI_ini_getl("SoftwareConfiguration", "SD_CARD_SYNC_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");

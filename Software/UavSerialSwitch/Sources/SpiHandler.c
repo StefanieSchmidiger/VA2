@@ -32,7 +32,6 @@
 #if PL_HAS_PERCEPIO
 traceString userEvent[NUMBER_OF_EVENT_CHANNELS];
 #endif
-LDD_TDeviceData* spiDevice; /* For different functions to access SPI device */
 static xQueueHandle TxWirelessBytes[NUMBER_OF_UARTS]; /* Incoming data from wireless side stored here */
 static xQueueHandle RxWirelessBytes[NUMBER_OF_UARTS]; /* Outgoing data to wireless side stored here */
 static xQueueHandle TxDeviceBytes[NUMBER_OF_UARTS]; /* Incoming data from device side stored here */
@@ -70,6 +69,67 @@ void spiHandler_TaskEntry(void* p)
 {
 	const TickType_t taskInterval = pdMS_TO_TICKS(config.SpiHandlerTaskInterval);
 	TickType_t lastWakeTime = xTaskGetTickCount(); /* Initialize the xLastWakeTime variable with the current time. */
+
+	/*
+		Initialize MAX14830's:
+		- Reset (pull reset signal down)
+		- Wait until IRQ is high (after this, MAX14830's communication interface is ready)
+		- Set BRGConfig to 0 and CLKSource[CrystalEn] to 1 to select crystal as clock source
+		- Wait on STSInt (clock stable)
+		- Program UART baud rates
+		*/
+
+		/* Reset the two MAX14830 */
+		nResetWirelessSide_SetOutput();
+		nResetDeviceSide_SetOutput();
+		nResetWirelessSide_PutVal(0);
+		nResetDeviceSide_PutVal(0);
+
+		vTaskDelay(pdMS_TO_TICKS(200)); /* Wait for the next cycle */
+
+		/* There are external pull ups available, so here we switch them back in high impedance mode */
+		nResetWirelessSide_PutVal(1);
+		nResetDeviceSide_PutVal(1);
+		nResetDeviceSide_SetInput();
+		nResetWirelessSide_SetInput();
+
+
+		/* Wait until both IRQ's are high (means that the MAX14830 are ready to be written to) */
+	#if PL_WITH_BASEBOARD
+		while ((nIrqWirelessSide_GetVal() == false) || (nIrqDeviceSide_GetVal() == false))
+		{
+			vTaskDelay(pdMS_TO_TICKS(20)); /* Wait for the next cycle */
+		}
+	#endif
+
+		/* Set PLL devider and multiplier */
+		spiWriteToAllUartInterfaces(MAX_REG_PLL_CONFIG, 0x06);	/* 0x06: Multiply by 6, factor 6 => freq_in*1 in PLL */
+
+		/* Set devider in baud rate register */
+		/* Input is 3.686 MHZ when PLL factor is 1. Baud rate is this clock /16 => /2 = 115200 baud; /4 = 57600; .. */
+		configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_0, config.BaudRatesDeviceConn[0]);
+		configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_1, config.BaudRatesDeviceConn[1]);
+		configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_2, config.BaudRatesDeviceConn[2]);
+		configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_3, config.BaudRatesDeviceConn[3]);
+		configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_0, config.BaudRatesWirelessConn[0]);
+		configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_1, config.BaudRatesWirelessConn[1]);
+		configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_2, config.BaudRatesWirelessConn[2]);
+		configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_3, config.BaudRatesWirelessConn[3]);
+
+		/* configure hardware flow control (CTS only) if configured */
+		spiWriteToAllUartInterfaces(MAX_REG_MODE1, 0x02);	/* TX needs to be disabled before changing anything on the CTS behaviour */
+		if (config.UseCtsPerWirelessConn[0] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_0, MAX_REG_FLOW_CTRL, 0x02);
+		if (config.UseCtsPerWirelessConn[1] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_1, MAX_REG_FLOW_CTRL, 0x02);
+		if (config.UseCtsPerWirelessConn[2] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_2, MAX_REG_FLOW_CTRL, 0x02);
+		if (config.UseCtsPerWirelessConn[3] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_3, MAX_REG_FLOW_CTRL, 0x02);
+		//spiWriteToAllUartInterfaces(MAX_REG_MODE1, 0x00);	/* enable TX again */
+
+		/* PLL bypass disable, PLL enable, external crystal enable */
+		spiWriteToAllUartInterfaces(MAX_REG_CLK_SOURCE, 0x06);
+
+		/* Set word length and number of stop bits */
+		spiWriteToAllUartInterfaces(MAX_REG_LCR, 0x03);
+
 
 	for(;;)
 	{
@@ -122,7 +182,6 @@ void spiHandler_TaskEntry(void* p)
 */
 void spiHandler_TaskInit(void)
 {
-	spiDevice = SPI_Init(NULL); /* no auto-init in SPIMaster_LDD used because this variable is needed for ChangeConfiguration */
 	initSpiHandlerQueues();
 #if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 	spiRxMutex = FRTOS_xSemaphoreCreateBinary(); /* Waits on Spi_ReceiveBlock */
@@ -142,65 +201,7 @@ void spiHandler_TaskInit(void)
 	spiTxDone = true;
 #endif
 
-	/*
-	Initialize MAX14830's:
-	- Reset (pull reset signal down)
-	- Wait until IRQ is high (after this, MAX14830's communication interface is ready)
-	- Set BRGConfig to 0 and CLKSource[CrystalEn] to 1 to select crystal as clock source
-	- Wait on STSInt (clock stable)
-	- Program UART baud rates
-	*/
 
-	/* Reset the two MAX14830 */
-	nResetWirelessSide_SetOutput();
-	nResetDeviceSide_SetOutput();
-	nResetWirelessSide_PutVal(0);
-	nResetDeviceSide_PutVal(0);
-
-	vTaskDelay(pdMS_TO_TICKS(200)); /* Wait for the next cycle */
-
-	/* There are external pull ups available, so here we switch them back in high impedance mode */
-	nResetWirelessSide_PutVal(1);
-	nResetDeviceSide_PutVal(1);
-	nResetDeviceSide_SetInput();
-	nResetWirelessSide_SetInput();
-
-
-	/* Wait until both IRQ's are high (means that the MAX14830 are ready to be written to) */
-#if PL_WITH_BASEBOARD
-	while ((nIrqWirelessSide_GetVal() == false) || (nIrqDeviceSide_GetVal() == false))
-	{
-		vTaskDelay(pdMS_TO_TICKS(20)); /* Wait for the next cycle */
-	}
-#endif
-
-	/* Set PLL devider and multiplier */
-	spiWriteToAllUartInterfaces(MAX_REG_PLL_CONFIG, 0x06);	/* 0x06: Multiply by 6, factor 6 => freq_in*1 in PLL */
-
-	/* Set devider in baud rate register */
-	/* Input is 3.686 MHZ when PLL factor is 1. Baud rate is this clock /16 => /2 = 115200 baud; /4 = 57600; .. */
-	configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_0, config.BaudRatesDeviceConn[0]);
-	configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_1, config.BaudRatesDeviceConn[1]);
-	configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_2, config.BaudRatesDeviceConn[2]);
-	configureHwBufBaudrate(MAX_14830_DEVICE_SIDE, MAX_UART_3, config.BaudRatesDeviceConn[3]);
-	configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_0, config.BaudRatesWirelessConn[0]);
-	configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_1, config.BaudRatesWirelessConn[1]);
-	configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_2, config.BaudRatesWirelessConn[2]);
-	configureHwBufBaudrate(MAX_14830_WIRELESS_SIDE, MAX_UART_3, config.BaudRatesWirelessConn[3]);
-
-	/* configure hardware flow control (CTS only) if configured */
-	spiWriteToAllUartInterfaces(MAX_REG_MODE1, 0x02);	/* TX needs to be disabled before changing anything on the CTS behaviour */
-	if (config.UseCtsPerWirelessConn[0] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_0, MAX_REG_FLOW_CTRL, 0x02);
-	if (config.UseCtsPerWirelessConn[1] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_1, MAX_REG_FLOW_CTRL, 0x02);
-	if (config.UseCtsPerWirelessConn[2] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_2, MAX_REG_FLOW_CTRL, 0x02);
-	if (config.UseCtsPerWirelessConn[3] > 0)		spiSingleWriteTransfer(MAX_14830_WIRELESS_SIDE, MAX_UART_3, MAX_REG_FLOW_CTRL, 0x02);
-	//spiWriteToAllUartInterfaces(MAX_REG_MODE1, 0x00);	/* enable TX again */
-
-	/* PLL bypass disable, PLL enable, external crystal enable */
-	spiWriteToAllUartInterfaces(MAX_REG_CLK_SOURCE, 0x06);
-
-	/* Set word length and number of stop bits */
-	spiWriteToAllUartInterfaces(MAX_REG_LCR, 0x03);
 
 #if PL_HAS_PERCEPIO
 	userEvent[0] = xTraceRegisterString("dropping bytes in queue");
@@ -273,7 +274,7 @@ void initSpiHandlerQueues(void)
 */
 uint8_t spiSingleReadTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg)
 {
-	static uint8_t readData[2]; /* spi transfer needs one extra byte for commando */
+	uint8_t readData[2]; /* spi transfer needs one extra byte for commando */
 	spiTransfer(spiSlave, uartNr, reg, READ_TRANSFER, readData, SINGLE_BYTE);
 	return readData[1]; /* readData[0] holds answer to commando byte and no data for user */
 }
@@ -291,7 +292,7 @@ uint8_t spiSingleReadTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg 
 */
 bool spiSingleWriteTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, uint8_t data)
 {
-	static uint8_t writeData[2];
+	uint8_t writeData[2];
 	writeData[1] = data; /* write[0] will be filled with commando */
 	return spiTransfer(spiSlave, uartNr, reg, WRITE_TRANSFER, writeData, SINGLE_BYTE);
 }
@@ -330,7 +331,7 @@ bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool wri
 {
 	uint8_t transferCnt = 0;
 	int maxDelay = 5; // [ms] ToDo: make relative to selected baud rate!
-	static uint8_t data[HW_FIFO_SIZE + 1]; /* MAX14830 can hold a maximum of HW_FIFO_SIZE bytes, 1 byte is command. Make static to ensure memory for SPI is still here when SPI master actually sends the data! */
+	uint8_t data[HW_FIFO_SIZE + 1]; /* MAX14830 can hold a maximum of HW_FIFO_SIZE bytes, 1 byte is command. Make static to ensure memory for SPI is still here when SPI master actually sends the data! */
 	/* See MAX14830 data sheet; 16 bits per word:
 	* 15 (MSB): W/!R
 	* 14: UART number, bit 1
@@ -370,11 +371,11 @@ bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool wri
 	/* Select the correct slave */
 	if (spiSlave == MAX_14830_WIRELESS_SIDE)
 	{
-		SPI_SelectConfiguration(spiDevice, CS_WIRELESS, 0);
+		SPI_SelectConfiguration(SPI_DeviceData, CS_WIRELESS, 0);
 	}
 	else if (spiSlave == MAX_14830_DEVICE_SIDE)
 	{
-		SPI_SelectConfiguration(spiDevice, CS_DEVICE, 0);
+		SPI_SelectConfiguration(SPI_DeviceData, CS_DEVICE, 0);
 	}
 	else
 	{
@@ -392,7 +393,7 @@ bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool wri
 		while(spiTxDone != true);
 		spiTxDone = false;
 #endif
-		SPI_SendBlock(spiDevice, pData, numOfTransfers+1); /* wait for SPI to get ready for sending, add 1 byte for command */
+		SPI_SendBlock(SPI_DeviceData, pData, numOfTransfers+1); /* wait for SPI to get ready for sending, add 1 byte for command */
 	}
 	else
 	{
@@ -403,8 +404,8 @@ bool spiTransfer(tSpiSlaves spiSlave, tUartNr uartNr, tMax14830Reg reg, bool wri
 		while(spiTxDone != true);
 		spiTxDone = false;
 #endif
-		SPI_ReceiveBlock(spiDevice, pData, numOfTransfers+1); /* add 1 byte for command */
-		SPI_SendBlock(spiDevice, data, numOfTransfers+1); /* add 1 byte for command */
+		SPI_ReceiveBlock(SPI_DeviceData, pData, numOfTransfers+1); /* add 1 byte for command */
+		SPI_SendBlock(SPI_DeviceData, data, numOfTransfers+1); /* add 1 byte for command */
 #if USE_SEMAPHORES_INSTEAD_OF_FLAGS
 		xSemaphoreTake(spiRxMutex, maxDelay / portTICK_PERIOD_MS); /* wait for read to be completed so that variable holds valid information when returning from this function */
 #else
@@ -569,7 +570,7 @@ static uint16_t readHwBufAndWriteToQueue(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 #endif
 			numberOfDroppedBytes[spiSlave][uartNr] += (nofReadBytesToProcess - freeSpaceInQueue);
 			/* print out warning that bytes have been dropped */
-			XF1_xsprintf(warnBuf, "Warning: Cleaning %u bytes on %s side, UART number %u\r\n", (unsigned int) (nofReadBytesToProcess - freeSpaceInQueue), spiSlave == MAX_14830_WIRELESS_SIDE ? "wireless":"device", (unsigned int)uartNr);
+			XF1_xsprintf(warnBuf, "%u: Warning: Cleaning %u bytes on %s side, UART number %u\r\n", xTaskGetTickCount(), (unsigned int) (nofReadBytesToProcess - freeSpaceInQueue), spiSlave == MAX_14830_WIRELESS_SIDE ? "wireless":"device", (unsigned int)uartNr);
 			LedOrange_On();
 			pushMsgToShellQueue(warnBuf);
 
@@ -691,7 +692,7 @@ static uint16_t readQueueAndWriteToHwBuf(tSpiSlaves spiSlave, tUartNr uartNr, xQ
 			if((spiSlave == MAX_14830_WIRELESS_SIDE) && (config.MaxThroughputWirelessConn[uartNr] <= throughputPerWlConn[uartNr]))
 			{
 				char infoBuf[50];
-				XF1_xsprintf(infoBuf, "Throughput maximum reached for WL conn %u -> hold off from sending more bytes\r\n", (unsigned int)uartNr);
+				XF1_xsprintf(infoBuf, "%u: Throughput maximum reached for WL conn %u -> hold off from sending more bytes\r\n", xTaskGetTickCount(), (unsigned int)uartNr);
 				break; /* max throughput reached for this second - leave for-loop without popping more data from queue */
 			}
 			/* try to pop data from queue */

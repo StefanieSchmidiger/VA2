@@ -16,7 +16,14 @@ typedef enum eDebugOutput
 	DEBUG_OUTPUT_NONE = 0x01,
 	DEBUG_OUTPUT_SHELL_COMMANDS_ONLY = 0x02,
 	DEBUG_OUTPUT_FULLLY_ENABLED = 0x03
-} eDebugOutput;
+} tDebugOutput;
+
+typedef enum eLoadBalancing
+{
+	LOAD_BALANCING_AS_CONFIGURED = 0x01,
+	LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED = 0x02,
+	LOAD_BALANCING_USE_ALGORITHM = 0x03
+} tLoadBalancing;
 
 typedef struct Configurations {
 	/* BaudRateConfiguration */
@@ -35,12 +42,13 @@ typedef struct Configurations {
    bool UseCtsPerWirelessConn[NUMBER_OF_UARTS];
    tPayloadNumbering PayloadNumberingProcessingMode[NUMBER_OF_UARTS]; /* per device side, NOT per wireless side */
    int PayloadReorderingTimeout[NUMBER_OF_UARTS];
+   tLoadBalancing LoadBalancingMode;
    bool SyncMessagingModeEnabledPerWlConn[NUMBER_OF_UARTS];
    bool UseGolayPerWlConn[NUMBER_OF_UARTS];
    /* SoftwareConfiguration */
    bool TestHwLoopbackOnly;
    bool EnableStressTest;
-   eDebugOutput GenerateDebugOutput;
+   tDebugOutput GenerateDebugOutput;
    bool LoggingEnabled;
    int SdCardSyncInterval_s; // [s]
    int SpiHandlerTaskInterval; // [ms]

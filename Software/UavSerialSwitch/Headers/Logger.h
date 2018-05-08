@@ -31,6 +31,9 @@ void logger_TaskInit(void);
 BaseType_t pushPackageToLoggerQueue(tWirelessPackage* pPackage, tRxTxPackage rxTxPackage, tUartNr wlConnNr);
 
 
+BaseType_t pushByteToLoggerQueue(uint8_t byte, tRxTxPackage rxTxPackage, tUartNr wlConnNr);
+
+
 /*! \def MAX_DELAY_LOGGER_MS
 *  \brief Maximal delay on queue operations inside Logger task.
 */

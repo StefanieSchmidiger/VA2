@@ -26,6 +26,7 @@ static int numberOfUnacknowledgedPackages;
 static uint16_t sentPackNumTracker[NUMBER_OF_UARTS];
 static uint32_t sentAckNumTracker[NUMBER_OF_UARTS];
 static volatile bool ackReceived[NUMBER_OF_UARTS];
+static uint8_t costFunctionPerWlConn[NUMBER_OF_UARTS];
 
 /* prototypes of local functions */
 static void initNetworkHandlerQueues(void);
@@ -36,7 +37,7 @@ static bool storeNewPackageInUnacknowledgedPackagesArray(tWirelessPackage* pPack
 static uint8_t getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio);
 static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack);
 static void handleResendingOfUnacknowledgedPackages(void);
-static uint8_t findWlConnForDevice(tUartNr deviceNr);
+static uint8_t findWlConnForDevice(tUartNr deviceNr, int prio);
 
 
 /*!
@@ -61,7 +62,16 @@ void networkHandler_TaskEntry(void* p)
 			/* push generated wireless packages out on wireless side */
 			if( nofReadyToSendPackInQueue(deviceNr) > 0)
 			{
-				uint8_t wlConnToUse = findWlConnForDevice(deviceNr);
+				/* find wl connection to use for this package */
+				uint8_t wlConnToUse = NUMBER_OF_UARTS;
+				for(int prio=1; prio < NUMBER_OF_UARTS; prio++)
+				{
+					wlConnToUse = findWlConnForDevice(deviceNr, prio); /* find wl conn with highest priority that can be used */
+					if(wlConnToUse < NUMBER_OF_UARTS) /* found a valid match */
+					{
+						break;
+					}
+				}
 				if(wlConnToUse < NUMBER_OF_UARTS) /* founda wl connection for this package */
 				{
 					if( freeSpaceInPackagesToDisassembleQueue(wlConnToUse) ) /* There is space in the queue of next handler? */
@@ -158,6 +168,7 @@ static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr w
 		pPackage->sendAttemptsLeftPerWirelessConnection[wlConn]--;
 		pPackage->timestampLastSendAttempt[wlConn] = xTaskGetTickCount();
 		pPackage->timestampFirstSendAttempt = xTaskGetTickCount();
+		pPackage->wlConnUsedForLastSendAttempt = wlConn;
 		ackReceived[wlConn] = false; /* flag for PackNumberProcessingMode == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK */
 		if(storeNewPackageInUnacknowledgedPackagesArray(pPackage) == true)
 		{
@@ -185,13 +196,24 @@ static uint8_t getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio)
 
 
 /*!
-* \fn static uint8_t  findWlConnForDevice(tUartNr deviceNr)
+* \fn static uint8_t  findWlConnForDevice(tUartNr deviceNr, int prio)
 * \brief Checks which wireless connection number is configured with the desired priority
 * \return wlConnectionToUse: a number between 0 and (NUMBER_OF_UARTS-1). This priority is not configured if NUMBER_OF_UARTS is returned.
 */
-static uint8_t  findWlConnForDevice(tUartNr deviceNr)
+static uint8_t  findWlConnForDevice(tUartNr deviceNr, int prio)
 {
-	return getWlConnConfiguredForPrio(deviceNr, 1);
+	switch(config.LoadBalancingMode)
+	{
+		case LOAD_BALANCING_AS_CONFIGURED:
+			return getWlConnConfiguredForPrio(deviceNr, prio);
+		case LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED: /* costFunctionPerWlConn is either 0 or 100 */
+			// ToDo: Not implemented yet
+			return NUMBER_OF_UARTS;
+		case LOAD_BALANCING_USE_ALGORITHM:
+			// ToDo: Not implemented yet
+			return NUMBER_OF_UARTS;
+	}
+	return NUMBER_OF_UARTS;
 }
 
 
@@ -306,8 +328,6 @@ static bool processAssembledPackage(tUartNr wlConn)
 		pushMsgToShellQueue(infoBuf);
 		FRTOS_vPortFree(package.payload);
 	}
-	FRTOS_vPortFree(package.payload); /* free memory for package popped from queue */
-	package.payload = NULL;
 	return true;
 }
 
@@ -363,7 +383,7 @@ static void handleResendingOfUnacknowledgedPackages(void)
 			unackPackagesLeft --;
 			int prio = 4;
 			int maxPrio = 1;
-			/* find maximum wl connection priority configured on this device */
+			/* find maximum wl connection priority value configured on this device (=highest number) */
 			while(maxPrio != NUMBER_OF_UARTS)
 			{
 				maxPrio = getWlConnConfiguredForPrio(pPack->devNum, prio);
@@ -374,11 +394,11 @@ static void handleResendingOfUnacknowledgedPackages(void)
 			{
 				int wlConn = getWlConnConfiguredForPrio(pPack->devNum, prio);
 				uint32_t tickCount = xTaskGetTickCount();
-				uint32_t delayInTicks = pdMS_TO_TICKS(config.DelayDismissOldPackagePerDev[pPack->devNum]);
+				uint32_t keepPackAliveTimeout = pdMS_TO_TICKS(config.DelayDismissOldPackagePerDev[pPack->devNum]);
 				uint32_t resendDelayInTicks = pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][pPack->devNum]);
 				/* max number of resends done for all connections or maximum delay in config reached for this package     OR
 				 * no response on last resend received during resend timeout */
-				if(((wlConn >= NUMBER_OF_UARTS) || ((pPack->timestampFirstSendAttempt + delayInTicks) < tickCount))     ||
+				if(((wlConn >= NUMBER_OF_UARTS) || ((pPack->timestampFirstSendAttempt + keepPackAliveTimeout) < tickCount))     ||
 					((prio == maxPrio) && (pPack->sendAttemptsLeftPerWirelessConnection[wlConn] == 0) &&  (tickCount - pPack->timestampLastSendAttempt[wlConn] > resendDelayInTicks)))
 				{
 					XF1_xsprintf(infoBuf, "%u: Warning: Max number of retries reached and no ACK received -> discard package with packNr %u and payloadNr %u for device %u\r\n", xTaskGetTickCount(), pPack->packNr, pPack->payloadNr, pPack->devNum);
@@ -441,6 +461,7 @@ static void handleResendingOfUnacknowledgedPackages(void)
 		}
 	}
 }
+
 
 
 /*!

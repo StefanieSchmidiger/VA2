@@ -244,7 +244,7 @@ void PTRC1_OnTraceWrap(void)
   uint8_t buf[64];
 
   /* GDB: dump binary memory <file> <hexStartAddr> <hexEndAddr> */
-  PTRC1_vGetGDBDumpCommand(buf, sizeof(buf), "c:\\tmp\\trc.dump");
+  //PTRC1_vGetGDBDumpCommand(buf, sizeof(buf), "c:\\tmp\\trc.dump");
 #endif
 }
 

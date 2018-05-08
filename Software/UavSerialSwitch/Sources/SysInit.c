@@ -46,14 +46,6 @@ void SysInit_TaskEntry(void* param)
 */
 static bool createAllTasks(void)
 {
-	/* make sure all queues are initialized before being accessed from other tasks */
-	Shell_TaskInit(); /* 0.25kB */
-	logger_TaskInit(); /* 2x4x(queuelength)x56B */
-	spiHandler_TaskInit(); /* 10kB when queuelength = 512, 2x4x2x(queueLength)x1B */
-	packageHandler_TaskInit(); /* 2x4x(queueLength)x56B = 3kB */
-	networkHandler_TaskInit(); /* 2x4x(queueLength)x56B = 3kB */
-	applicationHandler_TaskInit();
-
 #if configSUPPORT_STATIC_ALLOCATION
 
 	/* Buffer that the task being created will use as its stack. */
@@ -98,7 +90,7 @@ static bool createAllTasks(void)
 	if (xTaskCreateStatic(networkHandler_TaskEntry, "Network_Handler", NETWORK_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferNetworkHandler, &pxTaskBufferNetworkHandler) == NULL) {
 		for(;;) {}} /* error */
 
-#if 0
+#if 1
 	/* create network handler task */
 	if (xTaskCreateStatic(applicationHandler_TaskEntry, "Application_Handler", APPLICATION_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferApplicationHandler, &pxTaskBufferApplicationHandler) == NULL) {
 		for(;;) {}} /* error */

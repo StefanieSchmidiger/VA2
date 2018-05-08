@@ -18,7 +18,6 @@
 static xQueueHandle queueAssembledPackages[NUMBER_OF_UARTS]; /* Outgoing data to wireless side stored here */
 static xQueueHandle queuePackagesToDisassemble[NUMBER_OF_UARTS]; /* Incoming data from wireless side stored here */
 static tWirelessPackage nextDataPacketToSend[NUMBER_OF_UARTS]; /* data buffer of outgoing wireless packages, stored in here once pulled from queue */
-static LDD_TDeviceData* crcPH;
 static char* queueNamePacksToDisassemble[] = {"queuePacksToDisassemble0", "queuePacksToDisassemble1", "queuePacksToDisassemble2", "queuePacksToDisassemble3"};
 static const char* queueNameAssembledPacks[] = {"AssembledPackages0", "AssembledPackages1", "AssembledPackages2", "AssembledPackages3"};
 uint8_t numOfInvalidRecWirelessPack[NUMBER_OF_UARTS];
@@ -34,6 +33,7 @@ static BaseType_t pushToAssembledPackagesQueue(tUartNr wlConn, tWirelessPackage*
 static BaseType_t peekAtPackToDisassemble(tUartNr uartNr, tWirelessPackage *pPackage);
 static uint16_t nofDisassembledPacksInQueue(tUartNr uartNr);
 static BaseType_t popFromPacksToDisassembleQueue(tUartNr uartNr, tWirelessPackage* pPackage);
+static void initPackageHandlerQueues(void);
 
 
 /*! \struct sWiReceiveHandlerStates
@@ -118,14 +118,10 @@ void packageHandler_TaskEntry(void* p)
 void packageHandler_TaskInit(void)
 {
 	initPackageHandlerQueues();
-	crcPH = CRC1_Init(NULL);
 
 	/* generate random 8bit session number */
-	LDD_TDeviceData* rng = (LDD_TDeviceData*) RNG_Init(NULL); /* initializes random number generator */
 	uint32_t randomNumber;
-	if(rng == NULL)
-		while(true){} /* RNG could not be initialized */
-	RNG_GetRandomNumber(rng, &randomNumber);
+	RNG_GetRandomNumber(RNG_DeviceData, &randomNumber);
 	sessionNr = (uint8_t) randomNumber;
 }
 
@@ -133,7 +129,7 @@ void packageHandler_TaskInit(void)
 * \fn void initPackageHandlerQueues(void)
 * \brief This function initializes the array of queues
 */
-void initPackageHandlerQueues(void)
+static void initPackageHandlerQueues(void)
 {
 #if configSUPPORT_STATIC_ALLOCATION
 	static uint8_t xStaticQueueToAssemble[NUMBER_OF_UARTS][ QUEUE_NUM_OF_WL_PACK_TO_ASSEMBLE * sizeof(tWirelessPackage) ]; /* The variable used to hold the queue's data structure. */
@@ -182,23 +178,23 @@ static bool sendPackageToWirelessQueue(tUartNr wlConn, tWirelessPackage* pPackag
 
 	/* calculate CRC payload */
 	uint32_t crc16;
-	CRC1_ResetCRC(crcPH);
-	CRC1_SetCRCStandard(crcPH, LDD_CRC_MODBUS_16);
-	CRC1_GetBlockCRC(crcPH, pPackage->payload, pPackage->payloadSize, &crc16);
+	CRC1_ResetCRC(CRC1_DeviceData);
+	CRC1_SetCRCStandard(CRC1_DeviceData, LDD_CRC_MODBUS_16);
+	CRC1_GetBlockCRC(CRC1_DeviceData, pPackage->payload, pPackage->payloadSize, &crc16);
 	pPackage->crc16payload = (uint16_t) crc16;
 
 	/* calculate crc header */
-	CRC1_ResetCRC(crcPH);
-	CRC1_GetCRC8(crcPH, startChar);
-	CRC1_GetCRC8(crcPH, pPackage->packType);
-	CRC1_GetCRC8(crcPH, pPackage->devNum);
-	CRC1_GetCRC8(crcPH, pPackage->sessionNr);
-	CRC1_GetCRC8(crcPH, *((uint8_t*)(&pPackage->packNr) + 1));
-	CRC1_GetCRC8(crcPH, *((uint8_t*)(&pPackage->packNr) + 0));
-	CRC1_GetCRC8(crcPH, *((uint8_t*)(&pPackage->payloadNr) + 1));
-	CRC1_GetCRC8(crcPH, *((uint8_t*)(&pPackage->payloadNr) + 0));
-	CRC1_GetCRC8(crcPH, *((uint8_t*)(&pPackage->payloadSize) + 1));
-	pPackage->crc8Header = CRC1_GetCRC8(crcPH, *((uint8_t*)(&pPackage->payloadSize) + 0));
+	CRC1_ResetCRC(CRC1_DeviceData);
+	CRC1_GetCRC8(CRC1_DeviceData, startChar);
+	CRC1_GetCRC8(CRC1_DeviceData, pPackage->packType);
+	CRC1_GetCRC8(CRC1_DeviceData, pPackage->devNum);
+	CRC1_GetCRC8(CRC1_DeviceData, pPackage->sessionNr);
+	CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&pPackage->packNr) + 1));
+	CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&pPackage->packNr) + 0));
+	CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&pPackage->payloadNr) + 1));
+	CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&pPackage->payloadNr) + 0));
+	CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&pPackage->payloadSize) + 1));
+	pPackage->crc8Header = CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&pPackage->payloadSize) + 0));
 
 	taskENTER_CRITICAL();
 	if(pushToByteQueue(MAX_14830_WIRELESS_SIDE, wlConn, &startChar) != pdTRUE)
@@ -401,17 +397,17 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 					break;
 				}
 				/* finish reading header. Check if header is valid */
-				CRC1_ResetCRC(crcPH);
-				CRC1_GetCRC8(crcPH, PACK_START);
-				CRC1_GetCRC8(crcPH, currentWirelessPackage[wlConn].packType);
-				CRC1_GetCRC8(crcPH, currentWirelessPackage[wlConn].devNum);
-				CRC1_GetCRC8(crcPH, currentWirelessPackage[wlConn].sessionNr);
-				CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].packNr) + 1));
-				CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].packNr) + 0));
-				CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadNr) + 1));
-				CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadNr) + 0));
-				CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 1));
-				uint8_t crc8 = CRC1_GetCRC8(crcPH, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 0));
+				CRC1_ResetCRC(CRC1_DeviceData);
+				CRC1_GetCRC8(CRC1_DeviceData, PACK_START);
+				CRC1_GetCRC8(CRC1_DeviceData, currentWirelessPackage[wlConn].packType);
+				CRC1_GetCRC8(CRC1_DeviceData, currentWirelessPackage[wlConn].devNum);
+				CRC1_GetCRC8(CRC1_DeviceData, currentWirelessPackage[wlConn].sessionNr);
+				CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].packNr) + 1));
+				CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].packNr) + 0));
+				CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadNr) + 1));
+				CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadNr) + 0));
+				CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 1));
+				uint8_t crc8 = CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 0));
 				if(true)//currentWirelessPackage[wlConn].crc8Header == crc8)
 				{
 					if(currentWirelessPackage[wlConn].crc8Header != crc8) /* in case the above crc check is commented out -> debug info printed that crc wouldnt be correct */
@@ -485,9 +481,9 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				/* finish reading payload, check CRC of payload */
 				currentWirelessPackage[wlConn].crc16payload = data[wlConn][dataCntr[wlConn] - 1];
 				currentWirelessPackage[wlConn].crc16payload |= (data[wlConn][dataCntr[wlConn] - 2] << 8);
-				CRC1_ResetCRC(crcPH);
-				CRC1_SetCRCStandard(crcPH, LDD_CRC_MODBUS_16); // ToDo: use LDD_CRC_CCITT, MODBUS only for backwards compatibility to old SW
-				CRC1_GetBlockCRC(crcPH, data[wlConn], currentWirelessPackage[wlConn].payloadSize, &crc16);
+				CRC1_ResetCRC(CRC1_DeviceData);
+				CRC1_SetCRCStandard(CRC1_DeviceData, LDD_CRC_MODBUS_16); // ToDo: use LDD_CRC_CCITT, MODBUS only for backwards compatibility to old SW
+				CRC1_GetBlockCRC(CRC1_DeviceData, data[wlConn], currentWirelessPackage[wlConn].payloadSize, &crc16);
 				if(true)//currentWirelessPackage[wlConn].crc16payload == (uint16_t) crc16) /* payload valid? */
 				{
 					if(currentWirelessPackage[wlConn].crc16payload != (uint16_t) crc16) /* in case the above crc check is commented out -> debug info printed that crc wouldnt be correct */

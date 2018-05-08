@@ -93,10 +93,11 @@ typedef struct sWirelessPackage
 	/* internal information, needed for (re)sending package */
 	uint8_t currentPrioConnection;
 	int8_t sendAttemptsLeftPerWirelessConnection[NUMBER_OF_UARTS];
-	uint32_t timestampFirstSendAttempt;
-	uint32_t timestampLastSendAttempt[NUMBER_OF_UARTS];	/* holds the timestamp when the packet was sent the last time for every wireless connection */
+	uint16_t timestampFirstSendAttempt;
+	uint16_t timestampLastSendAttempt[NUMBER_OF_UARTS];	/* holds the timestamp when the packet was sent the last time for every wireless connection */
 	uint16_t totalNumberOfSendAttemptsPerWirelessConnection[NUMBER_OF_UARTS];		/* to save the total number of send attempts that were needed for this package */
-	uint32_t timestampPackageReceived;
+	uint16_t timestampPackageReceived;
+	uint8_t wlConnUsedForLastSendAttempt;
 } tWirelessPackage;
 
 
