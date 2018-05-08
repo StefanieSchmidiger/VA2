@@ -65,9 +65,82 @@ void throughputPrintout_TaskEntry(void* p)
 
 		}
 
-		res = XF1_xsprintf(buf, "----------------------------------------------------------- \r\n");
+		res = XF1_xsprintf(buf, "***************************************************************************************************** \r\n");
 		res = pushMsgToShellQueue(buf);
 		/* print throughput information */
+
+		res = XF1_xsprintf(buf, "Device 0 ------>\t %lu B/s\t-------> ================= -------> \t %lu B/s\t -------> Wireless 0 \r\n",
+				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][0], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][0]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t ||\t\t||\t\t %lu Datapack/s \r\n",
+				averagePacksSent[0]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Device 1 ------>\t %lu B/s\t-------> ||             || -------> \t %lu B/s\t -------> Wireless 1 \r\n",
+				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][1], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][1]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t ||\t\t||\t\t %lu Datapack/s \r\n",
+				averagePacksSent[1]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Device 2 ------>\t %lu B/s\t-------> ||             || -------> \t %lu B/s\t -------> Wireless 2 \r\n",
+				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][2], averageUartBytesSent[MAX_14830_WIRELESS_SIDE][2]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t ||\t\t||\t\t %lu Datapack/s \r\n",
+				averagePacksSent[2]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Device 3 ------>\t %lu B/s\t-------> ================= -------> \t %lu B/s\t -------> Wireless 3 \r\n",
+				averageUartBytesReceived[MAX_14830_DEVICE_SIDE][3], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t\t\t\t\t %lu Datapack/s \r\n\r\n\r\n",
+				averagePacksSent[3]);
+		res = pushMsgToShellQueue(buf);
+
+
+		/*******************************/
+		/* print throughput information */
+
+		res = XF1_xsprintf(buf, "Device 0 <------\t %lu B/s\t<------- ================= <------- \t %lu B/s\t <------- Wireless 0 \r\n",
+				averageUartBytesSent[MAX_14830_DEVICE_SIDE][0], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][0]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t ||\t\t||\t\t %lu Datapack/s \r\n",
+				averagePacksReceived[0]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Device 1 <------\t %lu B/s\t<------- ||             || <------- \t %lu B/s\t <------- Wireless 1 \r\n",
+				averageUartBytesSent[MAX_14830_DEVICE_SIDE][1], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][1]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t ||\t\t||\t\t %lu Datapack/s \r\n",
+				averagePacksReceived[1]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Device 2 <------\t %lu B/s\t<------- ||             || <------- \t %lu B/s\t <------- Wireless 2 \r\n",
+				averageUartBytesSent[MAX_14830_DEVICE_SIDE][2], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][2]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t ||\t\t||\t\t %lu Datapack/s \r\n",
+				averagePacksReceived[2]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "Device 3 <------\t %lu B/s\t<------- ================= <------- \t %lu B/s\t <------- Wireless 3 \r\n",
+				averageUartBytesSent[MAX_14830_DEVICE_SIDE][3], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "\t\t\t\t\t\t\t\t\t %lu Datapack/s \r\n",
+				averagePacksReceived[3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "***************************************************************************************************** \r\n");
+		res = pushMsgToShellQueue(buf);
+
+#if 0
 		res = XF1_xsprintf(buf, "NetworkHandler: Sent packages [packages/s]: %lu,%lu,%lu,%lu; Received packages: [packages/s] %lu,%lu,%lu,%lu \r\n",
 				averagePacksSent[0], averagePacksSent[1], averagePacksSent[2], averagePacksSent[3],
 				averagePacksReceived[0], averagePacksReceived[1], averagePacksReceived[2], averagePacksReceived[3]);
@@ -139,7 +212,7 @@ void throughputPrintout_TaskEntry(void* p)
 
 		res = XF1_xsprintf(buf, "----------------------------------------------------------- \r\n");
 		res = pushMsgToShellQueue(buf);
-
+#endif
 		/* reset measurement */
 		for(int cnt = 0; cnt < NUMBER_OF_UARTS; cnt++)
 		{

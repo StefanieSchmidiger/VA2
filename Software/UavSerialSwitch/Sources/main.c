@@ -69,6 +69,7 @@
 #include "HF1.h"
 #include "CRC1.h"
 #include "RNG.h"
+#include "PTRC1.h"
 #include "Pin33.h"
 #include "BitIoLdd9.h"
 /* Including shared modules, which are used for whole project */

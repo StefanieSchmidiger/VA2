@@ -147,7 +147,9 @@ static void initPackageHandlerQueues(void)
 		queuePackagesToDisassemble[uartNr] = xQueueCreate( QUEUE_NUM_OF_WL_PACK_TO_DISASSEMBLE, sizeof(tWirelessPackage));
 #endif
 		if( (queueAssembledPackages[uartNr] == NULL) || (queuePackagesToDisassemble[uartNr] == NULL) )
+		{
 			while(true){} /* malloc for queue failed */
+		}
 		vQueueAddToRegistry(queueAssembledPackages[uartNr], queueNameAssembledPacks[uartNr]);
 		vQueueAddToRegistry(queuePackagesToDisassemble[uartNr], queueNamePacksToDisassemble[uartNr]);
 	}
@@ -300,7 +302,9 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 	/* check if parameters are valid */
 	if (wlConn >= NUMBER_OF_UARTS)
 	{
-		//showError(__FUNCTION__, "invalid parameter");
+		XF1_xsprintf(infoBuf, "Error: Trying to read data from wlConn %u \r\n", wlConn);
+		pushMsgToShellQueue(infoBuf);
+		return;
 	}
 	/* read incoming character and react based on the state of the state machine */
 	while (popFromByteQueue(MAX_14830_WIRELESS_SIDE, wlConn, &chr) == pdTRUE)
@@ -656,13 +660,17 @@ static bool checkForPackStartReplacement(uint8_t* ptrToData, uint16_t* dataCntr,
 */
 static BaseType_t pushToAssembledPackagesQueue(tUartNr wlConn, tWirelessPackage* pPackage)
 {
-	if(xQueueSendToBack(queueAssembledPackages[wlConn], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) ) == pdTRUE) /* ToDo: handle failure on pushing package to receivedPackages queue , currently it is dropped if unsuccessful */
+	if(wlConn < NUMBER_OF_UARTS) /* check boundries before accessing index of queue */
 	{
-		if(config.LoggingEnabled)
+
+		if(xQueueSendToBack(queueAssembledPackages[wlConn], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) ) == pdTRUE) /* ToDo: handle failure on pushing package to receivedPackages queue , currently it is dropped if unsuccessful */
 		{
-			pushPackageToLoggerQueue(pPackage, RECEIVED_PACKAGE, wlConn); /* content is only copied in this function, new package generated for logging queue inside this function */
+			if(config.LoggingEnabled)
+			{
+				pushPackageToLoggerQueue(pPackage, RECEIVED_PACKAGE, wlConn); /* content is only copied in this function, new package generated for logging queue inside this function */
+			}
+			return pdTRUE;
 		}
-		return pdTRUE;
 	}
 	return pdFAIL;  /* dont do logging if package wont be sent either */
 }
@@ -693,9 +701,12 @@ BaseType_t popAssembledPackFromQueue(tUartNr uartNr, tWirelessPackage *pPackage)
 */
 BaseType_t peekAtAssembledPackQueue(tUartNr uartNr, tWirelessPackage *pPackage)
 {
-	if( (uartNr < NUMBER_OF_UARTS) && (uxQueueMessagesWaiting(queueAssembledPackages[uartNr]) > 0) )
+	if(uartNr < NUMBER_OF_UARTS) /* check boundry before accessing queue with uartNr as index */
 	{
-		return FRTOS_xQueuePeek(queueAssembledPackages[uartNr], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) );
+		if( uxQueueMessagesWaiting(queueAssembledPackages[uartNr]) > 0 )
+		{
+			return FRTOS_xQueuePeek(queueAssembledPackages[uartNr], pPackage, ( TickType_t ) pdMS_TO_TICKS(MAX_DELAY_PACK_HANDLER_MS) );
+		}
 	}
 	return pdFAIL; /* if uartNr was not in range */
 }
@@ -710,7 +721,9 @@ BaseType_t peekAtAssembledPackQueue(tUartNr uartNr, tWirelessPackage *pPackage)
 uint16_t nofAssembledPacksInQueue(tUartNr uartNr)
 {
 	if(uartNr < NUMBER_OF_UARTS)
+	{
 		return  (uint16_t) uxQueueMessagesWaiting(queueAssembledPackages[uartNr]);
+	}
 	return 0; /* if uartNr was not in range */
 }
 

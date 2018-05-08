@@ -381,15 +381,17 @@ static void handleResendingOfUnacknowledgedPackages(void)
 		{
 			tWirelessPackage* pPack = &unacknowledgedPackages[index];
 			unackPackagesLeft --;
-			int prio = 4;
+			int prio = 1;
 			int maxPrio = 1;
 			/* find maximum wl connection priority value configured on this device (=highest number) */
 			while(maxPrio != NUMBER_OF_UARTS)
 			{
 				maxPrio = getWlConnConfiguredForPrio(pPack->devNum, prio);
-				prio --;
+				prio ++;
 			}
+			maxPrio = prio - 2;
 			prio = 1;
+
 			while(prio <= NUMBER_OF_UARTS) /* iterate though all priorities (starting at highest priority) to see if resend is required */
 			{
 				int wlConn = getWlConnConfiguredForPrio(pPack->devNum, prio);
