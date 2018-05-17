@@ -3,4 +3,15 @@
 \label{sec:txtAufgabenstellung}
 This project has been done for the company Aeroscout GmbH. Aeroscout specialized in the development of drones for various needs. \\
 With unmanned aerial vehicles, the communication between on-board and off-board devices is essential and a reliable connection for data transmission is necessary. While the drone is within sight of the control device, data can be transmitted over a wireless connection. With increasing distances, other means of transmission have to be selected such as GPRS or even satellite.\\
-So far, the switching between different transmission technologies could not be handled automatically. The data stream was directly connected to a modem and transmitted to the corresponding receiver with no way to switch to an other transmission technology in case of data transmission failure. A visualization of this set up can be seen in 
+So far, the switching between different transmission technologies could not be handled automatically. The data stream was directly connected to a modem and transmitted to the corresponding receiver with no way to switch to an other transmission technology in case of data transmission failure. A visualization of this set up can be seen in \autoref{fig:picOldSetup}.
+\spicv{PreviousHwSetup.png}{Previous system setup for data transmission}{\label{fig:picOldSetup}}{100}%
+\spicv{NewHwSetup.png}{New system setup for data transmission}{\label{fig:picNewSetup}}{120}%
+In the previous project, a flexible platform was developed that acted as a serial switch with multiple input and output interfaces for connecting devices and transmitters. See a sample setup in \autoref{fig:picNewSetup}. The hardware has four UART interfaces for devices such as sensors and actors and four UART interfaces for modems. The software developed provides basic functionalities such as routing data between devices and modems and retransmission in case of data loss. The application was still in its first stage but mostly running stable and working correctly.\\
+In the scope of this project, the software should first be refactored and all pending points that are necessary for further development should be implemented. The main goal of this project is to implement two more key features: Reliability and security. Both are elaborated in more detail below.
+%
+\subsubsection{Reliability}
+Because unmanned aerial vehicles constantly change their position, transmission is not always reliable. About 10\% - 20\% of the transmitted data are lost and the transmitted data might be corrupted due to interference. The application developed in the scope of this project should take this into account and ensure a reliable data stream as well as implement an error correcting code.
+%
+\subsubsection{Security}
+Data communication between the two serial switches should not be interceptable. A suitable encryption algorithm needs to be chosen that requires little computational power and little additional data transfer. A solution for encryption key generation and encryption key storage should be found.\\
+Additionally, data transfer between the two serial switches should be logged, similar to the blackbox concept known from aviation. To ensure that the logged data cannot be tempered with unnoticed, the application should implement some sort of authenticity certificate to the log files.

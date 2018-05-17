@@ -1,6 +1,60 @@
 % System Analysis
 %
-Before implementing more features for the software written previously, the system performance needs to be analyzed to ensure sufficient capacity for error correcting codes and encryption.\\
-In the previous project, SEGGER SystemView was used to analyze the runtime behaviour and CPU load of each task.\\
-SEGGER SystemView is a real-time recording and visualization tool for embedded systems that reveals the true runtime behavior of an application, going far deeper than the system insights provided by debuggers. This is particularly effective when developing and working with complex embedded systems comprising multiple threads and interrupts: SystemView can ensure a system performs as designed, can track down inefficiencies, and show unintended interactions and resource conflicts, with a focus on details of every single system ticks \cite{SeggerSystemView}.\\
-Because the limitations of SEGGER SystemView, the Percepio Tracealyzer used to provide a more in-depth insight into the runtime behaviour of the software. The Tracealyzer not only shows the 
+Before expanding the application and implementing more features, the system performance needs to be analyzed to ensure sufficient capacity for error correcting codes and encryption.\\
+In the previous project, SEGGER SystemView was used to analyze the runtime behavior and CPU load of each task.\\
+SEGGER SystemView is a real-time recording and visualization tool for embedded systems that reveals information about runtime behavior of an application. SystemView can  track down inefficiencies and show unintended interactions and resource conflicts.\cite{SeggerSystemView}.\\
+In the scope of this project, Percepio Tracealyzer was used instead of SEGGER SystemView because it provides a more in-depth insight into the runtime behavior of the software. The Tracealyzer not only shows the task execution times and RTOS events, it also shows this information in interconnected views and collects data about the CPU load and memory usage.\\
+There is both a Processor Expert component for the SEGGER SystemView and one for Percepio Tracelyzer. These components are configured and enabled so that the corresponding code is generated. To use either one of these components, they have to be enabled in the FreeRTOS Processor Expert component. Only then will the debugger provide runtime information to the correct tool.\\
+%
+%
+\section{SEGGER SystemView}
+The application developed in the scope of this project runs with four main tasks that perform the main functionality of the software. Task intercommunication is done with queues, where one task always pushes data to a queue and another task pops this data from the queue to process it. This results in thousands of queue operations each second when the UAV Serial Switch is busy.\\
+Queue operations are part of the FreeRtos. Because SystemView logs all FreeRtos calls, the additional traffic caused by SystemView when the software is already working to capacity can cause the application to crash. This can be prevented by disabling the logging of queue operations for SystemView. Simply comment the following code lines out in the file SEGGER\_SYSTEM\_VIEW\_FreeRTOS.h (can be found in the GeneratedCode folder):\\
+\begin{lstlisting}
+//#define traceQUEUE_PEEK( pxQueue )                                    SYSVIEW_RecordU32x4(apiID_OFFSET + apiID_XQUEUEGENERICRECEIVE, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), SEGGER_SYSVIEW_ShrinkId((U32)pvBuffer), xTicksToWait, xJustPeeking)
+//#define traceQUEUE_PEEK_FROM_ISR( pxQueue )                           SEGGER_SYSVIEW_RecordU32x2(apiID_OFFSET + apiID_XQUEUEPEEKFROMISR, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), SEGGER_SYSVIEW_ShrinkId((U32)pvBuffer))
+//#define traceQUEUE_PEEK_FROM_ISR_FAILED( pxQueue )                    SEGGER_SYSVIEW_RecordU32x2(apiID_OFFSET + apiID_XQUEUEPEEKFROMISR, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), SEGGER_SYSVIEW_ShrinkId((U32)pvBuffer))
+//#define traceQUEUE_RECEIVE( pxQueue )                                 SYSVIEW_RecordU32x4(apiID_OFFSET + apiID_XQUEUEGENERICRECEIVE, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), SEGGER_SYSVIEW_ShrinkId((U32)pvBuffer), xTicksToWait, xJustPeeking)
+//#define traceQUEUE_RECEIVE_FAILED( pxQueue )                          SYSVIEW_RecordU32x4(apiID_OFFSET + apiID_XQUEUEGENERICRECEIVE, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), SEGGER_SYSVIEW_ShrinkId((U32)pvBuffer), xTicksToWait, xJustPeeking)
+//#define traceQUEUE_RECEIVE_FROM_ISR( pxQueue )                        SEGGER_SYSVIEW_RecordU32x3(apiID_OFFSET + apiID_XQUEUERECEIVEFROMISR, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), SEGGER_SYSVIEW_ShrinkId((U32)pvBuffer), (U32)pxHigherPriorityTaskWoken)
+//#define traceQUEUE_RECEIVE_FROM_ISR_FAILED( pxQueue )                 SEGGER_SYSVIEW_RecordU32x3(apiID_OFFSET + apiID_XQUEUERECEIVEFROMISR, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), SEGGER_SYSVIEW_ShrinkId((U32)pvBuffer), (U32)pxHigherPriorityTaskWoken)
+#define traceQUEUE_REGISTRY_ADD( xQueue, pcQueueName )                SEGGER_SYSVIEW_RecordU32x2(apiID_OFFSET + apiID_VQUEUEADDTOREGISTRY, SEGGER_SYSVIEW_ShrinkId((U32)xQueue), (U32)pcQueueName)
+#if ( configUSE_QUEUE_SETS != 1 )
+// #define traceQUEUE_SEND( pxQueue )                                    SYSVIEW_RecordU32x4(apiID_OFFSET + apiID_XQUEUEGENERICSEND, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), (U32)pvItemToQueue, xTicksToWait, xCopyPosition)
+#else
+#define traceQUEUE_SEND( pxQueue )                                    SYSVIEW_RecordU32x4(apiID_OFFSET + apiID_XQUEUEGENERICSEND, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), 0, 0, xCopyPosition)
+#endif
+#define traceQUEUE_SEND_FAILED( pxQueue )                             SYSVIEW_RecordU32x4(apiID_OFFSET + apiID_XQUEUEGENERICSEND, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), (U32)pvItemToQueue, xTicksToWait, xCopyPosition)
+//#define traceQUEUE_SEND_FROM_ISR( pxQueue )                           SEGGER_SYSVIEW_RecordU32x2(apiID_OFFSET + apiID_XQUEUEGENERICSENDFROMISR, SEGGER_SYSVIEW_ShrinkId((U32)pxQueue), (U32)pxHigherPriorityTaskWoken)
+#define traceQUEUE_SEND_FROM_ISR_FAILED( pxQueue )                    SEGGER_SYSVIEW_RecordU32x2(apiID_OFFSET + apiID_XQUEUEGENERICSENDFROMISR, SEGGER_SYSVIEW_ShrinkId((U32)
+\end{lstlisting}
+The output of the SystemView will then not contain any information about queue events but only visualize task execution times and other FreeRtos calls.
+%
+%
+\section{Percepio Trace Analyzer}
+\spic{TickWorks.PNG}{Periodic system ticks when Percepio disabled}{\label{fig:picPeriodicTicks}}%
+\spic{AbnormalerTick.PNG}{Irregular system ticks when Percepio enabled}{\label{fig:picIrregularTicks}}%
+Just like the SEGGER SystemView, the Percepio Trace Analyzer logs all FreeRtos function calls, including queue operations. To prevent the application from crashing during high capacity due to the additional traffic caused by the Tracelyzer, logging of queue operations can be disabled. To do this, go to the Percepio Trace Processor Expert component and disable the inclusion of queue events.\\
+The Percepio Trace component can log data in two ways:
+\begin{itemize}
+    \item \textbf{Streaming mode:} All log data is transferred from the microcontroller to the Tracelyzer desktop application in real-time
+    \item \textbf{Snapshot mode:} There is an on-board buffer that is filled with log data. This buffer can be imported into the Tracelyzer to analyze the performance of the application. No live streaming is possible.
+\end{itemize}
+When queue events are still included, the amount of data logged by the Tracelyzer has strong negative impacts the performance of the application. No matter if the Percepio Trace component is running in streaming mode or snapshot mode, the application cannot run correctly anymore when more than 1k Byte of data is exchanged between two Serial Switches.\\
+During normal operation of the application, the FreeRtos is configured to generate a system tick event every millisecond. Inside the system tick event handler function, an output pin was toggled to verify periodic system ticks and correct FreeRtos execution. The code for the system tick event handler then looks as follows:
+\begin{lstlisting}
+void FRTOS_vApplicationTickHook(void)
+{
+    /* Called for every RTOS tick. */
+    TMOUT1_AddTick();
+    TmDt1_AddTick();
+    Pin33_NegVal(); /* toggle Pin 33  on Teensy */
+}
+\end{lstlisting}
+While the Percepio Trace component was disabled, the system tick event was generated periodically every millisecond. This can be verified by looking at the toggling rate of Pin33 on the Teensy. The output was as seen in \autoref{fig:picPeriodicTicks}.\\
+When enabling tracing with Percepio by enabling it inside the FreeRtos Processor Expert component, the application was strongly overloaded with logging all queue events. This resulted in unregularities in the system tick events because of blocked FreeRtos calls. The output of Pin 33 on the Teensy can be seen in \autoref{picIrregularTicks}.
+The above measurements have been done before the queue events could be disabled inside the Percepio Trace Processor Expert component. Whether disabling the logging of queue events can prevent irregular system ticks is to be evaluated. With enabled queue event logging, the application behavior was the same no matter if the Percepio Trace component was operating in streaming or snapshot mode.\\
+Percepio Trace can therefore provide a good indicator for general system performance, task execution times and task intercommunication but is not ideal when lots of FreeRtos functions are used due to the additional traffic it generates.\\
+Nevertheless, various inefficiencies were found with thanks to Percepio Trace and it provides good help with finding the cause of Hard Faults because the general area where the application stops is visible in streaming mode.\\
+%
+%
