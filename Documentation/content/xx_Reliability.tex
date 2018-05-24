@@ -1,0 +1,130 @@
+% xx_Reliability
+%
+The outcome of the software refactoring and the system analysis was an application that runs stable and enough CPU resources left for further features such as encryption and error correcting codes.\\
+The main focus of this chapter is therefore the implementation of all features concerning the reliability of the data exchange. As mentioned in the \autoref{sec:txtAufgabenstellung}, Aeroscout GmbH estimates that about 10\% to 20\% of the packages sent are lost and that packages received contain errors due to interference. The application should be expanded to ensure reliability of the data transfer.\\
+The implementation of reliability within this project is split into the following parts:
+\begin{itemize}
+    \item Foreward Error Correction: Error detecting and error correcting code in case of interference
+    \item Retransmission: Resend behavior in case of data loss
+    \item Algorithm for choosing the optimal modem to (re)send packages
+\end{itemize}
+%
+%
+%
+%
+%
+\section{Foreward Error Correction}
+The general idea for achieving error detection and correction is to add some redundancy. Error-detection and correction schemes can be either systematic or non-systematic: In a systematic scheme, the transmitter sends the original data, and attaches a fixed number of check bits (or parity data), which are derived from the data bits by some deterministic algorithm. In a system that uses a non-systematic code, the original message is transformed into an encoded message that has at least as many bits as the original message.\\
+The aim of encoding a message is to get the content to the recipient with minimal errors. The ground work for error detection and error correction methods has been done by Shannon in the 1940s. Shannon showed that every communication channel can be described by a maximal channel capacity with which information can be exchanged successfully. As long as the transmission rate is smaller or equal to the channel capacity, the transmission error could be arbitrarily small. When redundancy is added, possible errors can be detected or even corrected.
+%
+%
+\subsection{Error Detection}
+Error detection is most commonly realized using a suitable hash function (or checksum algorithm). A hash function adds a fixed-length tag to a message, which enables receivers to verify the delivered message by recomputing the tag and comparing it with the one provided. Example: CRC.\cite{ErrorDetectionAndCorrection_Wikipedia}
+%
+%
+\subsection{Error Correction}
+An error-correcting code (ECC) or forward error correction (FEC) code is a process of adding redundant data, or parity data, to a message, such that it can be recovered by a receiver even when a number of errors.\\
+Error-correcting codes are usually distinguished between convolutional codes and block codes:
+\begin{itemize}
+    \item Convolutional codes are processed on a bit-by-bit basis. They are particularly suitable for implementation in hardware, and the Viterbi decoder allows optimal decoding.
+    \item Block codes are processed on a block-by-block basis. Examples of block codes are repetition codes, Hamming codes, Reed Solomon codes, Golay, BCH and multidimensional parity-check codes. They were followed by a number of efficient codes, Reed–Solomon codes being the most notable due to their current widespread use.
+\end{itemize}
+%
+%
+\subsubsection{Reed Solomon}
+% https://pdfs.semanticscholar.org/7e94/64b704a9f4b59f9d7df9b437e1b8366b8912.pdf
+Reed Solomon is an error-correcting coding system that was devised to address the issue of correcting multiple 
+errors, especially burst-type errors in mass storage devices (hard disk drives, DVD, barcode tags), wireless and mobile 
+communications units, satellite links, digital TV, digital video broadcasting (DVB), and modem technologies like xDSL. Reed Solomon codes are an important subset of non-binary cyclic error correcting code and are the most widely used codes in practice. These codes are  used in wide range of applications in digital communications and data  storage. \\
+Reed Solomon describes a systematic  way of building codes that could detect and correct multiple random symbol errors. By adding t check symbols to the data, an RS code can detect any combination of up to t erroneous symbols, or correct up to $t/2$ symbols. Furthermore, RS codes are suitable as multiple-burst bit-error correcting codes, since a sequence of $b + 1$ consecutive bit errors can affect at most two symbols of size b. The choice of t  is up to the designer of the code, and may be selected within wide limits.\\
+RS are  block codes and are  represented as RS (n, k),  where  n is the  size  of code  word length and k is the number of data symbols, $n – k = 2t$ is the number of parity symbols.\\
+The properties of Reed-Solomon codes make them especially suited to the applications where burst error occurs. This is because
+\begin{itemize}
+    \item It does not matter to the code how many bits in a symbol are incorrect, if multiple bits in a symbol are corrupted it only counts as a single error. Alternatively, if a data stream is not characterized by error bursts or drop-outs but by random single bit errors, a Reed-Solomon code is usually a poor choice. More effective cods are available for this case.
+    \item Designers are not required to use the natural sizes of Reed-Solomon code blocks. A technique known as shortening produces a smaller code of any desired size from a large code. For example, the widely used (255,251) code can be converted into a (160,128). At the decoder, the same portion of the block is loaded locally with binary zero
+    s.
+    \item A Reed-Solomon code operating on 8-bits symbols has $n=2^8-1 = 255$ symbols per block because the number of symbol in the encoded block is $n = 2^m-1$
+    \item For the designer its capability to correct both burst errors makes it the best choice to use as the encoding and decoding tool.
+\end{itemize}
+\cite{ReedSolmon_ResearchPaper}
+%
+%
+\subsubsection{Golay}
+%Refere5nces:
+%  http://aqdi.com/articles/using-the-golay-error-detection-and-correction-code-3/
+%  https://www.math.uci.edu/~nckaplan/teaching_files/kaplancodingnotes.pdf
+%  https://en.wikipedia.org/wiki/Binary_Golay_code
+%  http://cs.indstate.edu/~sbuddha/abstract.pdf      -> anleitung zur codeimplementierung
+%  http://www.the-art-of-ecc.com/topics.html         -> codeimplementierung
+There are two types of Golay codes: binary golay codes and ternary Golay codes. \\
+The binary Golay codes can further be devided into two types: the extended binary Golay code: G24 encodes 12 bits of data in a 24-bit word in such a way that any 3-bit errors can be corrected or any 7-bit errors can be detected, also called the binary (23, 12, 7) quadratic residue (QR) code.\\
+The other, the perfect binary Golay code, G23, has codewords of length 23 and is obtained from the extended binary Golay code by deleting one coordinate position (conversely, the extended binary Golay code is obtained from the perfect binary Golay code by adding a parity bit). In standard code notation this code has the parameters [23, 12, 7].
+The ternary cyclic code, also known as the G11 code with parameters [11, 6, 5] or G12 with parameters [12, 6, 6] can correct up to 2 errors.
+%
+%
+%
+\subsection{Software Implementation of Error Detection and Error Correction}
+Because the Reed Solomon error correcting code requires a lot of CPU power and is intended for microcontrollers with more resources, the Golay error correcting code was chosen for this project.\\
+Encoding and decoding is done inside the SPI Handler task. The use of the binary Golay error correting code can be enabled per wireless connection by setting the USE\_GOLAY\_ERROR\_CORRECTION to 1 in the configuration file located on the SD card. The Golay source code has been taken from Andrew Tridgell (\cite{GolaySourceCode})) who provides an implementation that can be used without restrictions as long as his copyright is reproduced. This Golay library has also been used in the ArduPilot, an alternative autopilot that is at least as popular as the Pixhawk used by Aeroscout GmbH.\\
+The Golay library provides the following interface:
+\begin{lstlisting}
+/*!
+* \fn void golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
+* \brief Encodes n bytes of original data into n*2 bytes of encoded data
+* \param n: number of bytes to encode, must be multiple of 3
+* \param in: pointer to n bytes that will be encoded
+* \param out: pointer to memory location where encoded data will be stored
+*/
+void golay_encode(uint8_t n, uint8_t* in, uint8_t* out);
+
+/*!
+* \fn uint8_t golay_decode(uint8_t n, uint8_t* in, uint8_t* out)
+* \brief Decodes n bytes of coded data into n/2 bytes of original data
+* \param n: number of bytes to decode, must be multiple of 6
+* \param in: pointer to n bytes that will be decoded
+* \param out: pointer to memory location where decoded data will be stored
+* \return number of 12bit words that required correction
+*/
+uint8_t golay_decode(uint8_t n, uint8_t* in, uint8_t* out);
+\end{lstlisting}
+Because this implementation uses global variables to save data during encoding and decoding, the library is not reentrant. This is not an issue because the only task using the library is the SPI Handler.\\
+The Golay library provides an interface to encode blocks of 3 bytes into blocks of 6 bytes and to decode blocks of 6 bytes into blocks of 3 bytes (see interface from code snippet above). There are two possibilities on how to use the library itself:
+\begin{itemize}
+    \item Encoding only multiple of 3 bytes and decoding only multiple of 6 bytes, with the risk of delaying some bytes quite long
+    \item Adding fill bytes if length of data to encode is not multiple of 3 bytes and adding fill bytes if length of data to decode is not multiple of 6 bytes. This could possibly destroy some code words
+\end{itemize}
+The option of encoding only multiple of 3 bytes respectively decoding only multiple of 6 bytes has been chosen within this application. Decoding encoded wireless packages then looks as follows:\\
+\begin{lstlisting}
+/* read byte data from hw buffer */
+if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* read and decode if Golay enabled */
+{
+    /*
+    There's a tradeoff here: the number of data to be decoded needs to be a multiple of 6.
+    So we can either just read out as many bytes as there is multiple of 6, risking that we delay some of the bytes quite long.
+    Or we can read out all bytes, fill up with pseudo chars and destroy some of the codewords this way.
+    => decided to read out only multiples of 6
+    */
+    if((nofReadBytesToProcess % 6) > 0) /* nof data that will be read is NOT a multiple of six */
+    {
+        while((nofReadBytesToProcess % 6) > 0)			nofReadBytesToProcess--; /* read out multiples of 6 */
+    }
+    
+    /* read byte data from the HW buffer and decode it */
+    spiTransfer(spiSlave, uartNr, MAX_REG_RHR_THR, READ_TRANSFER, encodedBuf, nofReadBytesToProcess); /* read out multiples of 6 */
+    nofErrors = golay_decode(nofReadBytesToProcess, &encodedBuf[1], &buffer[1]); /* decode */
+    nofReadBytesToProcess = nofReadBytesToProcess / 2; /* Golay doubled the data rate -> after decoding, only half is actual data */
+}
+\end{lstlisting}
+%
+\subsubsection{Testing}
+The Golay error correcting code doubles the data. But after looking at the system performance in \autoref{subsec:txtPTSystemAnalysis}, this should not be a problem.\\
+The application was tested by trying to establish a link between QGroundControl and the autopilot, analogous to \autoref{fig:picQGCSetup}. The link could be established successfully and a periodic heartbeat was exchanged.\\
+After consultation with Aeroscout GmbH, it was implied that their main focus does not lie with the error correcting code because they do not expect many bit errors in their transmission but rather full package losses. Therefore no more time was invested in testing the implementation of the Golay algorithm. Before enabling this feature in a final product, more field tests need to be carried out.\\
+In fact, the Golay error correcting code can also be enabled with one of the two modems used by Aeroscout GmbH. They reported that they have used a modem with Golay error correction enabled but have not seen a difference in data loss or the communication performance in general, so no more time has been invested in it since then. 
+%
+%
+%
+%
+\section{Retransmission}
+According to Aeroscout GmbH, the most common issue with data exchange is not interference and the resulting bit errors but data loss. Because unmanned aeral vehicles constantly change their position, the data link per modem is not always reliable. Lost packages need to be retransmitted to ensure an uninterrupted data stream. This concept is also known as the Automatic Repeat Request (ARQ). \todo{copy text from arq}\\
+Improvements on retransmission behavior have been done during the first software refactoring in this project (see \autoref{sec:txtAddedFeatures}). Package numbering and payload numbering has been introduced, as well as synchronous transmission handling.

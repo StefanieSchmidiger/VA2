@@ -1,7 +1,10 @@
 % System Analysis
 %
+\spic{TestSetupWithQGroundControl_CableConnection.png}{Test setup with autopilot and ground station}{\label{fig:picQGCSetup}}%
 Before expanding the application and implementing more features, the system performance needs to be analyzed to ensure sufficient capacity for error correcting codes and encryption.\\
-In the previous project, SEGGER SystemView was used to analyze the runtime behavior and CPU load of each task.\\
+The system analysis was carried out while the application was running and an autopilot was connected and communicating to the base station. The setup was as can be seen in \autoref{fig:picQGCSetup}. The Pixhawk PX4 was used as an on-board autopilot. It can be controlled by QGroundControl running on a laptop off-board. Both Pixhawk and QGroundControl are open-source applications.\\
+Upon startup, QGroundControl will try to establish a link to the Pixhawk. After successful link establishment, data and a heartbeat are exchanged periodically.\\
+In the previous project, SEGGER SystemView was used to analyze the runtime behavior and CPU load of the application.\\
 SEGGER SystemView is a real-time recording and visualization tool for embedded systems that reveals information about runtime behavior of an application. SystemView can  track down inefficiencies and show unintended interactions and resource conflicts.\cite{SeggerSystemView}.\\
 In the scope of this project, Percepio Tracealyzer was used instead of SEGGER SystemView because it provides a more in-depth insight into the runtime behavior of the software. The Tracealyzer not only shows the task execution times and RTOS events, it also shows this information in interconnected views and collects data about the CPU load and memory usage.\\
 There is both a Processor Expert component for the SEGGER SystemView and one for Percepio Tracelyzer. These components are configured and enabled so that the corresponding code is generated. To use either one of these components, they have to be enabled in the FreeRTOS Processor Expert component. Only then will the debugger provide runtime information to the correct tool.\\
@@ -31,17 +34,35 @@ Queue operations are part of the FreeRtos. Because SystemView logs all FreeRtos 
 The output of the SystemView will then not contain any information about queue events but only visualize task execution times and other FreeRtos calls.
 %
 %
-\section{Percepio Trace Analyzer}
-\spic{TickWorks.PNG}{Periodic system ticks when Percepio disabled}{\label{fig:picPeriodicTicks}}%
-\spic{AbnormalerTick.PNG}{Irregular system ticks when Percepio enabled}{\label{fig:picIrregularTicks}}%
-Just like the SEGGER SystemView, the Percepio Trace Analyzer logs all FreeRtos function calls, including queue operations. To prevent the application from crashing during high capacity due to the additional traffic caused by the Tracelyzer, logging of queue operations can be disabled. To do this, go to the Percepio Trace Processor Expert component and disable the inclusion of queue events.\\
+%
+%
+%
+%
+%
+\section{Percepio Trace Analyzer} \label{sec:SystemAnalysis}
+Just like the SEGGER SystemView, the Percepio Trace Analyzer logs all FreeRtos function calls, including queue operations. 
 The Percepio Trace component can log data in two ways:
 \begin{itemize}
     \item \textbf{Streaming mode:} All log data is transferred from the microcontroller to the Tracelyzer desktop application in real-time
     \item \textbf{Snapshot mode:} There is an on-board buffer that is filled with log data. This buffer can be imported into the Tracelyzer to analyze the performance of the application. No live streaming is possible.
 \end{itemize}
-When queue events are still included, the amount of data logged by the Tracelyzer has strong negative impacts the performance of the application. No matter if the Percepio Trace component is running in streaming mode or snapshot mode, the application cannot run correctly anymore when more than 1k Byte of data is exchanged between two Serial Switches.\\
-During normal operation of the application, the FreeRtos is configured to generate a system tick event every millisecond. Inside the system tick event handler function, an output pin was toggled to verify periodic system ticks and correct FreeRtos execution. The code for the system tick event handler then looks as follows:
+When starting with the application analysis with Percepio Trace, it looked as though the software had some major issues. The Tracelyzer showed that queue operations sometimes take up to 5 milliseconds for apparently no reason. The executed code was the following:
+\begin{lstlisting}
+for (unsigned int cnt = 0; cnt < nofReadBytesToProcess; cnt++)
+{
+    if (xQueueSendToBack(queue, &buffer[cnt], ( TickType_t ) pdMS_TO_TICKS(SPI_HANDLER_QUEUE_DELAY) ) != pdTRUE)
+    {
+        char infoBuf[100];
+        XF1_xsprintf(infoBuf, "Warning: Not all read bytes could be sent to queue, losing %u bytes on wl %u\r\n", (nofReadBytesToProcess-cnt), uartNr);
+        pushMsgToShellQueue(infoBuf);
+        break;
+    }
+}
+\end{lstlisting}
+\spic{EventLog_4msQueueReceive.PNG}{A queue operation taking 4 milliseconds}{\label{fig:picLongQueueOperation}}%
+As can be seen, queue operations are done inside a while loop and the should be no reason for the application to stall inside this loop when the parameter SPI\_HANDLER\_QUEUE\_DELAY is set to 0. This parameter specifies how long the application should wait for a queue operation to finish successfully in case of a full or empty queue.\\
+When looking at the timestamps in the output of the Percepio Trace Analyzer in \autoref{fig:picLongQueueOperation}, the highlighted queue operation takes 4 milliseconds while all other queue operations take about 15-30 micro seconds in this example. This suggests that the application is stalling inside the queue operation.\\
+Furthermore, look at the system tick event. During normal operation of the application, the FreeRtos is configured to generate a system tick event every millisecond. When the application stalls inside the queue operation, the Percepio Trace output suggests that there is no system tick event generated. To verify this, code is added inside the system tick event handler function. An output pin is toggled so that periodic system ticks and correct FreeRtos execution can be checked. The code for the system tick event handler then looks as follows:
 \begin{lstlisting}
 void FRTOS_vApplicationTickHook(void)
 {
@@ -51,10 +72,32 @@ void FRTOS_vApplicationTickHook(void)
     Pin33_NegVal(); /* toggle Pin 33  on Teensy */
 }
 \end{lstlisting}
-While the Percepio Trace component was disabled, the system tick event was generated periodically every millisecond. This can be verified by looking at the toggling rate of Pin33 on the Teensy. The output was as seen in \autoref{fig:picPeriodicTicks}.\\
-When enabling tracing with Percepio by enabling it inside the FreeRtos Processor Expert component, the application was strongly overloaded with logging all queue events. This resulted in unregularities in the system tick events because of blocked FreeRtos calls. The output of Pin 33 on the Teensy can be seen in \autoref{picIrregularTicks}.
-The above measurements have been done before the queue events could be disabled inside the Percepio Trace Processor Expert component. Whether disabling the logging of queue events can prevent irregular system ticks is to be evaluated. With enabled queue event logging, the application behavior was the same no matter if the Percepio Trace component was operating in streaming or snapshot mode.\\
-Percepio Trace can therefore provide a good indicator for general system performance, task execution times and task intercommunication but is not ideal when lots of FreeRtos functions are used due to the additional traffic it generates.\\
-Nevertheless, various inefficiencies were found with thanks to Percepio Trace and it provides good help with finding the cause of Hard Faults because the general area where the application stops is visible in streaming mode.\\
+Now periodic system tick events can be observed by monitoring the toggled pin (Pin33). When little to no data is exchanged between the Serial Switches, the system tick event is called periodically every millisecond and the output then looks similar to \autoref{fig:picPeriodicTicks}. When lots of data is exchanged, the system tick event is indeed not called regularly as can be seen when measuring the output of Pin33 (see \autoref{fig:picIrregularTicks}). This suggests that there really is a problem that needs to be solved.\\
+\spic{TickWorks.PNG}{Periodic system ticks when Percepio disabled}{\label{fig:picPeriodicTicks}}%
+\spic{AbnormalerTick.PNG}{Irregular system ticks when Percepio enabled}{\label{fig:picIrregularTicks}}%
+The issue can possibly have two sources: it is either a bug in the implementation of the queue operation within the FreeRtos operating system or it is a bug caused by Percepio Trace.
+%
+\subsection{Option 1: FreeRtos Issue}
+To rule out a bug in the FreeRtos queue implementation, the changelog was looked at and there were no known issues with the FreeRtos version used (V9.0.1) concerning queue operations. The FreeRtos component was updated anyway and the application now runs with FreeRtos V10.0.1. The same test was repeated and the application still randomly stalls inside queue operations and the Pin33 output still looks similar to \autoref{fig:picIrregularTicks}.\\
+Therefore the source of the issue must be located with Percepio Trace.
+%
+\subsection{Option 2: Percepio Trace Issue}
+\spic{PercepioTrace_PeriodicHeartbeat.PNG}{System load during periodic heartbeat exchange}{\label{fig:picPTHeartbeat}}%
+\spic{PercepioTrace_LinkEstablishment.PNG}{System load during link establisment}{\label{fig:picPTLinkEstablishment}}%
+To check if the bug is caused by Percepio Trace, this component was disabled. The results was a working system and with a regular system tick event, verified by a periodically toggled Pin33. This outcome suggests that the extra traffic caused by Percepio Trace results in a faulty behavior of the application.\\
+It turned out that the Percepio Trace component can neither be used in snapshot not streaming mode, both options result in a faulty application.\\
+Because Percepio Trace logs all FreeRtos calls and there are many queue operations when the Serial Switches are busy communicating, the extra traffic is most likely the source of the issue. Erich Styger then updated the Percepio Trace Processor Expert component to have an option for disabling the logging of queue events. 
+Whether disabling the logging of queue events can prevent irregular system ticks is to be evaluated.\\
+The conclusion is that Percepio Trace can provide a good indicator for general system performance, task execution times and task intercommunication but is not ideal when lots of FreeRtos functions are used due to the additional traffic it generates.\\
+Nevertheless, various inefficiencies were found with thanks to Percepio Trace and it provides good help with finding the cause of Hard Faults because the general area where the application stops can easily be made visible.
 %
 %
+%
+\subsection{System Analysis with Percepio Trace} \label{subsec:txtPTSystemAnalysis}
+The Percepio Trace output may not be 100\% accurate but it provides a good general idea about the system performance. The application has been tested with the hardware setup as in \autoref{fig:picQGCSetup}.\\
+Upon link establishment, about 5000 bytes of data are sent down from Pixhawk to QGroundControl and about 500 Bytes are sent from QGroundControl to Pixhawk. When the link is established and only periodic data is exchanged, the Pixhawk sends about 250 Bytes per second to the QGroundControl and QGroundControl sends about 50 Bytes per second to the Pixhawk.\\
+The system load is therefore heaviest upon link establishment and with periodic load peaks during heartbeat exchange.\\
+The Trazelyzer output during periodic heartbeat exchange looks as in \autoref{fig:picPTHeartbeat}. During link establishment the output looks as in \autoref{fig:picPTLinkEstablishment}.\\
+The system load with all tasks enabled is visible in those figures. During periodic heartbeat exchange, the CPU occupancy is about 10\% which means that there are enough resources left to implement encryption. During link establishment, the CPU load is 100\% for about one second which results in only the high priority task being executed by the scheduler. Because the three main tasks (SPI Handler, Package Handler, Network Hander) are running with higher priorities than the other tasks, they are the only ones running during high capacity of the application. See \autoref{subsec:txtTaskPriorities} for details about task priorities.\\
+The logger task takes up a lot of CPU time when lots of packages are exchanged. The reason for this can be found in the FatFs. As mentioned in \autoref{subsec:txtLoggingTask}, the main microcontroller on the Teensy has an internal buffer of 512 Bytes and information is only written to the SD card if either this buffer is flushed or upon a FatFs sync command. A write process to the SD card is an expensive operation, especially when data is written across different sectors.
+\todo{SD card!}
