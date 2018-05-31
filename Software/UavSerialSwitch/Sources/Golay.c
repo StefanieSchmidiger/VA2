@@ -33,7 +33,7 @@
 ///
 
 // Source: https://github.com/ArduPilot/SiK/blob/master/Firmware/radio/
-// Explenation: https://en.wikipedia.org/wiki/Binary_Golay_code
+// Explanation: https://en.wikipedia.org/wiki/Binary_Golay_code
 
 #include <stdarg.h>
 #include "Golay23.h"
@@ -47,8 +47,7 @@ static uint8_t g3[3], g6[6];
 
 // encode 3 bytes data into 6 bytes of coded data
 // input is in g3[], output in g6[]
-static void
-golay_encode24(void)
+static void golay_encode24(void)
 {
 	uint16_t v;
 	uint16_t syn;
@@ -67,10 +66,14 @@ golay_encode24(void)
 }
 
 
-// encode n bytes of data into 2n coded bytes. n must be a multiple 3
-// encoding takes about 6 microseconds per input byte
-void
-golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
+/*!
+* \fn void golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
+* \brief Encodes n bytes of original data into n*2 bytes of encoded data
+* \param n: number of bytes to encode, must be multiple of 3
+* \param in: pointer to n bytes that will be encoded
+* \param out: pointer to memory location where encoded data will be stored
+*/
+void golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
 {
 	while (n >= 3) {
 		g3[0] = in[0]; g3[1] = in[1]; g3[2] = in[2];
@@ -87,8 +90,7 @@ golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
 // decode 6 bytes of coded data into 3 bytes of original data
 // input is in g6[], output in g3[]
 // returns the number of words corrected (0, 1 or 2)
-static uint8_t
-golay_decode24(void)
+static uint8_t golay_decode24(void)
 {
 	uint16_t v;
 	uint16_t syn;
@@ -121,12 +123,15 @@ golay_decode24(void)
 }
 
 
-// decode n bytes of coded data into n/2 bytes of original data
-// n must be a multiple of 6
-// decoding takes about 4 microseconds per input byte
-// the number of 12 bit words that required correction is returned
-uint8_t
-golay_decode(uint8_t n, uint8_t* in, uint8_t* out)
+/*!
+* \fn uint8_t golay_decode(uint8_t n, uint8_t* in, uint8_t* out)
+* \brief Decodes n bytes of coded data into n/2 bytes of original data
+* \param n: number of bytes to decode, must be multiple of 6
+* \param in: pointer to n bytes that will be decoded
+* \param out: pointer to memory location where decoded data will be stored
+* \return number of 12bit words that required correction
+*/
+uint8_t golay_decode(uint8_t n, uint8_t* in, uint8_t* out)
 {
 	uint8_t errcount = 0;
 	while (n >= 6) {

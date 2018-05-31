@@ -45,7 +45,7 @@
 #include "TmDt1.h"
 #include "FATM1.h"
 #include "SS1.h"
-#include "SM2.h"
+#include "SPI2.h"
 #include "TMOUT1.h"
 #include "RTC1.h"
 #include "SPI.h"

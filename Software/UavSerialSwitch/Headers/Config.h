@@ -33,7 +33,7 @@ typedef struct Configurations {
    int PrioWirelessConnDev[NUMBER_OF_UARTS][NUMBER_OF_UARTS]; /* [uartNr][prioPerUart] */
    int SendCntWirelessConnDev[NUMBER_OF_UARTS][NUMBER_OF_UARTS]; /* [uartNr][numberOfSendAttempts] */
    /* TransmissionConfiguration */
-   int ResendDelayWirelessConnDev[NUMBER_OF_UARTS][NUMBER_OF_UARTS]; /* [uartNr][DelayPerUart] */
+   int ResendDelayWirelessConn[NUMBER_OF_UARTS]; /* [delayPerWirelessConn] */
    int MaxThroughputWirelessConn[NUMBER_OF_UARTS]; // ToDo: unused!!
    int UsualPacketSizeDeviceConn[NUMBER_OF_UARTS];
    int PackageGenMaxTimeout[NUMBER_OF_UARTS];
@@ -54,7 +54,7 @@ typedef struct Configurations {
    int SpiHandlerTaskInterval; // [ms]
    int PackageHandlerTaskInterval; // [ms]
    int NetworkHandlerTaskInterval; // [ms]
-   int ApplicationHandlerTaskInterval; // [ms]
+   int TransportHandlerTaskInterval; // [ms]
    int ToggleGreenLedInterval; // [ms]
    int ThroughputPrintoutTaskInterval_s; // [sec]
    int ShellTaskInterval; // [ms]

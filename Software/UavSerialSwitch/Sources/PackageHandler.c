@@ -21,19 +21,21 @@ static tWirelessPackage nextDataPacketToSend[NUMBER_OF_UARTS]; /* data buffer of
 static char* queueNamePacksToDisassemble[] = {"queuePacksToDisassemble0", "queuePacksToDisassemble1", "queuePacksToDisassemble2", "queuePacksToDisassemble3"};
 static const char* queueNameAssembledPacks[] = {"AssembledPackages0", "AssembledPackages1", "AssembledPackages2", "AssembledPackages3"};
 uint8_t numOfInvalidRecWirelessPack[NUMBER_OF_UARTS];
+static uint32_t sentAckNumTracker[NUMBER_OF_UARTS];
 static uint8_t sessionNr;
 
 
 /* prototypes */
 static bool sendPackageToWirelessQueue(tUartNr wlConn, tWirelessPackage* pPackage);
 static bool sendNonPackStartCharacter(tUartNr uartNr, uint8_t* pCharToSend);
-static void readAndExtractWirelessData(uint8_t wlConn);
+static void assembleWirelessPackages(uint8_t wlConn);
 static bool checkForPackStartReplacement(uint8_t* ptrToData, uint16_t* dataCntr, uint16_t* patternReplaced);
 static BaseType_t pushToAssembledPackagesQueue(tUartNr wlConn, tWirelessPackage* pPackage);
 static BaseType_t peekAtPackToDisassemble(tUartNr uartNr, tWirelessPackage *pPackage);
-static uint16_t nofDisassembledPacksInQueue(tUartNr uartNr);
+static uint16_t nofPacksToDisassembleInQueue(tUartNr uartNr);
 static BaseType_t popFromPacksToDisassembleQueue(tUartNr uartNr, tWirelessPackage* pPackage);
 static void initPackageHandlerQueues(void);
+static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack);
 
 
 /*! \struct sWiReceiveHandlerStates
@@ -64,7 +66,7 @@ void packageHandler_TaskEntry(void* p)
 		for(int wlConn = 0; wlConn < NUMBER_OF_UARTS; wlConn++)
 		{
 			/* send packages byte wise to spi queue as long as there is enough space available for a full package */
-			while(nofDisassembledPacksInQueue(wlConn) > 0)
+			while(nofPacksToDisassembleInQueue(wlConn) > 0)
 			{
 				/* check how much space is needed for next data package */
 				if(peekAtPackToDisassemble(wlConn, &package) != pdTRUE)
@@ -104,7 +106,7 @@ void packageHandler_TaskEntry(void* p)
 			{
 				if(numberOfBytesInRxByteQueue(MAX_14830_WIRELESS_SIDE, wlConn) > 0) /* there are characters waiting */
 				{
-					readAndExtractWirelessData(wlConn);
+					assembleWirelessPackages(wlConn);
 				}
 			}
 		}
@@ -282,11 +284,11 @@ static bool sendNonPackStartCharacter(tUartNr uartNr, uint8_t* pCharToSend)
 
 
 /*!
-* \fn static void readAndExtractWirelessData(uint8_t wirelessConnNr)
+* \fn static void assembleWirelessPackages(uint8_t wlConn)
 * \brief Function that reads the incoming data from the queue and generates receive acknowledges from it plus sends the valid data to the corresponding devices.
-* \param wirelessConnNr: Serial connection of wireless interface. Needs to be between 0 and NUMBER_OF_UARTS.
+* \param wlConn: Serial connection of wireless interface. Needs to be between 0 and NUMBER_OF_UARTS.
 */
-static void readAndExtractWirelessData(uint8_t wlConn)
+static void assembleWirelessPackages(uint8_t wlConn)
 {
 	/* Some static variables in order to save status and data for every wireless connection */
 	static uint8_t data[NUMBER_OF_UARTS][PACKAGE_MAX_PAYLOAD_SIZE + sizeof(uint16_t)]; /* space for payload plus crc16 */
@@ -412,7 +414,7 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadNr) + 0));
 				CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 1));
 				uint8_t crc8 = CRC1_GetCRC8(CRC1_DeviceData, *((uint8_t*)(&currentWirelessPackage[wlConn].payloadSize) + 0));
-				if(true)//currentWirelessPackage[wlConn].crc8Header == crc8)
+				if(currentWirelessPackage[wlConn].crc8Header == crc8)
 				{
 					if(currentWirelessPackage[wlConn].crc8Header != crc8) /* in case the above crc check is commented out -> debug info printed that crc wouldnt be correct */
 					{
@@ -488,13 +490,13 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 				CRC1_ResetCRC(CRC1_DeviceData);
 				CRC1_SetCRCStandard(CRC1_DeviceData, LDD_CRC_MODBUS_16); // ToDo: use LDD_CRC_CCITT, MODBUS only for backwards compatibility to old SW
 				CRC1_GetBlockCRC(CRC1_DeviceData, data[wlConn], currentWirelessPackage[wlConn].payloadSize, &crc16);
-				if(true)//currentWirelessPackage[wlConn].crc16payload == (uint16_t) crc16) /* payload valid? */
+				if(currentWirelessPackage[wlConn].crc16payload == (uint16_t) crc16) /* payload valid? */
 				{
-					if(currentWirelessPackage[wlConn].crc16payload != (uint16_t) crc16) /* in case the above crc check is commented out -> debug info printed that crc wouldnt be correct */
-					{
-						XF1_xsprintf(infoBuf, "Info: Invalid payload CRC received, but continuing anyway (debug)\r\n");
-						pushMsgToShellQueue(infoBuf);
-					}
+					//if(currentWirelessPackage[wlConn].crc16payload != (uint16_t) crc16) /* in case the above crc check is commented out -> debug info printed that crc wouldnt be correct */
+					//{
+					//	XF1_xsprintf(infoBuf, "Info: Invalid payload CRC received, but continuing anyway (debug)\r\n");
+					//	pushMsgToShellQueue(infoBuf);
+					//}
 					/*allocate memory for payload of package and set payload */
 					if(currentWirelessPackage[wlConn].payloadSize > 0)
 					{
@@ -509,8 +511,6 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 							if (currentWirelessPackage[wlConn].packType == PACK_TYPE_REC_ACKNOWLEDGE)
 							{
 								/* received acknowledge - send message to queue */
-								//currentWirelessPackage[wlConn].packNr = *((uint16_t*)&data[wlConn][dataCntr[wlConn] - 2]);
-								//currentWirelessPackage[wlConn].payloadNr = *((uint16_t*)&data[wlConn][dataCntr[wlConn] - 6]);
 								numberOfAckReceived[wlConn]++;
 								currentWirelessPackage[wlConn].timestampPackageReceived = xTaskGetTickCount();
 
@@ -529,6 +529,28 @@ static void readAndExtractWirelessData(uint8_t wlConn)
 								/* update throughput printout */
 								numberOfPacksReceived[wlConn]++;
 								numberOfPayloadBytesExtracted[wlConn] += currentWirelessPackage[wlConn].payloadSize;
+								/* generate ACK if it is configured and send it to package queue */
+								if(config.SendAckPerWirelessConn[wlConn])
+								{
+									tWirelessPackage ackPackage;
+									if(generateAckPackage(&currentWirelessPackage[wlConn], &ackPackage) == false) /* allocates payload memory block for ackPackage, ToDo: handle malloc fault */
+									{
+										UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Warning: Could not allocate payload memory for acknowledge\r\n");
+										pushMsgToShellQueue(infoBuf);
+										numberOfDroppedAcks[wlConn]++;
+									}
+									if(sendPackageToWirelessQueue(wlConn, &ackPackage) != pdTRUE) // ToDo: try sending ACK package out on wireless connection configured (just like data package, iterate through priorities) */
+									{
+										XF1_xsprintf(infoBuf, "%u: Warning: ACK for wireless number %u could not be pushed to queue\r\n", xTaskGetTickCount(), wlConn);
+										pushMsgToShellQueue(infoBuf);
+										numberOfDroppedPackages[wlConn]++;
+										FRTOS_vPortFree(ackPackage.payload); /* free memory since it wont be done on popping from queue */
+										ackPackage.payload = NULL;
+									}
+									pushPackageToLoggerQueue(&ackPackage, SENT_PACKAGE, wlConn);
+									/* memory of ackPackage is freed after package in PackageHandler task, extracted and byte wise pushed to byte queue */
+									numberOfAcksSent[wlConn]++;
+								}
 								/* received data package - send data to corresponding devices plus inform package generator to prepare a receive acknowledge */
 								if(pushToAssembledPackagesQueue(wlConn, &currentWirelessPackage[wlConn]) != pdTRUE) /* ToDo: handle queue full, now package is discarded */
 								{
@@ -651,6 +673,36 @@ static bool checkForPackStartReplacement(uint8_t* ptrToData, uint16_t* dataCntr,
 	return false;
 }
 
+
+/*!
+* \fn static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack)
+* \brief Function to generate a receive acknowledge package, reading data from the data source.
+* \param pAckPack: Pointer to acknowledge packet to be created
+* \param pReceivedDataPack: Pointer to the structure that holds the wireless package that the acknowledge is generated for
+* \return true if a package was generated and saved, false otherwise.
+*/
+static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack)
+{
+	/* default header = { PACK_START, PACK_TYPE_REC_ACKNOWLEDGE, 0, 0, 0, 0, 0, 0, 0, 0 } */
+	/* prepare wireless package */
+	pAckPack->packType = PACK_TYPE_REC_ACKNOWLEDGE;
+	pAckPack->devNum = pReceivedDataPack->devNum;
+	pAckPack->packNr = ++sentAckNumTracker[pReceivedDataPack->devNum];
+	pAckPack->payloadNr = 0;
+	pAckPack->payloadSize = sizeof(pAckPack->packNr);	/* as payload, the timestamp of the package to be acknowledged is saved */
+	/* get space for acknowladge payload (which consists of packNr of datapackage*/
+	pAckPack->payload = (uint8_t*) FRTOS_pvPortMalloc(pAckPack->payloadSize*sizeof(int8_t));
+	if(pAckPack->payload == NULL) /* malloc failed */
+		return false;
+	/* generate payload */
+	for (uint16_t cnt = 0; cnt < pAckPack->payloadSize; cnt++)
+	{
+		pAckPack->payload[cnt] = *((uint8_t*)(&pReceivedDataPack->packNr) + cnt);
+	}
+	return true;
+}
+
+
 /*!
 * \fn ByseType_t pushToAssembledPackagesQueue(tUartNr wlConn, tWirelessPackage* package)
 * \brief Stores the received package in correct queue.
@@ -767,7 +819,7 @@ static BaseType_t peekAtPackToDisassemble(tUartNr uartNr, tWirelessPackage *pPac
 * \param uartNr: UART number the package should be transmitted to.
 * \return Number of packages waiting to be sent out
 */
-static uint16_t nofDisassembledPacksInQueue(tUartNr uartNr)
+static uint16_t nofPacksToDisassembleInQueue(tUartNr uartNr)
 {
 	if(uartNr < NUMBER_OF_UARTS)
 	{
@@ -787,7 +839,7 @@ uint16_t freeSpaceInPackagesToDisassembleQueue(tUartNr wlConn)
 {
 	if(wlConn < NUMBER_OF_UARTS)
 	{
-		return (QUEUE_NUM_OF_WL_PACK_TO_DISASSEMBLE - nofDisassembledPacksInQueue(wlConn) );
+		return (QUEUE_NUM_OF_WL_PACK_TO_DISASSEMBLE - nofPacksToDisassembleInQueue(wlConn) );
 	}
 	return 0; /* if wlConn was not in range */
 }

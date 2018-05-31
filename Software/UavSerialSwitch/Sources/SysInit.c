@@ -6,7 +6,7 @@
 #include "SpiHandler.h" // to create spi handler task, bool
 #include "PackageHandler.h"
 #include "NetworkHandler.h"
-#include "ApplicationHandler.h"
+#include "TransportHandler.h"
 #include "Blinky.h"
 #include "ThroughputPrintout.h"
 #include "Logger.h"
@@ -53,7 +53,7 @@ static bool createAllTasks(void)
 	static StackType_t puxStackBufferSpiHandler[SPI_HANDLER_STACK_SIZE];
 	static StackType_t puxStackBufferPackageHandler[PACKAGE_HANDLER_STACK_SIZE];
 	static StackType_t puxStackBufferNetworkHandler[NETWORK_HANDLER_STACK_SIZE];
-	static StackType_t puxStackBufferApplicationHandler[APPLICATION_HANDLER_STACK_SIZE];
+	static StackType_t puxStackBufferTransportHandler[TRANSPORT_HANDLER_STACK_SIZE];
 	static StackType_t puxStackBufferThroughputPrintout[THROUGHPUT_PRINTOUT_STACK_SIZE];
 	static StackType_t puxStackBufferLogger[LOGGER_STACK_SIZE];
 	static StackType_t puxStackBufferBlinky[BLINKY_STACK_SIZE];
@@ -63,7 +63,7 @@ static bool createAllTasks(void)
 	static StaticTask_t pxTaskBufferSpiHandler;
 	static StaticTask_t pxTaskBufferPackageHandler;
 	static StaticTask_t pxTaskBufferNetworkHandler;
-	static StaticTask_t pxTaskBufferApplicationHandler;
+	static StaticTask_t pxTaskBufferTransportHandler;
 	static StaticTask_t pxTaskBufferThroughputPrintout;
 	static StaticTask_t pxTaskBufferLogger;
 	static StaticTask_t pxTaskBufferBlinky;
@@ -92,7 +92,7 @@ static bool createAllTasks(void)
 
 #if 1
 	/* create network handler task */
-	if (xTaskCreateStatic(applicationHandler_TaskEntry, "Application_Handler", APPLICATION_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferApplicationHandler, &pxTaskBufferApplicationHandler) == NULL) {
+	if (xTaskCreateStatic(transportHandler_TaskEntry, "Transport_Handler", TRANSPORT_HANDLER_STACK_SIZE, NULL, tskIDLE_PRIORITY+2, puxStackBufferTransportHandler, &pxTaskBufferTransportHandler) == NULL) {
 		for(;;) {}} /* error */
 #endif
 	/* create throughput printout task */

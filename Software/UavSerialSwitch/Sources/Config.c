@@ -159,21 +159,9 @@ bool readConfig(void)
     csvToInt(copiedCsv, config.SendCntWirelessConnDev[3]);
 
   	/* -------- TransmissionConfiguration -------- */
-  	/* PRIO_WIRELESS_CONN_DEV_0 */
-  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "RESEND_DELAY_WIRELESS_CONN_DEV_0",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
-  	csvToInt(copiedCsv, config.ResendDelayWirelessConnDev[0]);
-
-  	/* PRIO_WIRELESS_CONN_DEV_1 */
-  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "RESEND_DELAY_WIRELESS_CONN_DEV_1",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
-  	csvToInt(copiedCsv, config.ResendDelayWirelessConnDev[1]);
-
-  	/* PRIO_WIRELESS_CONN_DEV_2 */
-  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "RESEND_DELAY_WIRELESS_CONN_DEV_2",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
-  	csvToInt(copiedCsv, config.ResendDelayWirelessConnDev[2]);
-
-  	/* PRIO_WIRELESS_CONN_DEV_3 */
-  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "RESEND_DELAY_WIRELESS_CONN_DEV_3",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
-  	csvToInt(copiedCsv, config.ResendDelayWirelessConnDev[3]);
+  	/* PRIO_WIRELESS_CONN */
+  	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "RESEND_DELAY_WIRELESS_CONN",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
+  	csvToInt(copiedCsv, config.ResendDelayWirelessConn);
 
   	/* MAX_THROUGHPUT_WIRELESS_CONN */
   	numberOfCharsCopied = MINI_ini_gets("TransmissionConfiguration", "MAX_THROUGHPUT_WIRELESS_CONN",  DEFAULT_CSV_STRING, copiedCsv, TEMP_CSV_SIZE, "serialSwitch_Config.ini");
@@ -287,8 +275,8 @@ bool readConfig(void)
   	/* NETWORK_HANDLER_TASK_INTERVAL */
     config.NetworkHandlerTaskInterval = MINI_ini_getl("SoftwareConfiguration", "NETWORK_HANDLER_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
-    /* APPLICATION_HANDLER_TASK_INTERVAL */
-    config.ApplicationHandlerTaskInterval = MINI_ini_getl("SoftwareConfiguration", "APPLICATION_HANDLER_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
+    /* TRANSPORT_HANDLER_TASK_INTERVAL */
+    config.TransportHandlerTaskInterval = MINI_ini_getl("SoftwareConfiguration", "TRANSPORT_HANDLER_TASK_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
 
   	/* TOGGLE_GREEN_LED_INTERVAL */
   	config.ToggleGreenLedInterval = MINI_ini_getl("SoftwareConfiguration", "TOGGLE_GREEN_LED_INTERVAL",  DEFAULT_INT, "serialSwitch_Config.ini");
@@ -316,9 +304,6 @@ void validateSwConfiguration(void)
 {
 	for(int devNr=0; devNr < NUMBER_OF_UARTS; devNr++)
 	{
-		if(config.SendAckPerWirelessConn[devNr] != true)
-		{
-			config.PayloadNumberingProcessingMode[devNr] = PAYLOAD_NUMBER_IGNORED;
-		}
+		// todo: validate software configuration!
 	}
 }

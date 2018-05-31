@@ -45,13 +45,24 @@
 #include "Golay23.h"
 
 
-/// encode n bytes of data into 2n coded bytes. n must be a multiple 3
+/*!
+* \fn void golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
+* \brief Encodes n bytes of original data into n*2 bytes of encoded data
+* \param n: number of bytes to encode, must be multiple of 3
+* \param in: pointer to n bytes that will be encoded
+* \param out: pointer to memory location where encoded data will be stored
+*/
 void golay_encode(uint8_t n, uint8_t* in, uint8_t* out);
 
 
-/// decode n bytes of coded data into n/2 bytes of original data
-/// n must be a multiple of 6
-/// the number of 12 bit words that required correction is returned
+/*!
+* \fn uint8_t golay_decode(uint8_t n, uint8_t* in, uint8_t* out)
+* \brief Decodes n bytes of coded data into n/2 bytes of original data
+* \param n: number of bytes to decode, must be multiple of 6
+* \param in: pointer to n bytes that will be decoded
+* \param out: pointer to memory location where decoded data will be stored
+* \return number of 12bit words that required correction
+*/
 uint8_t golay_decode(uint8_t n, uint8_t* in, uint8_t* out);
 
 

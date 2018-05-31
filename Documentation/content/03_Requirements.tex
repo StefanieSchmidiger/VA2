@@ -1,0 +1,43 @@
+% Requirements
+%
+\label{sec:txtAufgabenstellung}
+This project has been done for the company Aeroscout GmbH. Aeroscout specialized in the development of drones for various needs. \\
+With unmanned aerial vehicles, the communication between on-board and off-board devices is essential and a reliable connection for data transmission is necessary. While the drone is within sight of the control device, data can be transmitted over a wireless connection. With increasing distances, other means of transmission have to be selected such as GPRS or even satellite.\\
+So far, the switching between different transmission technologies could not be handled automatically. The data stream was directly connected to a modem and transmitted to the corresponding receiver with no way to switch to an other transmission technology in case of data transmission failure. A visualization of this set up can be seen in \autoref{fig:picOldSetup}.
+\spicv{PreviousHwSetup.png}{Previous system setup for data transmission}{\label{fig:picOldSetup}}{100}%
+\spicv{NewHwSetup.png}{New system setup for data transmission}{\label{fig:picNewSetup}}{120}%
+In the previous project, a flexible platform was developed that acted as a Serial Switch with multiple input and output interfaces for connecting devices and transmitters. See a sample setup in \autoref{fig:picNewSetup}. The hardware has four UART interfaces for devices such as sensors and actors and four UART interfaces for modems. The software developed in the previous project provided basic functionalities such as routing data between devices and modems and retransmission in case of data loss due to interference or an unstable connection. The application was still in its first stage but mostly running stable and provided the basic functionalities correctly.\\
+In the scope of this project, the software should first be refactored and all pending requirements from the previous project that are necessary to proceed with the requirements for this project should be implemented. The  refactoring and implementation of pending features includes: \begin{itemize}
+    \item Order and assemble at least two Teensy Adapter Boards with silk screen
+    \item Overview of task priorities and interrupt priorities
+    \item Logging of exchanged data
+    \item Improved debug output
+    \item Analysis of runtime behavior of application
+    \item Analysis of memory usage of application
+\end{itemize}
+Only when the above mentioned tasks are completed can the next and most important phase of the project be started.\\
+The main goal of this project is to implement two more key features: Reliable data exchange and data security. Both items are elaborated in more detail below.
+%
+%
+%
+\section{Reliable Data Exchange}
+Because unmanned aerial vehicles constantly change their position, transmission is not always reliable. About 10\% - 20\% of the transmitted data are lost and the received data might be corrupted due to interference. The application developed in the scope of this project should take this into account and ensure a reliable data stream.\\
+Reliability can be improved in various ways: \begin{itemize}
+    \item Recovery of lost bytes by adding redundancy
+    \item Retransmission of lost packages
+    \item Improving the algorithm that selects the wireless connection to be used
+\end{itemize}
+Improvements on all of the above mentioned concepts should be made within this project.
+%
+%
+%
+\section{Data Security}
+Data communication between the two Serial Switches should not be interceptable. This results in the following requirements for security during communication: \begin{itemize}
+    \item Ensure that the CPU is working at maximum 15\% capacity during periodic data exchange between on-board and off-board components so that there are enough resources left for encryption
+    \item Chose a suitable encryption algorithm that requires little computational power and results in little additional data traffic
+    \item Find a solution for encryption key generation and encryption key storage
+\end{itemize}
+Additionally, data transfer between the two serial switches should be logged, similar to the black box concept known from aviation. This results in the following requirements for logging security: \begin{itemize}
+    \item A solution has to be found how tempering of the logged data can either be prevented or detected.
+    \item Assure that logging does not use more than 10\% CPU capacity
+\end{itemize}

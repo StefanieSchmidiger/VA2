@@ -1,39 +1,51 @@
 % Software Refactoring
 %
-In the scope of a previous project, the basic functionality of the Serial Switch was implemented. The end product was working but never tested throughly. Not all features were implemented that are needed for this next project phase. So in order to continue, the application first needed some refactoring and clean up before starting with the implementation security and reliability.\\
-The status of the software and hardware at the start of the project are described in more detail below, followed by the improvements made in the scope of this project before starting with security and reliability features.
+In the scope of a previous project, the basic functionalites of the Serial Switch were implemented. The end product was working but never tested throughly. Not all features were implemented that are needed for this next project phase. So in order to continue, the application first needed some refactoring and clean up before starting with the implementation of data security and reliability of data exchange.\\
+This chapter focuses on the improvements made on the UAV Serial Switch software that was developed in the previous project. As mentioned in \autoref{sec:txtAufgabenstellung}, an order for Teensy adapter boards needs to be placed and an overview of the task and interrupt priorities given. The refactoring shall at least include an added logging task and improved debug output.\\
+The status of the software and hardware at the start of the project are described in more detail below, followed by the improvements made in the scope of this project.
 %
 %
 \section{Outcome of Previous Project}
 In previous projects, the basic functionalities of the Serial Switch were implemented. A hardware was designed and software was written for it. More details about the components provided can be taken from the sections below.
 %
 \subsection{Hardware}
-The hardware consists of three main components: a baseboard, the main microcontroller and an adapter board to fit the microcontroller used onto the baseboard.
+The hardware consists of three main components: a baseboard, the main microcontroller board and an adapter board to fit the microcontroller used onto the baseboard.
 %
 \subsubsection{Baseboard}
 \spicv{BareBaseBoard.png}{Baseboard}{\label{fig:picBaseboard}}{100}%
 \spicv{HardwareDetails.png}{Block diagram of the components used on the baseboard}{\label{fig:picHardwareDetails}}{100}%
 The baseboard has eight serial UART interfaces, four of which are to connect devices such as sensors and actors and four of which are to connect modems for transmission. See \autoref{fig:picNewSetup} for more details. For future references, the side where sensors and actors are connected will be referred to as the device side and the four interfaces for modems will be referred to as the wireless side. The bare baseboard can be seen in \autoref{fig:picBaseboard}. A block diagram about the components used on the baseboard can be seen in \autoref{fig:picHardwareDetails}.\\
 The eight user interfaces available are all UART serial interfaces with configurable baud rates. They run on RS232 level, which is +-12V. On device side, there are jumpers available so the user can chose between RS232 input/output and USB input/output for each interface. When the USB is chosen, a serial COM port will appear per USB to UART converter and act as a device input/output.\\
-The SPI to UART converter is needed as an interface between the serial interfaces accessible to the user and the microcontroller. It also acts as a hardware buffer that can store up to 128 Bytes of data. There are two hardware buffers on the baseboard, one for the four UART interfaces on device side and one for the four UART interfaces on wireless side.
+The SPI to UART converter is needed as an interface between the serial interfaces accessible to the user and the microcontroller. It also acts as a hardware buffer that can store up to 128 Bytes of data. There are two hardware buffers on the baseboard, one for the four UART interfaces on device side and one for the four UART interfaces on wireless side. For a detailed description of all hardware components, please read the documentation of the UAV Serial Switch project.
 %
 \subsubsection{Microcontroller}
 \spicv{Teensy35.png}{Teensy 3.5}{\label{fig:picTeensy35}}{80}%
-In a first version of the Serial Switch, the Teensy 3.2 was used but was soon replaced by the Teensy 3.5 which is still used today. The Teensy 3.5 can be seen in \autoref{fig:picTeensy35}.
+In a first version of the Serial Switch, the Teensy 3.2 development board was used as a main microcontroller unit but was soon replaced by the Teensy 3.5 development board which is still used today. The Teensy 3.5 can be seen in \autoref{fig:picTeensy35}. The Teensy 3.5 features a more powerful microcontroller, more memory and a hardware encryption unit which the Teensy 3.2 does not have. It is therefore more suitable for data encryption implemented in the scope of this project.
 %
 \subsubsection{Adapter Board}
-Because the baseboard has originally been designed for the less powerful and slightly smaller Teensy 3.2, an adapter board was developed to map the pins of the Teensy 3.5 to the footprint of the Teensy 3.2. The adapter board can be seen in \autoref{fig:picAdapterBoard}.
 \spicv{TeensyAdapterBoard.png}{Adapter board from Teensy 3.2 to Teensy 3.5 footprint}{\label{fig:picAdapterBoard}}{80}%
+Because the baseboard has originally been designed for the less powerful and slightly smaller Teensy 3.2, an adapter board was developed to map the pins of the Teensy 3.5 to the footprint of the Teensy 3.2. The adapter board can be seen in \autoref{fig:picAdapterBoard}.\\
+In the scope of the UAV Serial Switch project, the adapter board has been ordered at the interal production at HSLU several times but all boards came back with  multiple production errors (due to no silk overlay). The previous project was finished with only one functional adapter board and more were ordered externally in the scope of this project. The new Teensy adapter boards now have a yellow silk overlay and were assembled and tested successfully.
 %
-\subsection{Software}
+\subsection{Software} \label{sec:txtSwOutcomeVa1}
 \spic{UnsuccessfulPackageTransmission.png}{Package retransmission in case of no acknowledge received}{\label{fig:picPackageTransmission}}
 The Teensy 3.5 acts as the main microcontroller and runs with the operating system FreeRtos V9.0.1.\\
 The main functionality of the software is data transmission on wireless side. For this, bytes read on device side are collected and put into packages for transmission. Received packages are checked for validity and their payload extracted and pushed out on device side.\\
 Acknowledges can be configured to make the data transmission more reliable. If turned on, a package is resent in case no acknowledge is received within the specified timeout. A visualization of this can be seen in \autoref{fig:picPackageTransmission}.\\
 \spic{SwConceptVa1.png}{Simplified software concept at the beginning of this project, showing only the three main tasks}{\label{fig:picSimplifiedSwConceptVa1}}%
 \spic{ExpandedSwConceptVa1.png}{Full software concept at the beginning of this project, showing all tasks}{\label{fig:picFullSwConceptVa1}}%
+\spicv{IsoOsiModel.png}{ISO OSI Model}{\label{fig:picIsoOsiModel}}{60}%
 The software can be configured by modifying the configuration ini file saved on the SD card located on the Teensy 3.5 development board.\\
-The main functionality of the software is provided by three tasks, a simplified software concept can be seen in \autoref{fig:picSimplifiedSwConceptVa1}. Task intercommunication is done with queues where data is pushed onto the queue by one task and popped from the queue by another task for processing. The ISO-OSI model is taken as a reference guide for the responsibilities of each task. The SPI Handler represents ISO-OSI Layer 1, the Package Handler represents ISO-OSI Layer 2 and the Network Handler represents all upper layers in the ISO-OSI model.\\
+The main functionality of the software is provided by three tasks, a simplified software concept can be seen in \autoref{fig:picSimplifiedSwConceptVa1}. Task intercommunication is done with queues where data is pushed onto the queue by one task and popped from the queue by another task for processing. The ISO-OSI model is taken as a reference guide for the responsibilities of each task. The ISO-OSI Model is a representation of a communication standard, as seen in \autoref{fig:picIsoOsiModel}. According to \cite{IsoOsiModel_Wikipedia}, the 7 layers have the following responsibilities:\begin{enumerate}
+    \item Physical Layer: This layer is responsible for the relationship between the application and the physical transmission medium.
+    \item Data Link Layer: This layer is responsible for error detection and correction, determines the protocol to establish and does network layer protocol encapsulation
+    \item Network Layer: This layer handles data routing while message delivery at this layer is not necessarily guaranteed to be reliable
+    \item Transport Layer: This layer controls the reliability of a given link, e.g. with acknowledges
+    \item Session Layer:
+    \item Presentation Layer:
+    \item Network Layer:
+\end{enumerate}
+The SPI Handler represents ISO-OSI Layer 1, the Package Handler represents ISO-OSI Layer 2 and the Network Handler represents all upper layers in the ISO-OSI model.\\
 Additional tasks such as the ThroughputPrintout task, the Blinky task or the Shell task are for debug purposes only. There is also an Init task which reads the configuration file saved on the SD card, creates all other tasks and afterwards kills itself. A diagram with the full overview of all tasks and their interfacing queues can be seen in \autoref{fig:picFullSwConceptVa1}.\\
 Details about the purpose of each task can be taken from below. 
 %
@@ -42,7 +54,7 @@ The SPI Handler is the only task that accesses the serial interfaces on the base
 This task does byte handling only and knows nothing about data packages or any other data structures. Data routing is also not done within this task, e.g. bytes popped from the queue for serial interface 3 is also pushed out on serial interface 3.
 %
 \subsubsection{Package Handler}
-The Package Handler pops bytes from the RxWirelessByte queues and assembles them to full data packages. Package validity is checked here by looking at CRC and session number. The successfully assembled and valid packages are then pushed onto the IncomingPackages queue for the next task to process.\\
+The Package Handler pops bytes from the RxWirelessByte queues and assembles them to full data packages. Package validity is checked here by looking at CRC and session number. The successfully assembled and valid packages are then pushed onto the IncomingPackages queue for the next task to process, invalid packages are discarded.\\
 The Package Handler also pops packages from the OutgoingPackages queue, adds CRC and session number and disassembles them into bytes to push onto the WirelessTxBytes queue for the SPI Handler to process.\\
 Data routing is not done within this task, e.g. packages assembled with bytes from wireless connection 3 are pushed to the IncomingPackages queue for connection 3.
 %
@@ -108,8 +120,8 @@ It is not possible to transmit redundant data over several modems because only p
 Logging has not been implemented yet.
 %
 \section{Added Features} \label{sec:txtAddedFeatures}
-\spic{ExpandedSwConcept.png}{Software concept after added features}{\label{fig:picExpandedSwConcept}}
-Before starting with the implementation of new features, the current software needs to undergo refactoring and some features need to be added. The resulting software concept looks as in \autoref{fig:picExpandedSwConcept}. Details about the added features can be found below.
+\spic{ExpandedSwConceptVa2_BeforeOverhaul.png}{Software concept after added features}{\label{fig:picExpandedSwConceptVa2_BeforeOverhaul}}
+Before starting with the implementation of new features, the current software needs to undergo refactoring and some features need to be added. The resulting software concept looks as in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}. Details about the added features can be found below.
 %
 \subsection{Logging} \label{subsec:txtLoggingTask}
 All exchanged data has to be logged. This was in fact part of the requirements for the previous project but could not be implemented due to a lack of time. Therefore it was implemented in the scope of this project.\\
@@ -172,7 +184,7 @@ Now that consecutive payload numbering has been introduced, there are different 
 All payload reordering and package reordering is being done by the Network Handler. 
 %
 %
-\subsection{Package Transmission Mode}
+\subsection{Package Transmission Mode} \label{subsec:txtPackageTransmissionMode}
 When acknowledges are configured on a wireless connection, there are two ways on how package transmission can be handled:
 \begin{itemize}
     \item \textbf{Synchronous transmission:} The next package is only sent out when the previous has been acknowledged

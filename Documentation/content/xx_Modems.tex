@@ -1,53 +1,85 @@
 % 0_Modems
 %
-\section{RF686x RFD900x}%
-The RF686x is a long distance radio modem to be integrated into custom projects.\\
+The goal of this project is to create a flexible platform for data routing between devices and modems. But because not all modems behave the same and have equal configuration possibilities, further research needed to be done on the two modems that Aeroscout GmbH plans on using:
+\begin{itemize}
+    \item RF686 RFD900x
+    \item ARF868URL
+\end{itemize}
+This chapter provides an overview of the configuration possibilities and transmission behavior of both modems.
+%
+%
+%
+%
+\section{RFD900x}%
+According to he datasheet \cite{RFD900x_Datasheet}, the RFD900x is a long distance radio modem to be integrated into custom projects.\\
 Its features include: \begin{itemize}
     \item 3.3V UART interface
     \item The RTS and CTS pins are available to the user
     \item 5V power supply, also via USB
     \item Default serial port settings: 57600 baud, no parity, 8 data bits, 1 stop bit
     \item MAVLink radio status reporting available (RSSI, remote RSSI, local noise, remote noise)
-    \item The RFD900x has two antenna ports and firmware which supports diversity operation of antennas. During the receive sequence the modem will check both antennas and select the antenna with the best receive signal.
+    \item MAVLink protocol framing can be turned on and off.
+    \item The RFD900x has two antenna ports and a firmware which supports diversity operation of antennas. During the receive sequence the modem will check both antennas and select the antenna with the best receive signal.
     \item There are three different communication architectures and node topologies selectable: Peer-to-peer, multipoint network and asynchronous non-hopping mesh.
-    \item The RFD900x Radio Modem is compatible with many configuration methods like the AT Commands and APM Planner.
+    \item The RFD900x Radio Modem is configurable with methods like the AT Commands and APM Planner.
     \item Golay error correcting code can be enabled (doubles the over-the-air data usage)
-    \item MAVLink framing and reporting can be turned on and off.
     \item Encryption level either off or 128bit 
+    \item Adapted version of open source firmware SiK used for the modem
 \end{itemize}
-The 128bit AES data encryption may be set by AT command. The encryption key can be any 32 character hexadecimal string and less and must be set to the same value on both receiving and sending modems. 
 %
 %
-\subsection{Peer to peer network}
-Abb: P2P\\
+\subsection{RTS and CTS Pins}
+The modem supports hardware flow control. Ready To Send (RTS) and Clear To Send (CTS) signals are part of the UART communication standard. The transmitter lets the receiver know that it is now ready to transmit data with the RTS line and the receiver lets the transmitter know when it is ready to receive data with the CTS line.
+%
+%
+\subsection{MAVLink Protocol}
+MAVLink or Micro Air Vehicle Link is a protocol for communicating with small unmanned vehicle. It is designed as a header-only message marshaling library. It is used mostly for communication between a Ground Control Station (GCS) and unmanned vehicles, and in the inter-communication of the subsystem of the vehicle. It can be used to transmit the orientation of the vehicle, its GPS location, speed and many more measurements.
+
+%
+%
+\subsection{Topology Options}
+The modem supports different network setups.
+%
+\subsubsection{Peer To Peer Network}
+\todo{add picture of p2p network}
 Peer to peer network is a straight forward connection between any two nodes. Whenever  two  nodes  have compatible  parameters  and  are within range, communication will succeed after they synchronize. If your setup requires more than one pair of radios within the same physical pace, you are required to set different  network ID’s to each pair. 
 %
-%
-\subsection{Asynchronous non-hopping mesh}
+\subsubsection{Asynchronous Non-Hopping Mesh}
+\todo{add picture}
 It is a straight foreward connection between two and more nodes. As long as all the nodes are within range and have compatible parameters, communication between them will succeed.
 %
-%
-\subsection{Multipoint network}
-Abb: P2MP, PTMP or PMP\\
+\subsubsection{Multipoint Network}
+\todo{Abb: P2MP, PTMP or PMP}
 In a multipoint connection, the link is between a sender and multiple receivers. 
 %
 %
-\subsection{MAVLink}
-MAVLink or Micro Air Vehicle Link is a protocol for communicating with small unmanned vehicle. It is designed as a header-only message marshaling library. It is used mostly for communication between a Ground Control Station (GCS) and Unmanned vehicles, and in the inter-communication of the subsystem of the vehicle. It can be used to transmit the orientation of the vehicle, its GPS location and speed.
+\subsection{Configuration Methods}
+There are multiple options available on how the RFD900x can be configured.
+%
+\subsubsection{AT Commands}
+The AT command set, formerly known as the Hayes command set, is a command language designed by Dennis Hayes for communication with a 300 baud modem in 1981. The original command set has since been expanded to meet various new needs.\\
+In the RFD900x modem, the AT commands can be used to change parameters such as power levels, air data rates, serial speeds etc. \\
+The AT command mode can be entered by using the '+++' sequence in a serial terminal connected to the radio. When doing this, the user must allow at least 1 second after any data is sent out to be able to enter the command mode. This prevents the modem to misinterpret the sequence as data to be sent out.\\
+The modem will reply with 'OK' as a feedback to the user. Then commands can be entered to set or get modem and transmission parameters.
+%
+\subsubsection{APM Planner}
+APM Planner is an open-source ground station application for MAVlink based autopilots including APM and PX4/Pixhawk that can be run on Windows, Mac OSX, and Linux. It cannot only be used as a mission planner and control application for the autopilot, but it also supports configuration of the connected modems.\\
+The APM Planner is an alternative to the QGroundControl used by Aeroscout GmbH.
 %
 %
-\subsection{AT Commands}
-The AT Commands can be used to change parameters such as power levels, air data rates, serial speeds etc. \\
-The AT command mode can be entered by using the '+++' sequence in a serial terminal connected to the radio. When doing this, you must allow at least 1 second after any data is sent out to be able to enter the command mode. This prevents the modem to misinterpret the sequence as data to be sent out.\\
-The modem will reply with 'OK' as a feedback to the user. Then commands can be entered to set or get modem and transmission parameters such as RSSI signal report.
+\subsection{Error Correcting Code}
+The modem can encode the data stream in such a way so that up to 3 bit error in any 24 bit word of encoded data can be recovered and up to 7 bit error can be detected. The applied encoding algorithm is the binary Golay G24.
 %
 %
-\subsection{SiK}
-A SiK Telemetry Radio is a small, light and inexpensive open source radio platform that typically allows ranges of better than 300m “out of the box” (the range can be extended to several kilometres with the use of a patch antenna on the ground). The radio uses open source firmware which has been specially designed to work well with MAVLink packets and to be integrated with the Mission Planner, Copter, Rover and Plane.\\
-SiK radio is a collection of firmware and tools for telemetry radios.\\
-Hardware for the SiK radio can be obtained from various manufacturers/stores in variants that support different range and form factors. Typically you will need a pair of devices - one for the vehicle and one for the ground station. \\
-A SiK Telemetry Radio is one of the easiest ways to setup a telemetry connection between your APM/Pixhawk and a ground station.\\
-You can use the MAVLink support in the SiK Radios to monitor the link quality while flying, if your ground station supports it
+\subsection{Encryption}
+The 128bit AES data encryption may be set by AT command or any other supported configuration tool. The encryption key can be any 32 character hexadecimal string and less and must be set to the same value on both receiving and sending modem. 
+%
+%
+\subsection{SiK Firmware}
+The RFD900x runs with an improved and adapted version of the SiK firmware.\\
+The SiK Telemetry Radio is a light and inexpensive open source radio hardware platform that uses open source firmware which has been specially designed to work well with MAVLink packets. It is not only for copters, but also for rovers and planes and is well integrated with the Mission Planner.\\
+A SiK Telemetry Radio is one of the easiest ways to setup a telemetry connection between an autopilot (such as Pixhawk or APM) and a ground station (such as QGroundControl).\\
+If the ground station supports it, the SiK radios together with the MAVLink protocol can be used to monitor the link quality while flying. This means that the modem can decode the MAVLink protocol and attach radio status parameters like RSSI and noise level to it for the ground station to display to the user.
 %
 %
 %
@@ -55,18 +87,31 @@ You can use the MAVLink support in the SiK Radios to monitor the link quality wh
 %
 %
 \section{ARF868URL}
-All information from datasheet:\\
-ARF868 modem uses a packet oriented protocol on its RF interface. The data coming from the UART interface are accumulated in an internal fifo in the module and then encapsulated in an RF frame. The maximum amount of data that can be transferred into a single radio packet can reach 1024 Bytes.\\
-The maximum packet size can be set up in S218 register from 1 to 1024 bytes. Each new packet introduces some latency in the transmission 
-delay caused by the RF protocol overhead. The RF protocols encapsulate the data payload with the following elements:
+The ARF868 radio modem is a long-distance radio modem with the following features: \begin{itemize}
+    \item +-12V RS232 interface
+    \item RTS and CTS pins available to the user
+    \item 12V power supply
+    \item Default serial port settings: 9600 baud, no parity, 8 data bits
+    \item MAVLink not decoded
+    \item Radio status reports can be retrieved by AT command but not added to MAVLink protocol automatically
+    \item One antenna port
+    \item There are two different communication architectures and node topologies selectable: Peer-to-peer and multipoint networks
+    \item The ARF868 Radio Modem is configurable with the AT command set over serial link and a dedicated configuration software called "Adeunis RF - Stand Alone Configuration Manager" which can be downloaded on the Adeunis website
+    \item Packet mode can be enabled
+    \item Encryption and Golay not supported
+\end{itemize}
+Most features are similar to the RFD900x and explained above. The main difference to this modem is that the ARF868 does not support encryption, Golay error correction and MAVLink decoding. This modem has not specifically been optimized for MAVLink communication and usage within unmanned aeral vehicles.\\
+%
+%
+\subsection{Packet Mode}
+ARF868 modem uses a packet oriented protocol on its RF interface. The data coming from the UART interface are accumulated in an internal fifo in the module and then encapsulated in an RF frame. The maximum amount of data that can be transferred in a single radio packet is 1024 Bytes.\\
+The maximum packet size can be set up in S218 register from 1 to 1024 bytes. Each new packet introduces some latency in the transmission delay caused by the RF protocol overhead. The RF protocols encapsulate the data payload with the following elements:
 \begin{itemize}
     \item  A preamble pattern required for receiver startup time
     \item A bit synchronization pattern to synchronize the receiver on the RF frame
     \item Other protocol field such as source address and destination address, payload length, optional CRC and internal packet type field.
 \end{itemize}
-The incoming fifo may accumulate up to 1024 data byte. No more data has to be set in the fifo while a 1024 bytes block of data has not been released by the radio transmission layer. To prevent from input fifo overrun, the hardware flow control may be activated. In this case, the RTS signal will be set when the incoming fifo is almost full to prevent the host controller from sending new data.\\
+The incoming fifo may accumulate up to 1024 data byte. No more data has to be set in the fifo while a 1024 bytes block of data has not been released by the radio transmission layer.\\
 The user can configure the modem to run in non-secure packet mode where no acknowledges are sent out. The modem can also run in secure packet mode where acknowleges are expected and packages can be retransmitted two times before they are dropped. \\
 RF protocol includes a 16 bit CRC. Each data extracted from an RF packet with an invalid CRC is silently discarded by the state machine module. The CRC ensures that all data received are valid. It can be disabled by the user whose protocols already have a control mechanism integrity or when some bug fixes user protocols are implemented.
 %
-\subsection{RSSI}
-This modem can also transmit RSSI values

@@ -390,6 +390,7 @@ static void packageToLogString(tWirelessPackage* pPack, char* logEntry, int logE
 	strNum[0] = 0;
 	UTIL1_strcatNum16Hex(strNum, sizeof(strNum), pPack->crc16payload);
 	UTIL1_strcat(logEntry, logEntryStrSize, strNum);
+	// ToDo: Add 512bit Hash value here for every single package!
 	UTIL1_strcat(logEntry, logEntryStrSize, "\r\n");
 }
 

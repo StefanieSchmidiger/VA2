@@ -1,6 +1,6 @@
 % xx_Reliability
 %
-The outcome of the software refactoring and the system analysis was an application that runs stable and enough CPU resources left for further features such as encryption and error correcting codes.\\
+The outcome of the software refactoring (see \autoref{sec:txtAddedFeatures}) and the system analysis (see \autoref{sec:SystemAnalysis}) was an application that runs stable and has enough CPU resources left for further features such as encryption and error correcting codes.\\
 The main focus of this chapter is therefore the implementation of all features concerning the reliability of the data exchange. As mentioned in the \autoref{sec:txtAufgabenstellung}, Aeroscout GmbH estimates that about 10\% to 20\% of the packages sent are lost and that packages received contain errors due to interference. The application should be expanded to ensure reliability of the data transfer.\\
 The implementation of reliability within this project is split into the following parts:
 \begin{itemize}
@@ -14,12 +14,22 @@ The implementation of reliability within this project is split into the followin
 %
 %
 \section{Foreward Error Correction}
-The general idea for achieving error detection and correction is to add some redundancy. Error-detection and correction schemes can be either systematic or non-systematic: In a systematic scheme, the transmitter sends the original data, and attaches a fixed number of check bits (or parity data), which are derived from the data bits by some deterministic algorithm. In a system that uses a non-systematic code, the original message is transformed into an encoded message that has at least as many bits as the original message.\\
-The aim of encoding a message is to get the content to the recipient with minimal errors. The ground work for error detection and error correction methods has been done by Shannon in the 1940s. Shannon showed that every communication channel can be described by a maximal channel capacity with which information can be exchanged successfully. As long as the transmission rate is smaller or equal to the channel capacity, the transmission error could be arbitrarily small. When redundancy is added, possible errors can be detected or even corrected.
+The general idea for achieving error detection and correction is to add some redundancy by encoding. The ground work for error detection and error correction methods has been done by Shannon in the 1940s. Shannon showed that every communication channel can be described by a maximal channel capacity with which information can be exchanged successfully. As long as the transmission rate is smaller or equal to the channel capacity, the transmission error could be arbitrarily small. When redundancy is added, possible errors can be detected or even corrected. Error-detection and correction schemes can be either systematic or non-systematic and it can either be a block code or a convolutionary code.\\
+An example of a systematic block code is CRC, as the original information is unaltered and only accompanied by some redundancy.
+%
+\subsubsection{Systematic Code}
+In a systematic scheme, the transmitter sends the original data, and attaches a fixed number of check bits (or parity data), which are derived from the data bits by some deterministic algorithm.
+\subsubsection{Non-Systematic Code}
+In a system that uses a non-systematic code, the original message is transformed into an encoded message that has at least as many bits as the original message.
+\subsubsection{Block Code}
+If the decoder only uses the currently received block of bits to decode the received message into an output, it is called an (n, k) block code with n being the number of output symbols and k the number of input symbols. Thereby, the last received block code does not matter for the decoding and is not stored. 
+\subsubsection{Convolutionary Code}
+With convolutionary codes, the history of messages received is used to decode the next message.
+%
 %
 %
 \subsection{Error Detection}
-Error detection is most commonly realized using a suitable hash function (or checksum algorithm). A hash function adds a fixed-length tag to a message, which enables receivers to verify the delivered message by recomputing the tag and comparing it with the one provided. Example: CRC.\cite{ErrorDetectionAndCorrection_Wikipedia}
+According to \cite{ErrorDetectionAndCorrection_Wikipedia}, error detection is most commonly realized using a suitable hash function (or checksum algorithm). A hash function adds a fixed-length tag to a message, which enables receivers to verify the delivered message by recomputing the tag and comparing it with the one provided. The most widely known example is the CRC.
 %
 %
 \subsection{Error Correction}
@@ -50,7 +60,7 @@ The properties of Reed-Solomon codes make them especially suited to the applicat
 %
 %
 \subsubsection{Golay}
-%Refere5nces:
+%References:
 %  http://aqdi.com/articles/using-the-golay-error-detection-and-correction-code-3/
 %  https://www.math.uci.edu/~nckaplan/teaching_files/kaplancodingnotes.pdf
 %  https://en.wikipedia.org/wiki/Binary_Golay_code
@@ -65,8 +75,8 @@ The ternary cyclic code, also known as the G11 code with parameters [11, 6, 5] o
 %
 \subsection{Software Implementation of Error Detection and Error Correction}
 Because the Reed Solomon error correcting code requires a lot of CPU power and is intended for microcontrollers with more resources, the Golay error correcting code was chosen for this project.\\
-Encoding and decoding is done inside the SPI Handler task. The use of the binary Golay error correting code can be enabled per wireless connection by setting the USE\_GOLAY\_ERROR\_CORRECTION to 1 in the configuration file located on the SD card. The Golay source code has been taken from Andrew Tridgell (\cite{GolaySourceCode})) who provides an implementation that can be used without restrictions as long as his copyright is reproduced. This Golay library has also been used in the ArduPilot, an alternative autopilot that is at least as popular as the Pixhawk used by Aeroscout GmbH.\\
-The Golay library provides the following interface:
+Encoding and decoding is done inside the SPI Handler task. The use of the binary Golay error correting code can be enabled separately for each wireless connection by setting the USE\_GOLAY\_ERROR\_CORRECTION to 1 in the configuration file located on the SD card. The Golay source code has been taken from Andrew Tridgell (see \cite{GolaySourceCode}) who provides an implementation that can be used without restrictions as long as his copyright is reproduced. The same Golay library has also been used in the ArduPilot, an alternative autopilot that is at least as popular as the Pixhawk used by Aeroscout GmbH.\\
+Andrew Tridgells Golay library provides the following interface:
 \begin{lstlisting}
 /*!
 * \fn void golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
@@ -87,7 +97,7 @@ void golay_encode(uint8_t n, uint8_t* in, uint8_t* out);
 */
 uint8_t golay_decode(uint8_t n, uint8_t* in, uint8_t* out);
 \end{lstlisting}
-Because this implementation uses global variables to save data during encoding and decoding, the library is not reentrant. This is not an issue because the only task using the library is the SPI Handler.\\
+Because this Golay library uses global variables to save temporary data during encoding and decoding, the library is not reentrant. This is not an issue because the only task using the library is the SPI Handler.\\
 The Golay library provides an interface to encode blocks of 3 bytes into blocks of 6 bytes and to decode blocks of 6 bytes into blocks of 3 bytes (see interface from code snippet above). There are two possibilities on how to use the library itself:
 \begin{itemize}
     \item Encoding only multiple of 3 bytes and decoding only multiple of 6 bytes, with the risk of delaying some bytes quite long
@@ -119,12 +129,123 @@ if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* r
 \subsubsection{Testing}
 The Golay error correcting code doubles the data. But after looking at the system performance in \autoref{subsec:txtPTSystemAnalysis}, this should not be a problem.\\
 The application was tested by trying to establish a link between QGroundControl and the autopilot, analogous to \autoref{fig:picQGCSetup}. The link could be established successfully and a periodic heartbeat was exchanged.\\
-After consultation with Aeroscout GmbH, it was implied that their main focus does not lie with the error correcting code because they do not expect many bit errors in their transmission but rather full package losses. Therefore no more time was invested in testing the implementation of the Golay algorithm. Before enabling this feature in a final product, more field tests need to be carried out.\\
-In fact, the Golay error correcting code can also be enabled with one of the two modems used by Aeroscout GmbH. They reported that they have used a modem with Golay error correction enabled but have not seen a difference in data loss or the communication performance in general, so no more time has been invested in it since then. 
+After consultation with Aeroscout GmbH, it was implied that their main focus does not lie with the error correcting code because they do not expect many bit errors in their data exchange but rather full package losses. Therefore no more time was invested in testing the implementation of the Golay algorithm. Before enabling this feature in a final product, more field tests need to be carried out.\\
+In fact, the Golay error correcting code can also be enabled with one of the two modems used by Aeroscout GmbH. They reported that they have used a modem with Golay error correction enabled but have not seen a difference in the communication performance in general, so no more time has been invested in it since then. 
 %
 %
 %
 %
 \section{Retransmission}
-According to Aeroscout GmbH, the most common issue with data exchange is not interference and the resulting bit errors but data loss. Because unmanned aeral vehicles constantly change their position, the data link per modem is not always reliable. Lost packages need to be retransmitted to ensure an uninterrupted data stream. This concept is also known as the Automatic Repeat Request (ARQ). \todo{copy text from arq}\\
-Improvements on retransmission behavior have been done during the first software refactoring in this project (see \autoref{sec:txtAddedFeatures}). Package numbering and payload numbering has been introduced, as well as synchronous transmission handling.
+\spic{FinalSwConceptVa2.png}{Full software concept with 4 ISO OSI layer tasks}{\label{fig:picExpandedSwConceptVa2_AfterOverhaul}}%
+According to Aeroscout GmbH, the most common issue with data exchange is not interference and the resulting bit errors but data loss. Because unmanned aeral vehicles constantly change their position, the data link per modem is not always reliable. Lost packages need to be retransmitted to ensure an uninterrupted data stream. This concept is also known as the Automatic Repeat Request (ARQ). According to \cite{ErrorDetectionAndCorrection_Wikipedia}, ARQ is an error control method for data transmission that makes use of error-detection codes, acknowledgment and/or negative acknowledgment messages (no acknowledgement received), and timeouts to achieve reliable data transmission. An acknowledgment is a message sent by the receiver to indicate that it has correctly received a data frame. Usually, when the transmitter does not receive the acknowledgment before the timeout occurs, it retransmits the frame until it is either correctly received or the error persists beyond a predetermined number of retransmissions.\\
+Improvements on the ARQ behavior of this application have been done during the initial software refactoring in this project (see \autoref{sec:txtAddedFeatures}). Package numbering and payload numbering have been introduced, as well as a configuration parameter to enable/disable synchronous transmission handling (see \autoref{subsec:txtPackageTransmissionMode}).\\
+This section focuses on the implementation of the retransmission behavior. In the previous project, the application was implemented to iterate through the configured priorities and consecutively try to send out packages on the next lower priority modem. The Network Handler task was responsible for data routing and retransmission.\\
+Within the scope of this project, retransmission behavior has been overhauled which resulted in an expanded software concept, replacing the concept mentioned in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}.\\
+The new software concept splits the responsibilities of the former Network Handler into two tasks: a Network Handler and a Transport Handler. As mentioned in \autoref{sec:txtSwOutcomeVa1}, the software concept was based on the ISO-OSI model, with each task representing a layer. The Network Handler was responsible for all upper layers but because the software grew in size, it now makes sense to add a task for ISO-OSI layer 4 and all upper layers and make the Network Handler responsible for ISO-OSI layer 3 only. The resulting software concept then looks as in \autoref{fig:picExpandedSwConceptVa2_AfterOverhaul}. The new Network Handler is responsible for routing of the wireless packages and the Transport Layer does the retransmission. The ARQ and routing behavior of the application can be modified by changing configuration parameters inside the configuration file. Find information about how the responsibilities of the two new tasks was split and information about the configuration parameters that affect the routing and ARQ behavior of the application below.\\
+Both the SPI Handler and the Package Handler tasks remain unchanged.\\
+%
+\subsubsection{Network Handler}
+The new Network Handler task now only handles routing of the packages generated by the Transport Handler. Packages assembled by the Package Handler will be passed to the Network Handler but nothing is being done to them, they are passed onto the next queue to be processed by the Transport Handler. It is still necessary for the packages to transit through the Network Handler so that this task can process the throughput and possibly how reliable one modem currently is. This information is needed to calculate the cost function to chose the optimal modem used for package transmission.\\
+Packages generated by the Transport Handler will be routed to the correct OutgoingPackages queue by the Network Handler to be sent out on wireless side.
+%
+\subsubsection{Transport Handler}
+The Transport Handler keeps track of the acknowledges received and the packages sent that expect an acknowledge back. This task has an array to internally store the unacknowledged packages so they can be resent if they are not acknowledged within the timeout.\\
+The Transport Handler is responsible for generating wireless packages from the incoming device stream. It accesses the DeviceRxBytes queue to remove bytes and put them into packages to be sent out.\\
+The Transport Handler is responsible for extracting the payload from a wireless package and sending it out on device side by pushing the bytes to the correct DeviceTxBytes queue. Payload reordering should also be done in this task in case the packages arrive in the wrong order.
+%
+\subsubsection{SEND\_ACK\_PER\_WIRELESS\_CONN}
+With this parameter, the use of acknowledges can be enabled/disabled. Only when enabled for one particular wireless connection will the package be stored internally for possible resending in case no acknowledge is received within the timeout.\\
+All configuration parameters listed below are only applicable if acknowledges are enabled.
+%
+\subsubsection{LOAD\_BALANCING\_MODE}
+This configuration parameter has been introduced in the scope of this project. It can possibly hold three values:
+\begin{enumerate}
+    \item The wireless connection for the (re)send attempt is chosen according to the configuration file, first x attempts on the wireless connection with priority 1 , then y attempts on wireless connection with priority 2, etc.
+    \item The wireless connection for the (re)send attempt is chosen according to received acknowledges. Once an acknowledge is not received on one wireless connection, the next send attempts will be done with an other wireless connection. The memory of which wireless connection is currently reliable is done per device input. E.g. if one package generated from device input X does not get acknowledged on wireless connection with priority 1, all later packages from this device will be sent over wireless connection with priority 2 until one package fails to get acknowledged there, then it is back to wireless connection with priority 1. Note that this load balancing mode will only take wireless connections with priority 1 and 2 into account.
+    \item The wireless connection for the (re)send attempt is chosen according to an algorithm that takes various aspects into account. More information \todo{link to other chapter with more info}
+\end{enumerate}
+%
+\subsubsection{PRIO\_WIRELESS\_CONN\_DEV\_X}
+This parameter determines the order at which wireless connections are used for resending unacknowledged packages.\\
+It can be configured for each device and must hold values within the range 0...4. The wireless connection with highest priority has the value 1, second highest priority has the value 2 etc. Unused wireless connections for this device stream need to be configured to the value 0.\\
+Priorities need to be configured continuously, starting with priority value 1 up to the desired maximum priority. No value can be skipped between 1 and the maximum.\\
+If load balancing is set to 1 then resending is done on wireless connections in the order configured by this parameter. When configuring the same priority to multiple wireless connections, the same package will be sent out on multiple modems when (re)sending is done on this priority.\\
+If load balancing is set to 2 then all resend attempts are done on wireless connections with priority 1 and 2, alternating only if a send attempt is unsuccessful.\\
+If load balancing is set to 3 then \todo{how does this parameter affect resending algorithm?}
+%
+\subsubsection{SEND\_CNT\_WIRELESS\_CONN\_DEV\_X}
+This parameter determines the number of transmission retries per wireless connection for each device data stream.\\
+If load balancing is set to 1 then the priority order of wireless connections is traversed where SEND\_CNT\_WIRELESS\_CONN\_DEV\_X determines how many times a package is retransmitted on each wireless connection.\\
+If load balancing is set to 2 then this parameter is not applicable because the wireless connection is switched upon first absence of an acknowledge.\\
+If load balancing is set to 3 then \todo{does this parameter affect resendding algorithm?}
+%
+\subsubsection{RESEND\_DELAY\_WIRELESS\_CONN}
+Each generated package holds the payload from one device and is then sent out on wireless side. For each connected device, the user can configure over which wireless connection the generated package should be sent out first and the backup wireless connections used in case the package does not get acknowledged by the receiver.\\
+This parameter specifies the acknowledge timeout for each wireless connection, how long the application waits for an acknowledge on a particular connection before retransmitting or discarding the package.\\
+If load balancing is set to 1, the data stream will be forewarded to one wireless connection as long as the acknowledge is received within this timeout. If no acknowledge is received within this timeout, the data stream will switch to the other wireless connection.
+If load balancing is set to 3, \todo{how does this affect algorithm?}
+%
+\subsubsection{DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV}
+This parameter has different meanings depending on the load balancing scenario chosen.\\
+If load balancing is set to 1, then here are three possibilities how an internally stored package can get discarded:
+\begin{itemize}
+    \item Acknowledge received, package transmission successful
+    \item All configured retransmissions have been carried out but no acknowledge was received, package is dropped
+    \item Timeout on the parameter DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV for a generated package from a particular device connection
+\end{itemize}
+If load balancing is set to 2, then this parameter determines how long one package is tried to be retransmitted before it is dropped. The number of retransmissions can be calculated by dividing this dismission timeout by the resend delays of the wireless connections used.\\
+If load balancing is set to 3, \todo{how does this parameter affect algorithm?}
+%
+%
+%
+%
+%
+%
+\subsection{Testing}
+All tests have been carried out with QGroundControl and the Pixhawk autopilot set up as in \autoref{fig:picQGCSetup}.
+%
+\subsubsection{Load Balancing = 1}
+When load balancing is set to 1, the application handles retransmission as configured. Depending on the retransmission delay and the number of retries for each configured priority, the package is sent out again. All wireless connections are traversed in order of their configured priority, starting with the wireless connection priority 1.\\
+The first test scenario was with the Pixhawk connected to serial interface 0 and two cable connections between wireless 0 and wireless 1 \todo{add picture of setup}.The resend behavior was configured as follows:\\
+\noindent\fbox{%
+    \parbox{\textwidth}{%
+        SEND\_ACK\_PER\_WIRELESS\_CONN =\tab 1, 1, 1, 1\\
+        LOAD\_BALANCING\_MODE =\tab 1\\
+        PRIO\_WIRELESS\_CONN\_DEV\_0 =\tab 1, 2, 0, 0\\
+        SEND\_CNT\_WIRELESS\_CONN\_DEV\_0 =\tab 4, 4, 0, 0\\
+        RESEND\_DELAY\_WIRELESS\_CONN =\tab 100, 100, 0, 0\\
+        DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV =\tab 1000, 0, 0, 0\\
+    }
+}
+Four send attempts will therefore be done on wireless connection 0 before retrying four times on wireless connection 1.\\
+When disconnecting the cable on wireless connection 0, the application first tried to resend the packages on wireless connection 0 and then switched to wireless connection 1 where they were received and acknowledges successfully.\\
+When disconnecting both wireless 0 and wireless 1, the packages were dropped after the last unsuccessful send attempt.\\
+When wireless connection 0 was only unplugged shortly and payload reordering was disabled in the configuration file, the link between QGroundControl and the autopilot was never dropped. The payload on receiver side was not in proper order (according to the log file) due to the resending of old packages with new packages arriving as well. QGroundControl seems to handle this error internally by reordering the data stream itself or just discards any data that cannot be processed.\\
+The second test scenario was with Pixhawk connected on serial interface 0 and two cable connections between wireless 0 and wireless 1, as in \todo{link to picture added above}. The resend behavior was configured as follows:\\
+\noindent\fbox{%
+    \parbox{\textwidth}{%
+        SEND\_ACK\_PER\_WIRELESS\_CONN =\tab 1, 1, 1, 1\\
+        LOAD\_BALANCING\_MODE =\tab 1\\
+        PRIO\_WIRELESS\_CONN\_DEV\_0 =\tab 1, 1, 0, 0\\
+        SEND\_CNT\_WIRELESS\_CONN\_DEV\_0 =\tab 4, 4, 0, 0\\
+        RESEND\_DELAY\_WIRELESS\_CONN =\tab 100, 100, 0, 0\\
+        DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV =\tab 1000, 0, 0, 0\\
+    }
+}
+Unlike in the first test scenario, duplicate packages are sent out on wireless connection 0 and 1. The receiver will acknowledge both packages but should only stream out the payload once on device side.\\
+This has been tested first with serial terminals connected to both Serial Switches and only string characters exchanged and later on with the setup of Pixhawk and QGroundControl.
+%
+%
+%
+%
+%
+\subsubsection{Load Balancing = 2}
+blabla
+%
+%
+%
+%
+%
+%
+\subsubsection{Load Balancing = 3}
+Blabla

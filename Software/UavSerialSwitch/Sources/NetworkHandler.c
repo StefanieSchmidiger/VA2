@@ -15,7 +15,7 @@
 #include <ThroughputPrintout.h>
 #include "Logger.h"
 #include "LedRed.h"
-#include "ApplicationHandler.h"
+#include "TransportHandler.h"
 #include "RNG.h"
 
 
@@ -24,7 +24,6 @@ static tWirelessPackage unacknowledgedPackages[MAX_NUMBER_OF_UNACK_PACKS_STORED]
 static bool unacknowledgedPackagesOccupiedAtIndex[MAX_NUMBER_OF_UNACK_PACKS_STORED];
 static int numberOfUnacknowledgedPackages;
 static uint16_t sentPackNumTracker[NUMBER_OF_UARTS];
-static uint32_t sentAckNumTracker[NUMBER_OF_UARTS];
 static volatile bool ackReceived[NUMBER_OF_UARTS];
 static uint8_t costFunctionPerWlConn[NUMBER_OF_UARTS];
 
@@ -32,12 +31,13 @@ static uint8_t costFunctionPerWlConn[NUMBER_OF_UARTS];
 static void initNetworkHandlerQueues(void);
 static void initSempahores(void);
 static bool processAssembledPackage(tUartNr wlConn);
-static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr rawDataUartNr);
-static bool storeNewPackageInUnacknowledgedPackagesArray(tWirelessPackage* pPackage);
-static uint8_t getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio);
-static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack);
+static bool sendGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr rawDataUartNr);
+static bool storeSentPackageInternally(tWirelessPackage* pPackage, bool* wlConnSent);
+static bool copyPackageIntoUnacknowledgedPackagesArray(tWirelessPackage* pPackage);
+static void getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio, bool* prioFoundOnWlConn);
 static void handleResendingOfUnacknowledgedPackages(void);
-static uint8_t findWlConnForDevice(tUartNr deviceNr, int prio);
+static void findWlConnForDevice(tUartNr deviceNr, int prio, bool* wlConnToUse);
+static bool copyPackage(tWirelessPackage* original, tWirelessPackage* copy);
 
 
 /*!
@@ -60,30 +60,48 @@ void networkHandler_TaskEntry(void* p)
 		for(int deviceNr = 0; deviceNr<NUMBER_OF_UARTS; deviceNr++)
 		{
 			/* push generated wireless packages out on wireless side */
-			if( nofReadyToSendPackInQueue(deviceNr) > 0)
+			if( nofGeneratedPayloadPacksInQueue(deviceNr) > 0)
 			{
 				/* find wl connection to use for this package */
-				uint8_t wlConnToUse = NUMBER_OF_UARTS;
-				for(int prio=1; prio < NUMBER_OF_UARTS; prio++)
+				bool wlConnToUse[] = {false, false, false, false};
+				bool ackExpected = false;
+				bool packSent = false;
+				findWlConnForDevice(deviceNr, 1, wlConnToUse); /* find wlConn to use according to configuration file */
+				for(int wlConn = 0; wlConn < NUMBER_OF_UARTS; wlConn++)
 				{
-					wlConnToUse = findWlConnForDevice(deviceNr, prio); /* find wl conn with highest priority that can be used */
-					if(wlConnToUse < NUMBER_OF_UARTS) /* found a valid match */
+					/* this wlconn is configured for the desired priority and there is space in the queue of next handler? */
+					if( (wlConnToUse[wlConn] == true) && (freeSpaceInPackagesToDisassembleQueue(wlConn)) )
 					{
-						break;
-					}
-				}
-				if(wlConnToUse < NUMBER_OF_UARTS) /* founda wl connection for this package */
-				{
-					if( freeSpaceInPackagesToDisassembleQueue(wlConnToUse) ) /* There is space in the queue of next handler? */
-					{
-						if( ! (config.SyncMessagingModeEnabledPerWlConn[wlConnToUse] && (ackReceived[wlConnToUse] == false)) ) /* sync mode not enabled or last ack received */
+						if( ! (config.SyncMessagingModeEnabledPerWlConn[wlConn] && (ackReceived[wlConn] == false)) ) /* sync mode not enabled or last ack received */
 						{
-							if(popFromReadyToSendPackQueue(deviceNr, &package) == pdTRUE) /* popping package from upper handler successful? */
+							if(peekAtGeneratedPayloadPackInQueue(deviceNr, &package) == pdTRUE) /* peeking at package from upper handler successful? */
 							{
-								sendAndStoreGeneratedWlPackage(&package, wlConnToUse); /* send the generated package down and store it internally if ACK is configured */
+
+								tWirelessPackage tmpPack;
+								copyPackage(&package, &tmpPack);
+								if(sendGeneratedWlPackage(&tmpPack, wlConn) == false) /* send the generated package down and store it internally if ACK is configured */
+								{
+									/* package couldnt be sent and payload was freed! don't access package anymore! */
+									break; /* exit innner for loop */
+								}
+								packSent = true;
+								if(config.SendAckPerWirelessConn[wlConn])
+								{
+									ackExpected = true;
+								}
 							}
 						}
 					}
+				}
+				if(packSent)
+				{
+					popFromGeneratedPacksQueue(deviceNr, &package); /* this is done here because if two wlConn configured with same priority, package cant be removed twice */
+					vPortFree(package.payload);
+					package.payload = NULL;
+				}
+				if(ackExpected)
+				{
+					storeSentPackageInternally(&package, wlConnToUse);
 				}
 			}
 
@@ -92,10 +110,9 @@ void networkHandler_TaskEntry(void* p)
 			{
 				processAssembledPackage(deviceNr);
 			}
-
-			/* handle resend in case acknowledge not received */
-			handleResendingOfUnacknowledgedPackages();
 		}
+		/* handle resend in case acknowledge not received */
+		handleResendingOfUnacknowledgedPackages(); /* not done per wlConn, so needs to be outside for-loop */
 	}
 }
 
@@ -134,13 +151,13 @@ static void initSempahores(void)
 
 
 /*!
-* \fn static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr wlConn)
-* \brief Sends the generated package to package handler for sending and stores it in internal buffer if ACK is expected according to config file
+* \fn static bool sendGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr wlConn)
+* \brief Sends the generated package to package handler for sending
 * \param pPackage: pointer to package that should be sent to out
 * \param wlConn: wireless connection where package should be sent out on this first try
 * \return true if a package was sent to package handler and stored in buffer successfully
 */
-static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr wlConn)
+static bool sendGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr wlConn)
 {
 	char infoBuf[70];
 
@@ -148,50 +165,69 @@ static bool sendAndStoreGeneratedWlPackage(tWirelessPackage* pPackage, tUartNr w
 	{
 		XF1_xsprintf(infoBuf, "%u: Warning: Couldn't push newly generated package from device %u to package queue on wl conn %u \r\n", xTaskGetTickCount(), pPackage->devNum, wlConn);
 		pushMsgToShellQueue(infoBuf);
-		vPortFree(pPackage->payload); /* free package payload here since it wont be done upon pulling from queue */
+		vPortFree(pPackage->payload);
 		pPackage->payload = NULL;
 		numberOfDroppedPackages[wlConn]++;
+		return false;
 	}
 	/* update throughput printout */
 	numberOfPacksSent[wlConn]++;
 	numberOfPayloadBytesSent[wlConn] += pPackage->payloadSize;
-	/* store generated package in internal array if acknowledge is expected from this WL connection */
-	if(config.SendAckPerWirelessConn[wlConn])
+	return true; /* package couldnt be stored in unacknowledgedPackagesArray */
+}
+
+
+/*!
+* \fn static bool storeSentPackageInternally(tWirelessPackage* pPackage, bool* wlConnSent)
+* \brief Stores the sent package internally to remember resending it if no ACK received
+* \param pPackage: pointer to package that should be sent to out
+* \param wlConnsent: boolean over which wlConn the package was sent out on first try
+* \return true if a package was stored in buffer successfully
+*/
+static bool storeSentPackageInternally(tWirelessPackage* pPackage, bool* wlConnSent)
+{
+	/* set all information about package (re)sending */
+	for(int index=0; index < NUMBER_OF_UARTS; index++)
 	{
-		/* set all information about package (re)sending */
-		for(int index=0; index < NUMBER_OF_UARTS; index++)
+		pPackage->timestampLastSendAttempt[index] = 0;
+		pPackage->totalNumberOfSendAttemptsPerWirelessConnection[index] = config.SendCntWirelessConnDev[pPackage->devNum][index];
+		pPackage->sendAttemptsLeftPerWirelessConnection[index] = config.SendCntWirelessConnDev[pPackage->devNum][index];
+	}
+	for(int wlConn = 0; wlConn < NUMBER_OF_UARTS; wlConn++)
+	{
+		if(wlConnSent[wlConn]) /* this wireless connection has been used for sending */
 		{
-			pPackage->timestampLastSendAttempt[index] = 0;
-			pPackage->totalNumberOfSendAttemptsPerWirelessConnection[index] = config.SendCntWirelessConnDev[pPackage->devNum][index];
-			pPackage->sendAttemptsLeftPerWirelessConnection[index] = config.SendCntWirelessConnDev[pPackage->devNum][index];
-		}
-		pPackage->sendAttemptsLeftPerWirelessConnection[wlConn]--;
-		pPackage->timestampLastSendAttempt[wlConn] = xTaskGetTickCount();
-		pPackage->timestampFirstSendAttempt = xTaskGetTickCount();
-		pPackage->wlConnUsedForLastSendAttempt = wlConn;
-		ackReceived[wlConn] = false; /* flag for PackNumberProcessingMode == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK */
-		if(storeNewPackageInUnacknowledgedPackagesArray(pPackage) == true)
-		{
-			return true; /* success */
+			pPackage->sendAttemptsLeftPerWirelessConnection[wlConn]--;
+			pPackage->timestampLastSendAttempt[wlConn] = xTaskGetTickCount();
+			pPackage->timestampFirstSendAttempt = xTaskGetTickCount();
+			pPackage->wlConnUsedForLastSendAttempt = wlConn;
+			ackReceived[wlConn] = false; /* flag for PackNumberProcessingMode == WAIT_FOR_ACK_BEFORE_SENDING_NEXT_PACK */
 		}
 	}
-	else /* no ack expected */
+	if(copyPackageIntoUnacknowledgedPackagesArray(pPackage) == true)
 	{
 		return true; /* success */
 	}
-	return false; /* package couldnt be stored in unacknowledgedPackagesArray */
 }
 
 /*!
-* \fn static uint8_t getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio)
+* \fn static void getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio, bool* prioFoundOnWlConn)
 * \brief Checks which wireless connection number is configured with the desired priority
 * \return wlConnectionToUse: a number between 0 and (NUMBER_OF_UARTS-1). This priority is not configured if NUMBER_OF_UARTS is returned.
 */
-static uint8_t getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio)
+static void getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio, bool* prioFoundOnWlConn)
 {
-	uint8_t wlConnectionToUse = 0;
-	while ( wlConnectionToUse < NUMBER_OF_UARTS && config.PrioWirelessConnDev[uartNr][wlConnectionToUse] != desiredPrio ) ++wlConnectionToUse;
-	return wlConnectionToUse;
+	for(int wlConn = 0; wlConn<NUMBER_OF_UARTS; wlConn++)
+	{
+		if(config.PrioWirelessConnDev[uartNr][wlConn] == desiredPrio)
+		{
+			prioFoundOnWlConn[wlConn] = true;
+		}
+		else
+		{
+			prioFoundOnWlConn[wlConn] = false;
+		}
+	}
 }
 
 
@@ -200,20 +236,43 @@ static uint8_t getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio)
 * \brief Checks which wireless connection number is configured with the desired priority
 * \return wlConnectionToUse: a number between 0 and (NUMBER_OF_UARTS-1). This priority is not configured if NUMBER_OF_UARTS is returned.
 */
-static uint8_t  findWlConnForDevice(tUartNr deviceNr, int prio)
+static void findWlConnForDevice(tUartNr deviceNr, int prio, bool* wlConnToUse)
 {
+	for(int i = 0; i<NUMBER_OF_UARTS; i++)
+	{
+		wlConnToUse[i] = false;
+	}
 	switch(config.LoadBalancingMode)
 	{
 		case LOAD_BALANCING_AS_CONFIGURED:
-			return getWlConnConfiguredForPrio(deviceNr, prio);
+			getWlConnConfiguredForPrio(deviceNr, prio, wlConnToUse);
+			break;
 		case LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED: /* costFunctionPerWlConn is either 0 or 100 */
 			// ToDo: Not implemented yet
-			return NUMBER_OF_UARTS;
+			break;
 		case LOAD_BALANCING_USE_ALGORITHM:
 			// ToDo: Not implemented yet
-			return NUMBER_OF_UARTS;
+			break;
 	}
-	return NUMBER_OF_UARTS;
+}
+
+/*!
+* \fn static bool copyPackage(tWirelessPackage* original, tWirelessPackage* copy)
+* \brief Copies the content of the original package into the copy, allocates memory for payload of copy
+* \return bool: true if successful, false otherwise
+*/
+static bool copyPackage(tWirelessPackage* original, tWirelessPackage* copy)
+{
+	*copy = *original;
+	copy->payload = FRTOS_pvPortMalloc(original->payloadSize*sizeof(int8_t));
+	if(copy->payload == NULL)
+	{
+		return false;
+	}
+	for(int cnt = 0; cnt < copy->payloadSize; cnt++)
+	{
+		copy->payload[cnt] = original->payload[cnt];
+	}
 }
 
 
@@ -234,7 +293,7 @@ static bool processAssembledPackage(tUartNr wlConn)
 	{
 		return false; /* peek not successful */
 	}
-	/* no space for package in application handler or no space for acknowledge in package handler */
+	/* no space for package in transport handler or no space for acknowledge in package handler */
 	if((package.packType == PACK_TYPE_DATA_PACKAGE) && (freeSpaceInReceivedPayloadPacksQueue(package.devNum) <= 0) ||
 	   ((package.packType == PACK_TYPE_DATA_PACKAGE) && (config.SendAckPerWirelessConn[wlConn]) && (freeSpaceInPackagesToDisassembleQueue(wlConn) <= 0)) )
 	{
@@ -259,29 +318,6 @@ static bool processAssembledPackage(tUartNr wlConn)
 
 		/* push package to application handler for processing payload */
 		pushToReceivedPayloadPacksQueue(package.devNum, &package);
-
-
-		/* generate ACK if it is configured and send it to package queue */
-		if(config.SendAckPerWirelessConn[wlConn])
-		{
-			tWirelessPackage ackPackage;
-			if(generateAckPackage(&package, &ackPackage) == false) /* allocates payload memory block for ackPackage, ToDo: handle malloc fault */
-			{
-				UTIL1_strcpy(infoBuf, sizeof(infoBuf), "Warning: Could not allocate payload memory for acknowledge\r\n");
-				pushMsgToShellQueue(infoBuf);
-				numberOfDroppedAcks[wlConn]++;
-			}
-			if(pushToPacksToDisassembleQueue(wlConn, &ackPackage) != pdTRUE) // ToDo: try sending ACK package out on wireless connection configured (just like data package, iterate through priorities) */
-			{
-				XF1_xsprintf(infoBuf, "%u: Warning: ACK for wireless number %u could not be pushed to queue\r\n", xTaskGetTickCount(), wlConn);
-				pushMsgToShellQueue(infoBuf);
-				numberOfDroppedPackages[wlConn]++;
-				FRTOS_vPortFree(ackPackage.payload); /* free memory since it wont be done on popping from queue */
-				ackPackage.payload = NULL;
-			}
-			/* memory of ackPackage is freed after package in PackageHandler task, extracted and byte wise pushed to byte queue */
-			numberOfAcksSent[wlConn]++;
-		}
 	}
 	else if(package.packType == PACK_TYPE_REC_ACKNOWLEDGE) /* acknowledge package received */
 	{
@@ -333,33 +369,7 @@ static bool processAssembledPackage(tUartNr wlConn)
 
 
 
-/*!
-* \fn static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack)
-* \brief Function to generate a receive acknowledge package, reading data from the data source.
-* \param pAckPack: Pointer to acknowledge packet to be created
-* \param pReceivedDataPack: Pointer to the structure that holds the wireless package that the acknowledge is generated for
-* \return true if a package was generated and saved, false otherwise.
-*/
-static bool generateAckPackage(tWirelessPackage* pReceivedDataPack, tWirelessPackage* pAckPack)
-{
-	/* default header = { PACK_START, PACK_TYPE_REC_ACKNOWLEDGE, 0, 0, 0, 0, 0, 0, 0, 0 } */
-	/* prepare wireless package */
-	pAckPack->packType = PACK_TYPE_REC_ACKNOWLEDGE;
-	pAckPack->devNum = pReceivedDataPack->devNum;
-	pAckPack->packNr = ++sentAckNumTracker[pReceivedDataPack->devNum];
-	pAckPack->payloadNr = 0;
-	pAckPack->payloadSize = sizeof(pAckPack->packNr);	/* as payload, the timestamp of the package to be acknowledged is saved */
-	/* get space for acknowladge payload (which consists of packNr of datapackage*/
-	pAckPack->payload = (uint8_t*) FRTOS_pvPortMalloc(pAckPack->payloadSize*sizeof(int8_t));
-	if(pAckPack->payload == NULL) /* malloc failed */
-		return false;
-	/* generate payload */
-	for (uint16_t cnt = 0; cnt < pAckPack->payloadSize; cnt++)
-	{
-		pAckPack->payload[cnt] = *((uint8_t*)(&pReceivedDataPack->packNr) + cnt);
-	}
-	return true;
-}
+
 
 /*!
 * \fn static void handleResendingOfUnacknowledgedPackages(void)
@@ -380,24 +390,43 @@ static void handleResendingOfUnacknowledgedPackages(void)
 		if(unacknowledgedPackagesOccupiedAtIndex[index]) /* there is a package stored at this index */
 		{
 			tWirelessPackage* pPack = &unacknowledgedPackages[index];
+			bool sendPackOnWlConn[NUMBER_OF_UARTS];
 			unackPackagesLeft --;
-			int prio = 1;
-			int maxPrio = 1;
+			int prio;
+			int maxPrio = NUMBER_OF_UARTS;
 			/* find maximum wl connection priority value configured on this device (=highest number) */
-			while(maxPrio != NUMBER_OF_UARTS)
+			for(prio = 1; prio <= NUMBER_OF_UARTS; prio++)
 			{
-				maxPrio = getWlConnConfiguredForPrio(pPack->devNum, prio);
-				prio ++;
+				getWlConnConfiguredForPrio(pPack->devNum, prio, sendPackOnWlConn);
+				for(int i = 0; i<NUMBER_OF_UARTS; i++)
+				{
+					if(sendPackOnWlConn[i]) /* found a wlConn configured with this priority */
+					{
+						maxPrio = prio;
+					}
+				}
+				if(maxPrio != prio) /* no priority found for this iteration -> last priority was maximum configured */
+				{
+					break; /* leave for-loop */
+				}
 			}
-			maxPrio = prio - 2;
 			prio = 1;
 
-			while(prio <= NUMBER_OF_UARTS) /* iterate though all priorities (starting at highest priority) to see if resend is required */
+			while(prio <= NUMBER_OF_UARTS) /* iterate though all priorities (starting at highest priority = lowest number) to see if resend is required */
 			{
-				int wlConn = getWlConnConfiguredForPrio(pPack->devNum, prio);
+				int wlConn = 0;
+				getWlConnConfiguredForPrio(pPack->devNum, prio, sendPackOnWlConn);
+				for(int i = 0; i > NUMBER_OF_UARTS; i++)
+				{
+					if(sendPackOnWlConn[i])
+					{
+						wlConn = i;
+						break;
+					}
+				}
 				uint32_t tickCount = xTaskGetTickCount();
 				uint32_t keepPackAliveTimeout = pdMS_TO_TICKS(config.DelayDismissOldPackagePerDev[pPack->devNum]);
-				uint32_t resendDelayInTicks = pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][pPack->devNum]);
+				uint32_t resendDelayInTicks = pdMS_TO_TICKS(config.ResendDelayWirelessConn[wlConn]);
 				/* max number of resends done for all connections or maximum delay in config reached for this package     OR
 				 * no response on last resend received during resend timeout */
 				if(((wlConn >= NUMBER_OF_UARTS) || ((pPack->timestampFirstSendAttempt + keepPackAliveTimeout) < tickCount))     ||
@@ -416,20 +445,10 @@ static void handleResendingOfUnacknowledgedPackages(void)
 				else if(pPack->sendAttemptsLeftPerWirelessConnection[wlConn] > 0) /* there are send attempts left on this wl conn */
 				{
 					/* is timeout for ACK done?*/
-					if(tickCount - pPack->timestampLastSendAttempt[wlConn] > pdMS_TO_TICKS(config.ResendDelayWirelessConnDev[wlConn][pPack->devNum]))
+					if(tickCount - pPack->timestampLastSendAttempt[wlConn] > pdMS_TO_TICKS(config.ResendDelayWirelessConn[wlConn]))
 					{
 						/* create new package for queue because memory is freed once package is pulled from queue */
-						resendPack = *pPack;
-						resendPack.payload = (uint8_t*) FRTOS_pvPortMalloc(resendPack.payloadSize*sizeof(int8_t)); // ToDo: check queue state before allocating memory for resendPack
-						if(resendPack.payload == NULL)
-						{
-							return; /* leave this entire function if malloc fails! */
-						}
-						/* fill package.payload with payload data */
-						for(int cnt = 0; cnt < resendPack.payloadSize; cnt++)
-						{
-							resendPack.payload[cnt] = pPack->payload[cnt];
-						}
+						copyPackage(pPack, &resendPack);
 						/* send resendPack */
 						if(pushToPacksToDisassembleQueue(wlConn, &resendPack) == pdTRUE)
 						{
@@ -467,31 +486,44 @@ static void handleResendingOfUnacknowledgedPackages(void)
 
 
 /*!
-* \fn bool storeNewPackageInUnacknowledgedPackagesArray(tWirelessPackage* pPackage)
+* \fn bool copyPackageIntoUnacknowledgedPackagesArray(tWirelessPackage* pPackage)
 * \brief Finds free space in array and stores package in array for unacknowledged packages.
 * \param pPackage: Pointer to package that should be stored
 * \return true if successful, false if array is full
 */
-static bool storeNewPackageInUnacknowledgedPackagesArray(tWirelessPackage* pPackage)
+static bool copyPackageIntoUnacknowledgedPackagesArray(tWirelessPackage* pPackage)
 {
 	for(int index=0; index < MAX_NUMBER_OF_UNACK_PACKS_STORED; index++)
 	{
 		if(unacknowledgedPackagesOccupiedAtIndex[index] != true) /* there is no package stored at this index */
 		{
-			unacknowledgedPackages[index] = *pPackage;
-			unacknowledgedPackages[index].payload = FRTOS_pvPortMalloc(unacknowledgedPackages[index].payloadSize*sizeof(int8_t));
-			if(unacknowledgedPackages[index].payload == NULL)
-				return false;
-			for(int cnt = 0; cnt < pPackage->payloadSize; cnt++)
-			{
-				unacknowledgedPackages[index].payload[cnt] = pPackage->payload[cnt];
-			}
+			copyPackage(pPackage, &unacknowledgedPackages[index]);
 			unacknowledgedPackagesOccupiedAtIndex[index] = 1;
 			numberOfUnacknowledgedPackages++;
 			return true;
 		}
 	}
 	return false;
+}
+
+
+/*!
+* \fn void resetAllNetworkPackageCounter(void)
+* \brief Resets packageNr counter when sessionNr changed on other side
+*/
+void resetAllNetworkPackageCounter(void)
+{
+	for (int index = 0; index < MAX_NUMBER_OF_UNACK_PACKS_STORED; index++)
+	{
+		unacknowledgedPackagesOccupiedAtIndex[index] = 0;
+		vPortFree(unacknowledgedPackages[index].payload);
+		unacknowledgedPackages[index].payload = NULL;
+	}
+	numberOfUnacknowledgedPackages = 0;
+	for(int index = 0; index < NUMBER_OF_UARTS; index++)
+	{
+		/* reset any arrays */
+	}
 }
 
 
