@@ -36,7 +36,7 @@ static bool storeSentPackageInternally(tWirelessPackage* pPackage, bool* wlConnS
 static bool copyPackageIntoUnacknowledgedPackagesArray(tWirelessPackage* pPackage);
 static void getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio, bool* prioFoundOnWlConn);
 static void handleResendingOfUnacknowledgedPackages(void);
-static void findWlConnForDevice(tUartNr deviceNr, int prio, bool* wlConnToUse);
+static void findWlConnForDevice(tUartNr deviceNr, bool* wlConnToUse);
 static bool copyPackage(tWirelessPackage* original, tWirelessPackage* copy);
 
 
@@ -66,7 +66,7 @@ void networkHandler_TaskEntry(void* p)
 				bool wlConnToUse[] = {false, false, false, false};
 				bool ackExpected = false;
 				bool packSent = false;
-				findWlConnForDevice(deviceNr, 1, wlConnToUse); /* find wlConn to use according to configuration file */
+				findWlConnForDevice(deviceNr, wlConnToUse); /* find wlConn to use according to configuration file */
 				for(int wlConn = 0; wlConn < NUMBER_OF_UARTS; wlConn++)
 				{
 					/* this wlconn is configured for the desired priority and there is space in the queue of next handler? */
@@ -236,7 +236,7 @@ static void getWlConnConfiguredForPrio(tUartNr uartNr, uint8_t desiredPrio, bool
 * \brief Checks which wireless connection number is configured with the desired priority
 * \return wlConnectionToUse: a number between 0 and (NUMBER_OF_UARTS-1). This priority is not configured if NUMBER_OF_UARTS is returned.
 */
-static void findWlConnForDevice(tUartNr deviceNr, int prio, bool* wlConnToUse)
+static void findWlConnForDevice(tUartNr deviceNr, bool* wlConnToUse)
 {
 	for(int i = 0; i<NUMBER_OF_UARTS; i++)
 	{
@@ -245,7 +245,7 @@ static void findWlConnForDevice(tUartNr deviceNr, int prio, bool* wlConnToUse)
 	switch(config.LoadBalancingMode)
 	{
 		case LOAD_BALANCING_AS_CONFIGURED:
-			getWlConnConfiguredForPrio(deviceNr, prio, wlConnToUse);
+			getWlConnConfiguredForPrio(deviceNr, 1, wlConnToUse);
 			break;
 		case LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED: /* costFunctionPerWlConn is either 0 or 100 */
 			// ToDo: Not implemented yet

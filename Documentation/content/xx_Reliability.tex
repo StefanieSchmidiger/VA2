@@ -6,7 +6,7 @@ The implementation of reliability within this project is split into the followin
 \begin{itemize}
     \item Foreward Error Correction: Error detecting and error correcting code in case of interference
     \item Retransmission: Resend behavior in case of data loss
-    \item Algorithm for choosing the optimal modem to (re)send packages
+    \item Smart Wireless Selection: Algorithm for choosing the optimal modem to (re)send packages
 \end{itemize}
 %
 %
@@ -14,7 +14,7 @@ The implementation of reliability within this project is split into the followin
 %
 %
 \section{Foreward Error Correction}
-The general idea for achieving error detection and correction is to add some redundancy by encoding. The ground work for error detection and error correction methods has been done by Shannon in the 1940s. Shannon showed that every communication channel can be described by a maximal channel capacity with which information can be exchanged successfully. As long as the transmission rate is smaller or equal to the channel capacity, the transmission error could be arbitrarily small. When redundancy is added, possible errors can be detected or even corrected. Error-detection and correction schemes can be either systematic or non-systematic and it can either be a block code or a convolutionary code.\\
+The general idea for achieving error detection and correction is to add redundancy by encoding. The ground work for error detection and error correction methods has been done by Shannon in the 1940s. Shannon showed that every communication channel can be described by a maximal channel capacity with which information can be exchanged successfully. As long as the transmission rate is smaller or equal to the channel capacity, the transmission error could be arbitrarily small. When redundancy is added, possible errors can be detected or even corrected. Error-detection and correction schemes can be either systematic or non-systematic and it can either be a block code or a convolutionary code.\\
 An example of a systematic block code is CRC, as the original information is unaltered and only accompanied by some redundancy.
 %
 \subsubsection{Systematic Code}
@@ -42,7 +42,7 @@ Error-correcting codes are usually distinguished between convolutional codes and
 %
 %
 \subsubsection{Reed Solomon}
-% https://pdfs.semanticscholar.org/7e94/64b704a9f4b59f9d7df9b437e1b8366b8912.pdf
+The following information has been taken from \cite{ReedSolmon_ResearchPaper}.\\
 Reed Solomon is an error-correcting coding system that was devised to address the issue of correcting multiple 
 errors, especially burst-type errors in mass storage devices (hard disk drives, DVD, barcode tags), wireless and mobile 
 communications units, satellite links, digital TV, digital video broadcasting (DVB), and modem technologies like xDSL. Reed Solomon codes are an important subset of non-binary cyclic error correcting code and are the most widely used codes in practice. These codes are  used in wide range of applications in digital communications and data  storage. \\
@@ -56,7 +56,6 @@ The properties of Reed-Solomon codes make them especially suited to the applicat
     \item A Reed-Solomon code operating on 8-bits symbols has $n=2^8-1 = 255$ symbols per block because the number of symbol in the encoded block is $n = 2^m-1$
     \item For the designer its capability to correct both burst errors makes it the best choice to use as the encoding and decoding tool.
 \end{itemize}
-\cite{ReedSolmon_ResearchPaper}
 %
 %
 \subsubsection{Golay}
@@ -66,7 +65,7 @@ The properties of Reed-Solomon codes make them especially suited to the applicat
 %  https://en.wikipedia.org/wiki/Binary_Golay_code
 %  http://cs.indstate.edu/~sbuddha/abstract.pdf      -> anleitung zur codeimplementierung
 %  http://www.the-art-of-ecc.com/topics.html         -> codeimplementierung
-There are two types of Golay codes: binary golay codes and ternary Golay codes. \\
+According to \cite{Golay_Wikipedia}, there are two types of Golay codes: binary golay codes and ternary Golay codes. \\
 The binary Golay codes can further be devided into two types: the extended binary Golay code: G24 encodes 12 bits of data in a 24-bit word in such a way that any 3-bit errors can be corrected or any 7-bit errors can be detected, also called the binary (23, 12, 7) quadratic residue (QR) code.\\
 The other, the perfect binary Golay code, G23, has codewords of length 23 and is obtained from the extended binary Golay code by deleting one coordinate position (conversely, the extended binary Golay code is obtained from the perfect binary Golay code by adding a parity bit). In standard code notation this code has the parameters [23, 12, 7].
 The ternary cyclic code, also known as the G11 code with parameters [11, 6, 5] or G12 with parameters [12, 6, 6] can correct up to 2 errors.
@@ -132,38 +131,60 @@ The application was tested by trying to establish a link between QGroundControl 
 After consultation with Aeroscout GmbH, it was implied that their main focus does not lie with the error correcting code because they do not expect many bit errors in their data exchange but rather full package losses. Therefore no more time was invested in testing the implementation of the Golay algorithm. Before enabling this feature in a final product, more field tests need to be carried out.\\
 In fact, the Golay error correcting code can also be enabled with one of the two modems used by Aeroscout GmbH. They reported that they have used a modem with Golay error correction enabled but have not seen a difference in the communication performance in general, so no more time has been invested in it since then. 
 %
+\subsection{Conclusion}
+The Golay error detecting and correcting code has been implemented and tested in a very basic mannor. Golay can also be enabled on the RF900x modem used by Aeroscout. Because Aeroscout found out that the use of an error correcting code does not affect the reliability of the data transmission and most data loss is due to packages not arriving at the receiver, no more time has been invested into foreward error correction.
 %
 %
 %
-\section{Retransmission}
+\section{Retransmission} \label{sec:txtRetransmission}
 \spic{FinalSwConceptVa2.png}{Full software concept with 4 ISO OSI layer tasks}{\label{fig:picExpandedSwConceptVa2_AfterOverhaul}}%
-According to Aeroscout GmbH, the most common issue with data exchange is not interference and the resulting bit errors but data loss. Because unmanned aeral vehicles constantly change their position, the data link per modem is not always reliable. Lost packages need to be retransmitted to ensure an uninterrupted data stream. This concept is also known as the Automatic Repeat Request (ARQ). According to \cite{ErrorDetectionAndCorrection_Wikipedia}, ARQ is an error control method for data transmission that makes use of error-detection codes, acknowledgment and/or negative acknowledgment messages (no acknowledgement received), and timeouts to achieve reliable data transmission. An acknowledgment is a message sent by the receiver to indicate that it has correctly received a data frame. Usually, when the transmitter does not receive the acknowledgment before the timeout occurs, it retransmits the frame until it is either correctly received or the error persists beyond a predetermined number of retransmissions.\\
+According to Aeroscout GmbH, the most common issue with data exchange is not interference and the resulting bit errors but data loss. Because unmanned aerial vehicles constantly change their position, the data link per modem is not always reliable. Lost packages need to be retransmitted to ensure an uninterrupted data stream. This concept is also known as the Automatic Repeat Request (ARQ). According to \cite{ErrorDetectionAndCorrection_Wikipedia}, ARQ is an error control method for data transmission that makes use of error-detection codes, acknowledgment and/or negative acknowledgment messages (receiver detects missing package and requests retransmission), and timeouts to achieve reliable data transmission.\\
+An acknowledgment (ACK) is a message sent by the receiver to indicate that it has correctly received a data package. When the transmitter does not receive the acknowledgment before the timeout occurs, it retransmits the frame until it is either correctly received or the error persists beyond a predetermined number of retransmissions. Acknowledges are often used in a synchronous transmission mode (as implemented in \autoref{subsec:txtPackageTransmissionMode}) so that the sender has to keep track of sent packages and no reordering is required on receiver side. This is typically used on wireless links with 10-20\% package loss and a fast physical layer with a fast response time / acknowledge generating time.\\
+Instead of sending an acknowledgement for all frames received correctly, the receiver could send negative acknowledgements (NACK) for all missing and/or faulty packages. Synchronous transmission (as implemented in \autoref{subsec:txtPackageTransmissionMode}) is not supported and payload reordering can only be done on receiver side.  In practice, the receiver may not be able to reliably identify whether a package has been received, and the transmitter will usually also need to implement a timer to recover from the condition where the receiver does not respond.\\
 Improvements on the ARQ behavior of this application have been done during the initial software refactoring in this project (see \autoref{sec:txtAddedFeatures}). Package numbering and payload numbering have been introduced, as well as a configuration parameter to enable/disable synchronous transmission handling (see \autoref{subsec:txtPackageTransmissionMode}).\\
-This section focuses on the implementation of the retransmission behavior. In the previous project, the application was implemented to iterate through the configured priorities and consecutively try to send out packages on the next lower priority modem. The Network Handler task was responsible for data routing and retransmission.\\
-Within the scope of this project, retransmission behavior has been overhauled which resulted in an expanded software concept, replacing the concept mentioned in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}.\\
-The new software concept splits the responsibilities of the former Network Handler into two tasks: a Network Handler and a Transport Handler. As mentioned in \autoref{sec:txtSwOutcomeVa1}, the software concept was based on the ISO-OSI model, with each task representing a layer. The Network Handler was responsible for all upper layers but because the software grew in size, it now makes sense to add a task for ISO-OSI layer 4 and all upper layers and make the Network Handler responsible for ISO-OSI layer 3 only. The resulting software concept then looks as in \autoref{fig:picExpandedSwConceptVa2_AfterOverhaul}. The new Network Handler is responsible for routing of the wireless packages and the Transport Layer does the retransmission. The ARQ and routing behavior of the application can be modified by changing configuration parameters inside the configuration file. Find information about how the responsibilities of the two new tasks was split and information about the configuration parameters that affect the routing and ARQ behavior of the application below.\\
-Both the SPI Handler and the Package Handler tasks remain unchanged.\\
+This section focuses on a more sophisticated retransmission behavior. In the previous project, the application was implemented to iterate through the configured priorities and consecutively try to send out packages on the next lower priority modem. The Network Handler task was responsible for data routing and retransmission.\\
+Within the scope of this project, retransmission behavior has been overhauled which resulted in an expanded software concept, replacing the concept mentioned in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}.\\ 
+The new software concept splits the responsibilities of the former Network Handler into two tasks: a Network Handler and a Transport Handler. As mentioned in \autoref{sec:txtSwOutcomeVa1}, the software concept was based on the ISO-OSI model (see autoref{fig:picIsoOsiModel}), with each task representing a layer. The Network Handler was responsible for all upper layers but because the software grew in size, it now makes sense to add a task for ISO-OSI layer 4 and all upper layers and make the Network Handler responsible for ISO-OSI layer 3 only. The resulting software concept then looks as in \autoref{fig:picExpandedSwConceptVa2_AfterOverhaul}.\\
+The new Network Handler is responsible for routing of the wireless packages and the Transport Layer does the retransmission. The ARQ and routing behavior of the application can be modified by changing configuration parameters inside the configuration file. Find information about how the responsibilities of the two new tasks was split and information about the configuration parameters that affect the routing and ARQ behavior of the application below.\\
+The SPI Handler remains unchanged and the Package Handler now generates acknowledges. Find details about the changes made on each task below.
 %
-\subsubsection{Network Handler}
-The new Network Handler task now only handles routing of the packages generated by the Transport Handler. Packages assembled by the Package Handler will be passed to the Network Handler but nothing is being done to them, they are passed onto the next queue to be processed by the Transport Handler. It is still necessary for the packages to transit through the Network Handler so that this task can process the throughput and possibly how reliable one modem currently is. This information is needed to calculate the cost function to chose the optimal modem used for package transmission.\\
-Packages generated by the Transport Handler will be routed to the correct OutgoingPackages queue by the Network Handler to be sent out on wireless side.
+\subsection{Package Handler}
+The Package Handler now generates acknowledges for data packages received successfully. Even though the responsibility of acknowledges received lies with the Transport Handler, the time it takes for a package to be processed by all lower layers and a generated acknowledge to traverse all lower layers again before being pushed out adds to the latency. Acknowledges should be generated as quickly as possible so the wait time if the application is configured for synchronous mode is as small as possible.\\
+Acknowledge generation has previously been handled by the Network Handler but the latency proved to be too great as the interval at which each task is executed (which can be set in the configuration file) adds to this latency as well.
 %
-\subsubsection{Transport Handler}
-The Transport Handler keeps track of the acknowledges received and the packages sent that expect an acknowledge back. This task has an array to internally store the unacknowledged packages so they can be resent if they are not acknowledged within the timeout.\\
+\subsection{Network Handler}
+The new Network Handler task now only handles routing of the packages generated by the Transport Handler. Packages assembled by the Package Handler will be passed to the Network Handler but nothing is being done to them, they are passed onto the next queue to be processed by the Transport Handler. It is still necessary for the packages to transit through the Network Handler so that this task can process the throughput and assess how reliable one wireless link currently is. This information is needed to calculate the cost function to chose the optimal modem used for package transmission.\\
+Packages generated by the Transport Handler are passed to the Network Handler and will be routed to the correct OutgoingPackages queue by this task. There are several configuration possibilities that determine the routing behavior of the Network Handler. See \autoref{subsec:txtNewConfigOptions} for a detailed overview.
+\subsubsection{Next Steps for Network Handler}
+Currently, the Network Handler still handles the resending of unacknowledged packages. The responsibilities of the former Network Handler have not yet fully been split into two new tasks due to a lack of time. Currently, the only responsibility handled by the Transport Handler is the generation of data packages to be sent out on wireless side and the extraction of payload bytes from packages and pushing those to the TxDeviceBytes queue for the SPI Handler to send out.\\
+With the overhaul of the software concept, the application does not work correctly with acknowledges enabled. More time should be invested into finding the source of this issue.
+%
+%
+\subsection{Transport Handler}
+The Transport Handler should keep track of the acknowledges received and the packages sent that expect an acknowledge back. This task should have an array to internally store the unacknowledged packages so they can be resent if they are not acknowledged within the timeout.\\
 The Transport Handler is responsible for generating wireless packages from the incoming device stream. It accesses the DeviceRxBytes queue to remove bytes and put them into packages to be sent out.\\
-The Transport Handler is responsible for extracting the payload from a wireless package and sending it out on device side by pushing the bytes to the correct DeviceTxBytes queue. Payload reordering should also be done in this task in case the packages arrive in the wrong order.
+The Transport Handler is responsible for extracting the payload from a wireless package and sending it out on device side by pushing the bytes to the correct DeviceTxBytes queue. Payload reordering should also be done in this task in case the packages arrive in the wrong order.\\
+There are several configuration possibilities that determine behavior of the Transport Handler. See \autoref{subsec:txtNewConfigOptions} for a detailed overview.
+\subsubsection{Next Steps for Transport Handler}
+Currently, the Transport Handler only generates wireless data packages and extracts device bytes from received wireless packages. In a next step, the software should be expanded so the Transport Handler keeps track of all pending acknowledges and does the payload reordering.
+%
+\subsection{Configuration File} \label{subsec:txtNewConfigOptions}
+The configuration possibilities have been expanded in the scope of this project. The following section gives you an overview of all configuration options available that concern reliability of data exchange. A sample configuration file can be seen in \todo{ref zu config file im appendix}.\\
+Note that not all configuration possibilities have been implemented yet. Currently, the Network Handler only allows for LOAD\_BALANCING = 1. The application has been refactored and expanded to soon support the other load balancing options as well. This following section describes how the application should behave with each configuration parameter, even if the configuration parameter is not supported yet.
 %
 \subsubsection{SEND\_ACK\_PER\_WIRELESS\_CONN}
 With this parameter, the use of acknowledges can be enabled/disabled. Only when enabled for one particular wireless connection will the package be stored internally for possible resending in case no acknowledge is received within the timeout.\\
-All configuration parameters listed below are only applicable if acknowledges are enabled.
+All configuration parameters listed below are only applicable if acknowledges are enabled.\\
+Currently, the application does not work correctly with this parameter enabled.
 %
 \subsubsection{LOAD\_BALANCING\_MODE}
 This configuration parameter has been introduced in the scope of this project. It can possibly hold three values:
 \begin{enumerate}
-    \item The wireless connection for the (re)send attempt is chosen according to the configuration file, first x attempts on the wireless connection with priority 1 , then y attempts on wireless connection with priority 2, etc.
+    \item The wireless connection for the (re)send attempt is chosen according to the configuration file, first x attempts on the wireless connection with priority 1 , then y attempts on wireless connection with priority 2, etc. This is the behavior as implemented in the previous project.
     \item The wireless connection for the (re)send attempt is chosen according to received acknowledges. Once an acknowledge is not received on one wireless connection, the next send attempts will be done with an other wireless connection. The memory of which wireless connection is currently reliable is done per device input. E.g. if one package generated from device input X does not get acknowledged on wireless connection with priority 1, all later packages from this device will be sent over wireless connection with priority 2 until one package fails to get acknowledged there, then it is back to wireless connection with priority 1. Note that this load balancing mode will only take wireless connections with priority 1 and 2 into account.
-    \item The wireless connection for the (re)send attempt is chosen according to an algorithm that takes various aspects into account. More information \todo{link to other chapter with more info}
+    \item Smart Wireless Selection: The wireless connection for the (re)send attempt is chosen according to an algorithm that takes various aspects into account. More information in \autoref{sec:txtSmartWirelessSelection}.
 \end{enumerate}
+Currently, load balancing can only be set to 1 as the other two options have not been implemented yet. Software refactoring and improvements have been done to soon support the other two load balancing options.
 %
 \subsubsection{PRIO\_WIRELESS\_CONN\_DEV\_X}
 This parameter determines the order at which wireless connections are used for resending unacknowledged packages.\\
@@ -171,19 +192,24 @@ It can be configured for each device and must hold values within the range 0...4
 Priorities need to be configured continuously, starting with priority value 1 up to the desired maximum priority. No value can be skipped between 1 and the maximum.\\
 If load balancing is set to 1 then resending is done on wireless connections in the order configured by this parameter. When configuring the same priority to multiple wireless connections, the same package will be sent out on multiple modems when (re)sending is done on this priority.\\
 If load balancing is set to 2 then all resend attempts are done on wireless connections with priority 1 and 2, alternating only if a send attempt is unsuccessful.\\
-If load balancing is set to 3 then \todo{how does this parameter affect resending algorithm?}
+If load balancing is set to 3 then \todo{how does this parameter affect resending algorithm?}.\\
+This parameter is currently only supported when load balancing is set to 1.
 %
 \subsubsection{SEND\_CNT\_WIRELESS\_CONN\_DEV\_X}
 This parameter determines the number of transmission retries per wireless connection for each device data stream.\\
 If load balancing is set to 1 then the priority order of wireless connections is traversed where SEND\_CNT\_WIRELESS\_CONN\_DEV\_X determines how many times a package is retransmitted on each wireless connection.\\
 If load balancing is set to 2 then this parameter is not applicable because the wireless connection is switched upon first absence of an acknowledge.\\
-If load balancing is set to 3 then \todo{does this parameter affect resendding algorithm?}
+If load balancing is set to 3 then \todo{does this parameter affect resendding algorithm?}.\\
+This parameter is currently only supported when load balancing is set to 1.
 %
 \subsubsection{RESEND\_DELAY\_WIRELESS\_CONN}
 Each generated package holds the payload from one device and is then sent out on wireless side. For each connected device, the user can configure over which wireless connection the generated package should be sent out first and the backup wireless connections used in case the package does not get acknowledged by the receiver.\\
 This parameter specifies the acknowledge timeout for each wireless connection, how long the application waits for an acknowledge on a particular connection before retransmitting or discarding the package.\\
-If load balancing is set to 1, the data stream will be forewarded to one wireless connection as long as the acknowledge is received within this timeout. If no acknowledge is received within this timeout, the data stream will switch to the other wireless connection.
-If load balancing is set to 3, \todo{how does this affect algorithm?}
+If load balancing is set to 1, the data stream will be forwarded to one wireless connection as long as the acknowledge is received within this timeout. If no acknowledge is received within this timeout, the data stream will switch to the other wireless connection.
+If load balancing is set to 2, the data stream of one device will be routed to one wireless side as long as the acknowledges arrive within this timeout. If a package is not acknowledged, the data stream will be forewarded to the other wireless connection configured.\\
+If load balancing is set to 3, \todo{how does this affect algorithm?}.\\
+This parameter is currently only supported when load balancing is set to 1.
+
 %
 \subsubsection{DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV}
 This parameter has different meanings depending on the load balancing scenario chosen.\\
@@ -196,56 +222,78 @@ If load balancing is set to 1, then here are three possibilities how an internal
 If load balancing is set to 2, then this parameter determines how long one package is tried to be retransmitted before it is dropped. The number of retransmissions can be calculated by dividing this dismission timeout by the resend delays of the wireless connections used.\\
 If load balancing is set to 3, \todo{how does this parameter affect algorithm?}
 %
+\subsubsection{Configuration Validation}
+The Init task (see \autoref{sec:txtInitTask}) reads the configuration file on the SD card and sets the content of the global config variable. Afterwards, the configuration plausibility is verified and invalid parameter combinations are reset to their default value.
+\begin{lstlisting}
+void validateSwConfiguration(void)
+{
+    for(int devNr=0; devNr < NUMBER_OF_UARTS; devNr++)
+    {
+        // todo: validate software configuration!
+        if(!config.SendAckPerWirelessConn[devNr])
+        {
+            config.SyncMessagingModeEnabledPerWlConn[devNr] = 0;
+        }
+    }
+    /* constrain task execution intervals */
+    UTIL1_constrain(config.SdCardSyncInterval_s, 1, 1000); /* 1sec...1000sec */
+    UTIL1_constrain(config.SpiHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+    UTIL1_constrain(config.PackageHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+    UTIL1_constrain(config.NetworkHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+    UTIL1_constrain(config.TransportHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+    UTIL1_constrain(config.ShellTaskInterval, 1, 1000); /* 1ms...1sec */
+    UTIL1_constrain(config.LoggerTaskInterval, 1, 1000); /* 1ms...1sec */
+    UTIL1_constrain(config.ThroughputPrintoutTaskInterval_s, 1, 1000); /* 1sec...1000sec */
+    UTIL1_constrain(config.ToggleGreenLedInterval, 1, 1000); /* 1ms...1sec */
+}
+\end{lstlisting} \todo{expand!}
+%
+%
+%
+%
+%
+%
 %
 %
 %
 %
 %
 \subsection{Testing}
-All tests have been carried out with QGroundControl and the Pixhawk autopilot set up as in \autoref{fig:picQGCSetup}.
+All tests have been carried out with QGroundControl and the Pixhawk autopilot set up as in \autoref{fig:picQGCSetup} and with load balancing configured to 1 because this is the only load balancing option that has been implemented so far.
 %
-\subsubsection{Load Balancing = 1}
+\subsubsection{Resending when Wireless Connection Lost}
+\spicv{TestSetupWithQGroundControl_2WlSidesConnected.png}{Setup for testing}{\label{fig:picTestingSetup}}{100}%
 When load balancing is set to 1, the application handles retransmission as configured. Depending on the retransmission delay and the number of retries for each configured priority, the package is sent out again. All wireless connections are traversed in order of their configured priority, starting with the wireless connection priority 1.\\
-The first test scenario was with the Pixhawk connected to serial interface 0 and two cable connections between wireless 0 and wireless 1 \todo{add picture of setup}.The resend behavior was configured as follows:\\
-\noindent\fbox{%
-    \parbox{\textwidth}{%
-        SEND\_ACK\_PER\_WIRELESS\_CONN =\tab 1, 1, 1, 1\\
-        LOAD\_BALANCING\_MODE =\tab 1\\
-        PRIO\_WIRELESS\_CONN\_DEV\_0 =\tab 1, 2, 0, 0\\
-        SEND\_CNT\_WIRELESS\_CONN\_DEV\_0 =\tab 4, 4, 0, 0\\
-        RESEND\_DELAY\_WIRELESS\_CONN =\tab 100, 100, 0, 0\\
-        DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV =\tab 1000, 0, 0, 0\\
-    }
-}
+The first test scenario was with the Pixhawk connected to serial interface 0 and two cable connections between wireless 0 and wireless 1, see \autoref{fig:picTestingSetup}.The resend behavior was configured as follows:
+\begin{lstlisting}
+SEND_ACK_PER_WIRELESS_CONN =		1, 1, 1, 1
+LOAD_BALANCING_MODE =				1
+PRIO_WIRELESS_CONN_DEV_0 =			1, 2, 0, 0
+SEND_CNT_WIRELESS_CONN_DEV_0 =		4, 4, 0, 0
+RESEND_DELAY_WIRELESS_CONN =		100, 100, 0, 0
+DELAY_DISMISS_OLD_PACK_PER_DEV =	1000, 0, 0, 0
+\end{lstlisting}
 Four send attempts will therefore be done on wireless connection 0 before retrying four times on wireless connection 1.\\
 When disconnecting the cable on wireless connection 0, the application first tried to resend the packages on wireless connection 0 and then switched to wireless connection 1 where they were received and acknowledges successfully.\\
 When disconnecting both wireless 0 and wireless 1, the packages were dropped after the last unsuccessful send attempt.\\
-When wireless connection 0 was only unplugged shortly and payload reordering was disabled in the configuration file, the link between QGroundControl and the autopilot was never dropped. The payload on receiver side was not in proper order (according to the log file) due to the resending of old packages with new packages arriving as well. QGroundControl seems to handle this error internally by reordering the data stream itself or just discards any data that cannot be processed.\\
-The second test scenario was with Pixhawk connected on serial interface 0 and two cable connections between wireless 0 and wireless 1, as in \todo{link to picture added above}. The resend behavior was configured as follows:\\
-\noindent\fbox{%
-    \parbox{\textwidth}{%
-        SEND\_ACK\_PER\_WIRELESS\_CONN =\tab 1, 1, 1, 1\\
-        LOAD\_BALANCING\_MODE =\tab 1\\
-        PRIO\_WIRELESS\_CONN\_DEV\_0 =\tab 1, 1, 0, 0\\
-        SEND\_CNT\_WIRELESS\_CONN\_DEV\_0 =\tab 4, 4, 0, 0\\
-        RESEND\_DELAY\_WIRELESS\_CONN =\tab 100, 100, 0, 0\\
-        DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV =\tab 1000, 0, 0, 0\\
-    }
-}
+When wireless connection 0 was only unplugged shortly and payload reordering was disabled in the configuration file, the link between QGroundControl and the autopilot was never dropped. The payload on receiver side was not in proper order (according to the log file) due to the resending of old packages with new packages arriving as well. QGroundControl seems to handle this error internally by reordering the data stream itself or just discards any data that cannot be processed.
+%
+\subsubsection{Redundant Data Transmission}
+The second test scenario was with Pixhawk connected on serial interface 0 and two cable connections between wireless 0 and wireless 1, as in \autoref{fig:picTestingSetup}. The resend behavior was configured as follows:
+\begin{lstlisting}
+SEND_ACK_PER_WIRELESS_CONN =		1, 1, 1, 1
+LOAD_BALANCING_MODE =				1
+PRIO_WIRELESS_CONN_DEV_0 =			1, 1, 0, 0
+SEND_CNT_WIRELESS_CONN_DEV_0 =		4, 4, 0, 0
+RESEND_DELAY_WIRELESS_CONN =		100, 100, 0, 0
+DELAY_DISMISS_OLD_PACK_PER_DEV =	1000, 0, 0, 0
+\end{lstlisting}
 Unlike in the first test scenario, duplicate packages are sent out on wireless connection 0 and 1. The receiver will acknowledge both packages but should only stream out the payload once on device side.\\
-This has been tested first with serial terminals connected to both Serial Switches and only string characters exchanged and later on with the setup of Pixhawk and QGroundControl.
+This has been tested first with serial terminals connected to both Serial Switches and only string characters exchanged and should later be tested the setup of Pixhawk and QGroundControl.
 %
 %
 %
 %
 %
-\subsubsection{Load Balancing = 2}
-blabla
-%
-%
-%
-%
-%
-%
-\subsubsection{Load Balancing = 3}
+\section{Smart Wireless Selection} \label{sec:txtSmartWirelessSelection}
 Blabla

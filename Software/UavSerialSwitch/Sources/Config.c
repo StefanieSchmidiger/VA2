@@ -305,5 +305,40 @@ void validateSwConfiguration(void)
 	for(int devNr=0; devNr < NUMBER_OF_UARTS; devNr++)
 	{
 		// todo: validate software configuration!
+		if(config.SendAckPerWirelessConn[devNr])
+		{
+			if(config.LoadBalancingMode == LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED) /* check if there is a WL conn with priority 1 and 2 */
+			{
+				/* check priorities for load balancing setting */
+				for(int prio = 1; prio<=2; prio++)
+				{
+					uint8_t wlConnectionToUse = 0;
+					while ( wlConnectionToUse < NUMBER_OF_UARTS && config.PrioWirelessConnDev[devNr][wlConnectionToUse] != prio )
+					{
+						++wlConnectionToUse;
+					}
+					if(wlConnectionToUse >= NUMBER_OF_UARTS)
+					{
+						config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED;
+						// ToDo: print warning in shell
+					}
+				}
+			}
+		}
+		else
+		{
+			config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED;
+			config.SyncMessagingModeEnabledPerWlConn[devNr] = 0; /* no acknowledge sent -> synchoronous transmission mode disabled */
+		}
 	}
+	/* constrain execution intervals */
+	UTIL1_constrain(config.SdCardSyncInterval_s, 1, 1000); /* 1sec...1000sec */
+	UTIL1_constrain(config.SpiHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+	UTIL1_constrain(config.PackageHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+	UTIL1_constrain(config.NetworkHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+	UTIL1_constrain(config.TransportHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
+	UTIL1_constrain(config.ShellTaskInterval, 1, 1000); /* 1ms...1sec */
+	UTIL1_constrain(config.LoggerTaskInterval, 1, 1000); /* 1ms...1sec */
+	UTIL1_constrain(config.ThroughputPrintoutTaskInterval_s, 1, 1000); /* 1sec...1000sec */
+	UTIL1_constrain(config.ToggleGreenLedInterval, 1, 1000); /* 1ms...1sec */
 }

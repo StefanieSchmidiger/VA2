@@ -5,6 +5,7 @@ The goal of this project is to create a flexible platform for data routing betwe
     \item RF686 RFD900x
     \item ARF868URL
 \end{itemize}
+This is also part of the requirements as seen in \autoref{sec:txtAufgabenstellung}.\\
 This chapter provides an overview of the configuration possibilities and transmission behavior of both modems.
 %
 %
@@ -41,16 +42,16 @@ MAVLink or Micro Air Vehicle Link is a protocol for communicating with small unm
 The modem supports different network setups.
 %
 \subsubsection{Peer To Peer Network}
-\todo{add picture of p2p network}
-Peer to peer network is a straight forward connection between any two nodes. Whenever  two  nodes  have compatible  parameters  and  are within range, communication will succeed after they synchronize. If your setup requires more than one pair of radios within the same physical pace, you are required to set different  network ID’s to each pair. 
+\spicv{P2P_Network.png}{Peer To Peer Network}{\label{fig:picP2P_Network}}{70}%
+Peer to peer network is a straight forward connection between any two nodes. Whenever  two  nodes  have compatible  parameters  and  are within range, communication will succeed after they synchronize. If your setup requires more than one pair of radios within the same physical pace, you are required to set different  network ID’s to each pair. See \autoref{fig:picP2P_Network}.
 %
 \subsubsection{Asynchronous Non-Hopping Mesh}
-\todo{add picture}
-It is a straight foreward connection between two and more nodes. As long as all the nodes are within range and have compatible parameters, communication between them will succeed.
+\spicv{AsynchronousNonHoppingMesh.png}{Asynchronous Non-Hopping Mesh}{\label{fig:picAsynchronousNonHoppingMesh}}{90}%
+It is a straight foreward connection between two and more nodes. It allows data transfer across great distances if their settings match. See \autoref{fig:picAsynchronousNonHoppingMesh}.
 %
 \subsubsection{Multipoint Network}
-\todo{Abb: P2MP, PTMP or PMP}
-In a multipoint connection, the link is between a sender and multiple receivers. 
+\spicv{MultipointNetwork.png}{Multipoint Network}{\label{fig:picMultipointNetwork}}{90}%
+In a multipoint connection, the link is between a sender and multiple receivers as long as their configuration matches and they are within range. See \autoref{fig:picMultipointNetwork}.
 %
 %
 \subsection{Configuration Methods}
@@ -115,3 +116,6 @@ The incoming fifo may accumulate up to 1024 data byte. No more data has to be se
 The user can configure the modem to run in non-secure packet mode where no acknowledges are sent out. The modem can also run in secure packet mode where acknowleges are expected and packages can be retransmitted two times before they are dropped. \\
 RF protocol includes a 16 bit CRC. Each data extracted from an RF packet with an invalid CRC is silently discarded by the state machine module. The CRC ensures that all data received are valid. It can be disabled by the user whose protocols already have a control mechanism integrity or when some bug fixes user protocols are implemented.
 %
+\section{Conclusion}
+The RFD900x is specifically designed for use in unmanned vehicles. It can add information about the link status to the commonly used MAVLink protocol and Golay error correction and detection can be enabled in settings.\\
+The ARF868URL provides no such options but can run in packet mode with a very basic resend behavior configurable.

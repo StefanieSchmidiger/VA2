@@ -73,8 +73,8 @@ typedef enum ePackType
 
 /*! \struct sWirelessPackage
 *  \brief Structure that holds all the required information of a wireless package.
-*  Acknowledge has the same sysTime & devNum in header as the package it is sent for.
-*  The individual sysTime for ACK package is in payload.
+*  Acknowledge has the same packNr & devNum in header as the package it is acknowledging.
+*  The individual packNr for ACK package is in payload.
 */
 typedef struct sWirelessPackage
 {

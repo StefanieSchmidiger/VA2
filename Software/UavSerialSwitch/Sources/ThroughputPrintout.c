@@ -133,8 +133,29 @@ void throughputPrintout_TaskEntry(void* p)
 				averageUartBytesSent[MAX_14830_DEVICE_SIDE][3], averageUartBytesReceived[MAX_14830_WIRELESS_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
-		res = XF1_xsprintf(buf, "\t\t\t\t\t\t\t\t\t %lu Datapack/s \r\n",
+		res = XF1_xsprintf(buf, "\t\t\t\t\t\t\t\t\t %lu Datapack/s \r\n\r\n",
 				averagePacksReceived[3]);
+		res = pushMsgToShellQueue(buf);
+
+
+		res = XF1_xsprintf(buf, "NetworkHandler: Total number of dropped packages per device input: %lu,%lu,%lu,%lu \r\n",
+				numberOfDroppedPackages[0], numberOfDroppedPackages[1], numberOfDroppedPackages[2], numberOfDroppedPackages[3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "NetworkHandler: Total number of dropped acknowledges per wireless input: %lu,%lu,%lu,%lu \r\n",
+				numberOfDroppedAcks[0], numberOfDroppedAcks[1], numberOfDroppedAcks[2], numberOfDroppedAcks[3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "PackageHandler: Total number of invalid packages per wireless input: %lu,%lu,%lu,%lu \r\n",
+				numberOfInvalidPackages[0], numberOfInvalidPackages[1], numberOfInvalidPackages[2], numberOfInvalidPackages[3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "SPI Handler: Total number of dropped bytes per device byte input: %lu,%lu,%lu,%lu \r\n",
+				numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][0], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][1], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][2], numberOfDroppedBytes[MAX_14830_DEVICE_SIDE][3]);
+		res = pushMsgToShellQueue(buf);
+
+		res = XF1_xsprintf(buf, "SpiHandler: Total number of dropped bytes per wireless byte input: %lu,%lu,%lu,%lu \r\n\r\n",
+				numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][0], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][1], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][2], numberOfDroppedBytes[MAX_14830_WIRELESS_SIDE][3]);
 		res = pushMsgToShellQueue(buf);
 
 		res = XF1_xsprintf(buf, "***************************************************************************************************** \r\n");
