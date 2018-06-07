@@ -169,7 +169,7 @@ There are several configuration possibilities that determine behavior of the Tra
 Currently, the Transport Handler only generates wireless data packages and extracts device bytes from received wireless packages. In a next step, the software should be expanded so the Transport Handler keeps track of all pending acknowledges and does the payload reordering.
 %
 \subsection{Configuration File} \label{subsec:txtNewConfigOptions}
-The configuration possibilities have been expanded in the scope of this project. The following section gives you an overview of all configuration options available that concern reliability of data exchange. A sample configuration file can be seen in \todo{ref zu config file im appendix}.\\
+The configuration possibilities have been expanded in the scope of this project. The following section gives you an overview of all configuration options available that concern reliability of data exchange. A sample configuration file can be seen in Appendix \autoref{app:txtConfigFile}.\\
 Note that not all configuration possibilities have been implemented yet. Currently, the Network Handler only allows for LOAD\_BALANCING = 1. The application has been refactored and expanded to soon support the other load balancing options as well. This following section describes how the application should behave with each configuration parameter, even if the configuration parameter is not supported yet.
 %
 \subsubsection{SEND\_ACK\_PER\_WIRELESS\_CONN}
@@ -192,14 +192,14 @@ It can be configured for each device and must hold values within the range 0...4
 Priorities need to be configured continuously, starting with priority value 1 up to the desired maximum priority. No value can be skipped between 1 and the maximum.\\
 If load balancing is set to 1 then resending is done on wireless connections in the order configured by this parameter. When configuring the same priority to multiple wireless connections, the same package will be sent out on multiple modems when (re)sending is done on this priority.\\
 If load balancing is set to 2 then all resend attempts are done on wireless connections with priority 1 and 2, alternating only if a send attempt is unsuccessful.\\
-If load balancing is set to 3 then \todo{how does this parameter affect resending algorithm?}.\\
+If load balancing is set to 3 then this parameter is not used.\\
 This parameter is currently only supported when load balancing is set to 1.
 %
 \subsubsection{SEND\_CNT\_WIRELESS\_CONN\_DEV\_X}
 This parameter determines the number of transmission retries per wireless connection for each device data stream.\\
 If load balancing is set to 1 then the priority order of wireless connections is traversed where SEND\_CNT\_WIRELESS\_CONN\_DEV\_X determines how many times a package is retransmitted on each wireless connection.\\
 If load balancing is set to 2 then this parameter is not applicable because the wireless connection is switched upon first absence of an acknowledge.\\
-If load balancing is set to 3 then \todo{does this parameter affect resendding algorithm?}.\\
+If load balancing is set to 3 then this parameter is not used.\\
 This parameter is currently only supported when load balancing is set to 1.
 %
 \subsubsection{RESEND\_DELAY\_WIRELESS\_CONN}
@@ -207,7 +207,7 @@ Each generated package holds the payload from one device and is then sent out on
 This parameter specifies the acknowledge timeout for each wireless connection, how long the application waits for an acknowledge on a particular connection before retransmitting or discarding the package.\\
 If load balancing is set to 1, the data stream will be forwarded to one wireless connection as long as the acknowledge is received within this timeout. If no acknowledge is received within this timeout, the data stream will switch to the other wireless connection.
 If load balancing is set to 2, the data stream of one device will be routed to one wireless side as long as the acknowledges arrive within this timeout. If a package is not acknowledged, the data stream will be forewarded to the other wireless connection configured.\\
-If load balancing is set to 3, \todo{how does this affect algorithm?}.\\
+If load balancing is set to 3 then this parameter is not used.\\
 This parameter is currently only supported when load balancing is set to 1.
 
 %
@@ -220,7 +220,7 @@ If load balancing is set to 1, then here are three possibilities how an internal
     \item Timeout on the parameter DELAY\_DISMISS\_OLD\_PACK\_PER\_DEV for a generated package from a particular device connection
 \end{itemize}
 If load balancing is set to 2, then this parameter determines how long one package is tried to be retransmitted before it is dropped. The number of retransmissions can be calculated by dividing this dismission timeout by the resend delays of the wireless connections used.\\
-If load balancing is set to 3, \todo{how does this parameter affect algorithm?}
+If load balancing is set to 3 then this parameter is not used
 %
 \subsubsection{Configuration Validation}
 The Init task (see \autoref{sec:txtInitTask}) reads the configuration file on the SD card and sets the content of the global config variable. Afterwards, the configuration plausibility is verified and invalid parameter combinations are reset to their default value.
@@ -246,7 +246,7 @@ void validateSwConfiguration(void)
     UTIL1_constrain(config.ThroughputPrintoutTaskInterval_s, 1, 1000); /* 1sec...1000sec */
     UTIL1_constrain(config.ToggleGreenLedInterval, 1, 1000); /* 1ms...1sec */
 }
-\end{lstlisting} \todo{expand!}
+\end{lstlisting} \todo{expand and copy latest code}
 %
 %
 %
@@ -291,9 +291,127 @@ DELAY_DISMISS_OLD_PACK_PER_DEV =	1000, 0, 0, 0
 Unlike in the first test scenario, duplicate packages are sent out on wireless connection 0 and 1. The receiver will acknowledge both packages but should only stream out the payload once on device side.\\
 This has been tested first with serial terminals connected to both Serial Switches and only string characters exchanged and should later be tested the setup of Pixhawk and QGroundControl.
 %
+\subsection{Conclusion}
+Retransmission behavior is a very complex feature to implement. Because the software concept was expanded by one main task (Transport Handler), there was not enough time to implement reliability to completion. This second round of software refactoring was even more time consuming than the first round as the complexity of the application increased.\\
+The entire software concept is still manageable and easy to understand but the implementation is growing more complex.\\
+Nevertheless, the outcome of the retransmission refactoring is a better software concept with better separation of responsibilities of each task. Furthermore, retransmission behavior has been improved and redundant package transmission is now possible. More transmission options are configurable but not implemented yet.\\
+There is a major bug with acknowledges but this will hopefully be fixed soon after this documentation is handed in.
+%
 %
 %
 %
 %
 \section{Smart Wireless Selection} \label{sec:txtSmartWirelessSelection}
-Blabla
+A reliable data link can either be assured by implementing an error correction code if data is received with errors, by resending the package if it did not arrive at the receiver side or by choosing the most reliable wireless connection in the first place. The first two concepts have been elaborated in more detail above, this section focuses on developing an algorithm that choses the most reliable wireless connection for package transmission.
+%
+%
+\subsection{Metrics}
+According to \cite{RouterMetrics_Wiki}, metrics are cost values used by routers to determine the best path to a destination network. They can contain any number of values that help the router determine the best route among multiple paths to a destination. This paper breaks router metric parameters into two following categories:
+\begin{itemize}
+    \item \textbf{Traffic-Based Metrics:} Bandwidth, latency, package loss ratio, package reordering ratio, number of retransmissions required, maximum transmission unit (MTU), etc
+    \item \textbf{Radio Information:} Signal strength, energy needed for transmission, transmission cost
+\end{itemize}
+Metrics in information technology use additional parameters such as hop count, path cost, communication cost etc. These are not used within this paper as we always look at the direct connection between two Serial Switches without any other devices in the middle.\\
+Traditionally, routing metrics are calculated only from information available directly on the network layer. Today, however, many researchers acknowledge the need for cross-layer approaches for designing routing metrics.\\
+According to \cite{SurveyOnRoutingMetrics}, when all paths are prone to failures, the mere existence of alternate paths is important for sending redundant data on multiple paths to facilitate timely data delivery for crucial Internet applications, e.g. sending video/audio streams. According to \cite{AlternativeInternetPaths}, alternate paths can be chosen according to criteria such as:
+\begin{itemize}
+    \item Latency
+    \item Throughput
+    \item Packet Loss
+    \item Select the most disjoint  paths in the hope that a failure on the primary Internet path will not affect the alternate path
+\end{itemize}
+The criteria controlling the metric depend on the optimization goal, e.g. minimize delay or maximize average end-to-end throughput.\\
+The following sections give an overview on how data for metrics calculation can be acquired and the challenges of implementing traffic-based metric parameters and radio information into a metric algorithm.
+%
+\subsubsection{Information Acquiring Method} \label{subsec:txtInformationAcquiringMethod}
+According to \cite{SurveyOnRoutingMetrics}, there are various ways how metrics acquire the information they need. The following classes are defined:
+\begin{itemize}
+    \item \textbf{Node-related:} Information for the metric is acquired from a node without high effort. This may be fixed values like the number of interfaces of a node, configured values like the financial communication costs or variable values like the length of input and output queues.
+    \item \textbf{Passive Monitoring:} Information for the metric is gathered by observing the traffic coming in and going out of a node. In combination with other measurements, this can be used e.g. to estimate the available bandwidth.
+    \item \textbf{Piggy-back Probing:}  Measurements are done by including probing information into regular traffic or routing protocol packets without creating own packets for metric measurement. This is a common method to measure delay.
+    \item \textbf{Active Probing:} For this technique, special packets are generated to measure the properties of a link.
+\end{itemize}
+%
+\subsubsection{Traffic Based Metrics}
+According to \cite{SurveyOnRoutingMetrics}, when using wireless networks for Internet or other communication applications, many design goals are related to network traffic: High throughput, small delay, or limited variance of the connection quality. It is an obvious idea to incorporate traffic indicators into routing algorithms. Many metrics were proposed that attempt to do this. However, measuring traffic variables is a sophisticated challenge and the risk of obtaining unstable network behavior is high. Many metrics require some kind of probing messages in order to measure the quality of a link or a path.\\
+Certain traffic based metrics tend to provoke oscillating traffic patterns. This effect can be explained as follows: Once a link is recognized as good, it attracts a lot of traffic. Consequently, the link becomes jammed and it is assigned with a worse metric value.\\
+Traffic based metrics normally take the \textbf{latency} of the connection into account, which is subject to considerable variance. For this reason, most protocols do not use only the currently measured latency value to determine the metric for a link, but they utilize a weighted average and its variation (e.g. in the form of a statistical variance).\\
+\textbf{Bandwidth} routing metrics indicate the capacity of data which can be sent over a link within a given time. From the perspective of a node, this is equal to the transfer rate of a link.\\
+\textbf{Packet Loss Ratio (PLR)} is a crucial variable for all applications. A high loss ratio degrades the communication quality of non-reliable protocols (e.g. for voice or video applications). With reliable transfer protocols, it potentially forces a high number of retransmissions, slows down communication and reduces the usable bandwidth.
+\textbf{Package reordering} is required if a package arrives before its predecessor. The frequency of such reordering events can be interpreted as routing metric. This variable is of special interest for real-time applications or video and voice communication. For the latter tasks, the packet reordering ratio is one of the factors that determines the delay and delay variation experienced by the user.\\
+Minimizing the number of \textbf{package retransmissions} does not only optimize the overall throughput, it does also minimize the total consumed energy if we assume constant transmission power levels.
+% 
+\subsubsection{Radio Information}
+Many wireless technologies – among them IEEE 802.11 – use beacon packets in order to detect neighbouring hosts. Through these beacons, network devices can measure the \textbf{signal strength} at which a packet is received. Signal strength can be considered as an indication for the link quality and the distance between two nodes.\\
+Unlike in wired networks, energy efficiency is a major concern in mobile networks. Sensor networks
+as well as portable communication devices only have restricted battery lifetime. This is why \textbf{transmission energy per package} should be taken into account.\\
+Furthermore, transmission cost can play a significant role. While there are no additional \textbf{costs} when using a wireless modem, sending data over GSM or even satellite can be expensive and should be taken into account.
+%
+\subsubsection{Filtering Method} \label{subsec:txtFilteringMethod}
+According to \cite{SurveyOnRoutingMetrics}, metric measurements should be filtered over time. There are three methods proposed:
+\begin{enumerate}
+    \item \textbf{Dynamic History Window:} An average is computed over a number of previous measurements. The size of the measurement window depends on the current transmission rate.
+    \item \textbf{Fixed History Interval:} An average is computed over a fixed number of previous measurements.
+    \item \textbf{Exponential Weighting Moving Average (EWMA):} Measurements are weighted with exponentially less the older they are, implemented with a discrete low pass filter.
+\end{enumerate}
+%
+%
+% www.informit.com/articles/article.aspx?p=26129&seqNum=7
+\subsection{Proposal of a Smart Wireless Switch Algorithm}
+This section focuses on developing an algorithm that can be used to determine the optimal modem to use for package transmission on wireless side. The algorithm should use both traffic-related metrics and radio information.
+%
+\subsubsection{Information Acquiring Method}
+Any method mentioned in \autoref{subsec:txtInformationAcquiringMethod} can be used but easiest to implement for the Network Handler is the Piggy-back Probing where the task could add probing information to the header of a wireless packet.
+%
+\subsubsection{Traffic Based Metrics}
+We are interested in the short term performance of a channel to ensure that the currently most reliable modem is chosen. A simple routing algorithm could take only the Package Loss Ratio of the last five seconds into account. \\
+The algorithm could do filtering according to a Fixed History Interval (see \autoref{subsec:txtFilteringMethod}) to determine the short term performance of a channel. \\
+Information about the package loss ratio can be acquired in both cases, with acknowledges enabled and disabled without having to insert additional information into wireless packages in the following ways:
+\begin{itemize}
+    \item \textbf{Acknowledges disabled:} The application can extract package loss information from incoming packages by evaluating if the package numbers are consecutive. Missing incoming package numbers indicate package loss.
+    \item \textbf{Acknowledges enabled:} The application can extract package loss information from both incoming packages and outgoing packages by evaluating the package number of incoming packages (they should be consecutively numbered) and taking the number of retransmissions of outgoing packages into account before an acknowledge is received.
+\end{itemize}
+%
+\subsubsection{Radio Information}
+As mentioned in \autoref{ch:txtModems}, both used modems support radio status reporting. With the ARF868URL, RSSI, remote RSSI, local noise and remote noise can be retrieved by entering command mode and interpreting the string returned. This requires the software to be customized to a particular modem which contradicts the idea of the Serial Switch as a universal and flexible platform.\\
+The RFD90x does radio status reporting not only in command mode but can also add this information to the MAVLink protocol. The latter requires the software to analyze the MAVLink protocol, which would again contradict the idea of the Serial Switch as a universal and flexible platform but could be useful for retrieving other information from the protocol used to exchange data.\\
+The easiest way to take the used modem into account is by adding a cost function to the algorithm so the user can assure that satellite and GSM connections are not used excessively. This could be done by an additional configuration parameter in the config file, limited to values in the range 0 to 100 with low values being used for modems that should only be used as a back up, zero if they should not be used at all.
+%
+\subsubsection{Algorithm}
+Package Loss Ratio should be filtered over time with a Fixed History Interval and multiplied with the cost function of the modem. The following equation could be implemented if \textbf{no acknowledges} are configured:
+\begin{equation}
+Z = \frac{s_R}{n_R} * c 
+\end{equation}
+$Z$ = output of weighting function per wireless modem\\
+$n_R$ = number of packages that should have been received within the last 5 seconds, highest package number - lowest package number\\
+$s_R$ = number of packages that were received with consecutive package numbering\\
+$c$ = cost function per modem, $c \in [0, 100]$\\\\
+%
+The following equation could be implemented if \textbf{acknowledges} are configured and synchronous transmission is disabled:
+\begin{equation}
+Z = \frac{s_R}{n_R} * \frac{s_T}{n_T} * c
+\end{equation}
+where\\
+$Z$ = output of weighting function per wireless modem\\
+$n_R$ = number of packages that should have been received within the last 5 seconds, highest package number - lowest package number\\
+$s_R$ = number of packages that were received with consecutive package numbering\\
+$n_T$ = number of packages sent within the last 5 seconds\\
+$s_T$ = number of packages that were acknowledged within the last 5 seconds\\
+$c$ = cost function per modem, $c \in [0, 100]$\\\\
+%
+If \textbf{acknowledges and synchronous transmission} are enabled, the sender should only extract information from outgoing packages as the incoming packages are ideally in order. The following equation could be implemented:
+\begin{equation}
+Z = \frac{s_R}{n_R} * c 
+\end{equation}
+$Z$ = output of weighting function per wireless modem\\
+$n_T$ = number of packages sent within the last 5 seconds\\
+$s_T$ = number of packages successfully acknowledged within the last 5 seconds\\
+$c$ = cost function per modem, $c \in [0, 100]$\\
+%
+%
+%
+\subsection{Conclusion}
+The Smart Wireless Selection algorithm has not been implemented yet but research has been done to facilitate future implementation.\\
+The parameters of a possible Smart Wireless Selector can be split into two categories: Traffic based metrics and radio information. For a first proposal, the algorithm developed takes a factor of each category into account to determine the modem to use. Traffic based metrics includes all parameters that concern the link for exchanging packages (e.g. latency, package loss ratio) and radio information includes all parameters concerning properties of the physical layer (e.g. transmission cost of modem, signal strength).\\
+In the proposed algorithm, only package loss ratio and transmission cost of modems were taken into account and filtered for time. The challenge in the implementation will lie within extracting the information for package loss ratio from the packages received and sent.\\
+There are various ways on how to extend the algorithm further, e.g. by extracting information about radio status reporting from the MAVLink protocol. The ability of the application to decode the MAVLink protocol could certainly be useful for future use cases of the Serial Switch and not just to extract radio status reporting.

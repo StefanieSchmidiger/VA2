@@ -58,14 +58,12 @@ The CRC1 component uses the hardware CRC module for accelerated CRC computation.
 \subsection{Implementation of Integrity for Log Data}
 As seen in \autoref{sec:txtAufgabenstellung}, the application must also log the exchanged data and implement means to detect unauthorized modification of the log data. This can be achieved by implementing data integrity for the logged data.
 The easiest way to implement integrity in the Logger task is by adding a hash log value for every package logged. The log file then looks similar to this:\\
-\noindent\fbox{%
-    \parbox{\textwidth}{%
-        PackageType;DeviceNumber;SessionNumber;PackageNumber;PayloadNumber;PayloadSize;\\
-        CRC8\_Header;Payload;CRC16\_Payload;Hash\\
-        \\
-        01;00;45;01;01;0011;88;FE092DFF0000000000000608C004039640;AD7C;154987\\
-    }
-}
+\begin{lstlisting}
+PackageType;DeviceNumber;SessionNumber;PackageNumber;PayloadNumber;PayloadSize;
+CRC8_Header;Payload;CRC16_Payload;Hash
+
+01;00;45;01;01;0011;88;FE092DFF0000000000000608C004039640;AD7C;154987
+\end{lstlisting}
 The Hash value was simply added after the CRC16\_Payload entry.\\
 The problem is that, knowing the hash algorithm used, data can still be tempered with by adding or deleting log lines inside the log file. To detect this misusage, a hash value should not only be calculated for every package but also over the entire log file so that it becomes more difficult to modify log data undetected. But because it would again be easy for malusers to detect the hash algorithm applied, modify the log file and recalculate the hash not only over single log lines but also over the entire modified file, an additional item of security has to be added. Instead of only calculating the hash over the entire file (in addition to the hash calculation over single log lines), a secret random number is also put into the hash algorithm of the entire file before the final hash output is extracted and logged. It lies within the nature of a hash algorithm that the hash output changes drastically with just a small variation of the input value. It is therefore nearly impossible for unauthorized users to find the secret random number used by looking at other hash outputs that were calculated over the entire file.\\
 Each K64F microcontroller has a 128-bit unique identification number per chip. This number can be used as the secret random number to be put into the hash algorithm.\\
