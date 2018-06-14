@@ -4,7 +4,7 @@ The outcome of the software refactoring (see \autoref{sec:txtAddedFeatures}) and
 The main focus of this chapter is therefore the implementation of all features concerning the reliability of the data exchange. As mentioned in the \autoref{sec:txtAufgabenstellung}, Aeroscout GmbH estimates that about 10\% to 20\% of the packages sent are lost and that packages received contain errors due to interference. The application should be expanded to ensure reliability of the data transfer.\\
 The implementation of reliability within this project is split into the following parts:
 \begin{itemize}
-    \item Foreward Error Correction: Error detecting and error correcting code in case of interference
+    \item Forward Error Correction: Error detecting and error correcting code in case of interference
     \item Retransmission: Resend behavior in case of data loss
     \item Smart Wireless Selection: Algorithm for choosing the optimal modem to (re)send packages
 \end{itemize}
@@ -13,7 +13,7 @@ The implementation of reliability within this project is split into the followin
 %
 %
 %
-\section{Foreward Error Correction}
+\section{Forward Error Correction}
 The general idea for achieving error detection and correction is to add redundancy by encoding. The ground work for error detection and error correction methods has been done by Shannon in the 1940s. Shannon showed that every communication channel can be described by a maximal channel capacity with which information can be exchanged successfully. As long as the transmission rate is smaller or equal to the channel capacity, the transmission error could be arbitrarily small. When redundancy is added, possible errors can be detected or even corrected. Error-detection and correction schemes can be either systematic or non-systematic and it can either be a block code or a convolutionary code.\\
 An example of a systematic block code is CRC, as the original information is unaltered and only accompanied by some redundancy.
 %
@@ -33,7 +33,7 @@ According to \cite{ErrorDetectionAndCorrection_Wikipedia}, error detection is mo
 %
 %
 \subsection{Error Correction}
-An error-correcting code (ECC) or forward error correction (FEC) code is a process of adding redundant data, or parity data, to a message, such that it can be recovered by a receiver even when a number of errors.\\
+An error-correcting code (ECC) or forward error correction (FEC) code is a process of adding redundant data, or parity data, to a message, such that it can be recovered by a receiver even when containing errors.\\
 Error-correcting codes are usually distinguished between convolutional codes and block codes:
 \begin{itemize}
     \item Convolutional codes are processed on a bit-by-bit basis. They are particularly suitable for implementation in hardware, and the Viterbi decoder allows optimal decoding.
@@ -46,13 +46,12 @@ The following information has been taken from \cite{ReedSolmon_ResearchPaper}.\\
 Reed Solomon is an error-correcting coding system that was devised to address the issue of correcting multiple 
 errors, especially burst-type errors in mass storage devices (hard disk drives, DVD, barcode tags), wireless and mobile 
 communications units, satellite links, digital TV, digital video broadcasting (DVB), and modem technologies like xDSL. Reed Solomon codes are an important subset of non-binary cyclic error correcting code and are the most widely used codes in practice. These codes are  used in wide range of applications in digital communications and data  storage. \\
-Reed Solomon describes a systematic  way of building codes that could detect and correct multiple random symbol errors. By adding t check symbols to the data, an RS code can detect any combination of up to t erroneous symbols, or correct up to $t/2$ symbols. Furthermore, RS codes are suitable as multiple-burst bit-error correcting codes, since a sequence of $b + 1$ consecutive bit errors can affect at most two symbols of size b. The choice of t  is up to the designer of the code, and may be selected within wide limits.\\
-RS are  block codes and are  represented as RS (n, k),  where  n is the  size  of code  word length and k is the number of data symbols, $n – k = 2t$ is the number of parity symbols.\\
+Reed Solomon describes a systematic  way of building codes that could detect and correct multiple random symbol errors. By adding $m$ check symbols to the data, an RS code can detect any combination of up to $m$ erroneous symbols, or correct up to $\frac{m}{2}$ symbols. Furthermore, RS codes are suitable as multiple-burst bit-error correcting codes, since a sequence of $b + 1$ consecutive bit errors can affect at most two symbols of size $b$. The choice of $m$ is up to the designer of the code, and may be selected within wide limits.\\
+RS are  block codes and are  represented as RS $(n, k)$,  where  $n$ is the  size  of code  word length and $k$ is the number of data symbols, $n$–$k = 2t$ is the number of parity symbols.\\
 The properties of Reed-Solomon codes make them especially suited to the applications where burst error occurs. This is because
 \begin{itemize}
     \item It does not matter to the code how many bits in a symbol are incorrect, if multiple bits in a symbol are corrupted it only counts as a single error. Alternatively, if a data stream is not characterized by error bursts or drop-outs but by random single bit errors, a Reed-Solomon code is usually a poor choice. More effective cods are available for this case.
-    \item Designers are not required to use the natural sizes of Reed-Solomon code blocks. A technique known as shortening produces a smaller code of any desired size from a large code. For example, the widely used (255,251) code can be converted into a (160,128). At the decoder, the same portion of the block is loaded locally with binary zero
-    s.
+    \item Designers are not required to use the natural sizes of Reed-Solomon code blocks. A technique known as shortening produces a smaller code of any desired size from a large code. For example, the widely used (255,251) code can be converted into a (160,128). At the decoder, the same portion of the block is loaded locally with binary zeros.
     \item A Reed-Solomon code operating on 8-bits symbols has $n=2^8-1 = 255$ symbols per block because the number of symbol in the encoded block is $n = 2^m-1$
     \item For the designer its capability to correct both burst errors makes it the best choice to use as the encoding and decoding tool.
 \end{itemize}
@@ -73,9 +72,10 @@ The ternary cyclic code, also known as the G11 code with parameters [11, 6, 5] o
 %
 %
 \subsection{Software Implementation of Error Detection and Error Correction}
-Because the Reed Solomon error correcting code requires a lot of CPU power and is intended for microcontrollers with more resources, the Golay error correcting code was chosen for this project.\\
-Encoding and decoding is done inside the SPI Handler task. The use of the binary Golay error correting code can be enabled separately for each wireless connection by setting the USE\_GOLAY\_ERROR\_CORRECTION to 1 in the configuration file located on the SD card. The Golay source code has been taken from Andrew Tridgell (see \cite{GolaySourceCode}) who provides an implementation that can be used without restrictions as long as his copyright is reproduced. The same Golay library has also been used in the ArduPilot, an alternative autopilot that is at least as popular as the Pixhawk used by Aeroscout GmbH.\\
-Andrew Tridgells Golay library provides the following interface:
+Because the Reed Solomon error correcting code requires a lot of CPU resources and is intended for more powerful microcontrollers, the Golay error correcting code was chosen for this project. Also, the Golay error correcting code can be enabled on the RFD900x modem.\\
+Golay encoding and decoding is done inside the SPI Handler task. The use of the binary Golay error correting code can be enabled separately for each wireless connection by setting the\\
+USE\_GOLAY\_ERROR\_CORRECTION to 1 in the configuration file located on the SD card (see a sample configuration file in Appendix \autoref{app:txtConfigFile}). The Golay source code has been taken from Andrew Tridgell (see \cite{GolaySourceCode}) who provides an implementation that can be used without restrictions as long as his copyright is reproduced. The same Golay library has also been used in the ArduPilot, an alternative autopilot that is at least as popular as the Pixhawk used by Aeroscout GmbH.\\
+Andrew Tridgells Golay library provides the following interfaces:
 \begin{lstlisting}
 /*!
 * \fn void golay_encode(uint8_t n, uint8_t* in, uint8_t* out)
@@ -129,31 +129,39 @@ if(spiSlave == MAX_14830_WIRELESS_SIDE && config.UseGolayPerWlConn[uartNr]) /* r
 The Golay error correcting code doubles the data. But after looking at the system performance in \autoref{subsec:txtPTSystemAnalysis}, this should not be a problem.\\
 The application was tested by trying to establish a link between QGroundControl and the autopilot, analogous to \autoref{fig:picQGCSetup}. The link could be established successfully and a periodic heartbeat was exchanged.\\
 After consultation with Aeroscout GmbH, it was implied that their main focus does not lie with the error correcting code because they do not expect many bit errors in their data exchange but rather full package losses. Therefore no more time was invested in testing the implementation of the Golay algorithm. Before enabling this feature in a final product, more field tests need to be carried out.\\
-In fact, the Golay error correcting code can also be enabled with one of the two modems used by Aeroscout GmbH. They reported that they have used a modem with Golay error correction enabled but have not seen a difference in the communication performance in general, so no more time has been invested in it since then. 
+In fact, the Golay error correcting code can also be enabled with one of the two modems used by Aeroscout GmbH. They reported that they have used a modem with Golay error correction enabled but have not seen a difference in the communication performance in general, so no more time has been invested in Golay error correction since then. 
 %
 \subsection{Conclusion}
-The Golay error detecting and correcting code has been implemented and tested in a very basic mannor. Golay can also be enabled on the RF900x modem used by Aeroscout. Because Aeroscout found out that the use of an error correcting code does not affect the reliability of the data transmission and most data loss is due to packages not arriving at the receiver, no more time has been invested into foreward error correction.
+The Golay error detecting and correcting code has been implemented and tested in a very basic mannor. Golay can also be enabled on the RF900x modem used by Aeroscout. Because Aeroscout found out that the use of an error correcting code does not affect the reliability of the data transmission and most data loss is due to packages not arriving at the receiver, no more time has been invested into forward error correction.
 %
 %
 %
+%
+%s
 \section{Retransmission} \label{sec:txtRetransmission}
 \spic{FinalSwConceptVa2.png}{Full software concept with 4 ISO OSI layer tasks}{\label{fig:picExpandedSwConceptVa2_AfterOverhaul}}%
 According to Aeroscout GmbH, the most common issue with data exchange is not interference and the resulting bit errors but data loss. Because unmanned aerial vehicles constantly change their position, the data link per modem is not always reliable. Lost packages need to be retransmitted to ensure an uninterrupted data stream. This concept is also known as the Automatic Repeat Request (ARQ). According to \cite{ErrorDetectionAndCorrection_Wikipedia}, ARQ is an error control method for data transmission that makes use of error-detection codes, acknowledgment and/or negative acknowledgment messages (receiver detects missing package and requests retransmission), and timeouts to achieve reliable data transmission.\\
-An acknowledgment (ACK) is a message sent by the receiver to indicate that it has correctly received a data package. When the transmitter does not receive the acknowledgment before the timeout occurs, it retransmits the frame until it is either correctly received or the error persists beyond a predetermined number of retransmissions. Acknowledges are often used in a synchronous transmission mode (as implemented in \autoref{subsec:txtPackageTransmissionMode}) so that the sender has to keep track of sent packages and no reordering is required on receiver side. This is typically used on wireless links with 10-20\% package loss and a fast physical layer with a fast response time / acknowledge generating time.\\
-Instead of sending an acknowledgement for all frames received correctly, the receiver could send negative acknowledgements (NACK) for all missing and/or faulty packages. Synchronous transmission (as implemented in \autoref{subsec:txtPackageTransmissionMode}) is not supported and payload reordering can only be done on receiver side.  In practice, the receiver may not be able to reliably identify whether a package has been received, and the transmitter will usually also need to implement a timer to recover from the condition where the receiver does not respond.\\
-Improvements on the ARQ behavior of this application have been done during the initial software refactoring in this project (see \autoref{sec:txtAddedFeatures}). Package numbering and payload numbering have been introduced, as well as a configuration parameter to enable/disable synchronous transmission handling (see \autoref{subsec:txtPackageTransmissionMode}).\\
+Improvements on the ARQ behavior of this application have been done during the initial software refactoring in this project (see \autoref{sec:txtAddedFeatures}). Package numbering and payload numbering have been introduced, as well as a configuration parameter to enable/disable synchronous transmission handling.\\
 This section focuses on a more sophisticated retransmission behavior. In the previous project, the application was implemented to iterate through the configured priorities and consecutively try to send out packages on the next lower priority modem. The Network Handler task was responsible for data routing and retransmission.\\
-Within the scope of this project, retransmission behavior has been overhauled which resulted in an expanded software concept, replacing the concept mentioned in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}.\\ 
-The new software concept splits the responsibilities of the former Network Handler into two tasks: a Network Handler and a Transport Handler. As mentioned in \autoref{sec:txtSwOutcomeVa1}, the software concept was based on the ISO-OSI model (see autoref{fig:picIsoOsiModel}), with each task representing a layer. The Network Handler was responsible for all upper layers but because the software grew in size, it now makes sense to add a task for ISO-OSI layer 4 and all upper layers and make the Network Handler responsible for ISO-OSI layer 3 only. The resulting software concept then looks as in \autoref{fig:picExpandedSwConceptVa2_AfterOverhaul}.\\
-The new Network Handler is responsible for routing of the wireless packages and the Transport Layer does the retransmission. The ARQ and routing behavior of the application can be modified by changing configuration parameters inside the configuration file. Find information about how the responsibilities of the two new tasks was split and information about the configuration parameters that affect the routing and ARQ behavior of the application below.\\
-The SPI Handler remains unchanged and the Package Handler now generates acknowledges. Find details about the changes made on each task below.
+Within the scope of this project, the retransmission behavior has been overhauled which resulted in an expanded software concept, replacing the concept mentioned in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}.\\ 
+The new software concept splits the responsibilities of the former Network Handler into two tasks: a Network Handler and a Transport Handler. As mentioned in \autoref{sec:txtSwOutcomeVa1}, the previous software concept was based on the ISO-OSI model (see \autoref{fig:picIsoOsiModel}), with each task representing a layer. The former Network Handler task was responsible for all upper layers but because the software grew in size, it now makes sense to add a task for ISO-OSI layer 4 and all upper layers and make the Network Handler responsible for ISO-OSI layer 3 only. The resulting software concept then looks as in \autoref{fig:picExpandedSwConceptVa2_AfterOverhaul}.\\
+The new Network Handler is responsible for routing of the wireless packages and the Transport Layer does the retransmission. The ARQ and routing behavior of the application can be modified by changing configuration parameters inside the configuration file. Find information about how the responsibilities of the two new tasks was split and information about the configuration parameters that affect the routing and ARQ behavior of the application in this chapter.
+%
+\subsubsection{Acknowledgements vs. Negative Acknowledgements}
+An acknowledgment (ACK) is a message sent by the receiver to indicate that it has correctly received a data package. When the transmitter does not receive the acknowledgment before the timeout occurs, it retransmits the frame until it is either correctly received or the error persists beyond a predetermined number of retransmissions. Acknowledges are often used in a synchronous transmission mode (as implemented in \autoref{subsec:txtPackageTransmissionMode}) so that the sender has to keep track of sent packages and no reordering is required on receiver side. This is typically used on wireless links with a fast physical layer and a fast response time / acknowledge generating time.\\
+Instead of sending an acknowledgement for all frames received correctly, the receiver could send negative acknowledgements (NACK) for all missing and/or faulty packages. Synchronous transmission (as implemented in \autoref{subsec:txtPackageTransmissionMode}) is not supported with NACK and payload reordering can only be done on receiver side.  The concept of negative acknowledges is often used when data transmission is very reliable and only biterrors occur. If the wireless link switches between nearly 0\% package loss and 100\% package loss, then NACK is not ideal. If all packages are lost during transmission, the receiver will not even know that packages have been sent while the sender keeps transmitting data, not knowing about packages being lost. By the time the link is restored, the receiver asks for retransmission of the packages but depending on the duration of the link loss, they already fell of the senders backlog. With ACK enabled, the sender would have known about the faulty link earlier (because of the timeout implemented on acknowledges) and stopped sending packages all together.\\
+In practice, both ACK and NACK should be implemented because the receiver may not be able to reliably identify whether the latest package has been received, and the transmitter will usually also need to implement a timer to recover from the condition where the receiver does not respond.\\
+Because Aeroscout expects more package losses for a certain length of time and less faulty packages, the use of acknowledges within this project is justified. Negative acknowledges could be implemented in a next step.\\
+%
+\subsection{SPI Handler}
+The SPI Handler task remains unchanged.
 %
 \subsection{Package Handler}
 The Package Handler now generates acknowledges for data packages received successfully. Even though the responsibility of acknowledges received lies with the Transport Handler, the time it takes for a package to be processed by all lower layers and a generated acknowledge to traverse all lower layers again before being pushed out adds to the latency. Acknowledges should be generated as quickly as possible so the wait time if the application is configured for synchronous mode is as small as possible.\\
 Acknowledge generation has previously been handled by the Network Handler but the latency proved to be too great as the interval at which each task is executed (which can be set in the configuration file) adds to this latency as well.
 %
 \subsection{Network Handler}
-The new Network Handler task now only handles routing of the packages generated by the Transport Handler. Packages assembled by the Package Handler will be passed to the Network Handler but nothing is being done to them, they are passed onto the next queue to be processed by the Transport Handler. It is still necessary for the packages to transit through the Network Handler so that this task can process the throughput and assess how reliable one wireless link currently is. This information is needed to calculate the cost function to chose the optimal modem used for package transmission.\\
+The new Network Handler task now only handles routing of the packages generated by the Transport Handler. Packages assembled by the Package Handler will be passed to the Network Handler but nothing is being done to them, they are passed onto the next queue to be processed by the Transport Handler. It is still necessary for the packages to transit through the Network Handler so that this task can process the throughput and assess how reliable one wireless link currently is. This information is needed for the Smart Wireless Selection algorithm (see \autoref{sec:txtSmartWirelessSelection}) to chose the optimal modem used for package transmission.\\
 Packages generated by the Transport Handler are passed to the Network Handler and will be routed to the correct OutgoingPackages queue by this task. There are several configuration possibilities that determine the routing behavior of the Network Handler. See \autoref{subsec:txtNewConfigOptions} for a detailed overview.
 \subsubsection{Next Steps for Network Handler}
 Currently, the Network Handler still handles the resending of unacknowledged packages. The responsibilities of the former Network Handler have not yet fully been split into two new tasks due to a lack of time. Currently, the only responsibility handled by the Transport Handler is the generation of data packages to be sent out on wireless side and the extraction of payload bytes from packages and pushing those to the TxDeviceBytes queue for the SPI Handler to send out.\\
@@ -162,7 +170,7 @@ With the overhaul of the software concept, the application does not work correct
 %
 \subsection{Transport Handler}
 The Transport Handler should keep track of the acknowledges received and the packages sent that expect an acknowledge back. This task should have an array to internally store the unacknowledged packages so they can be resent if they are not acknowledged within the timeout.\\
-The Transport Handler is responsible for generating wireless packages from the incoming device stream. It accesses the DeviceRxBytes queue to remove bytes and put them into packages to be sent out.\\
+The Transport Handler is responsible for generating wireless packages from the device data stream. It accesses the DeviceRxBytes queue to remove bytes and put them into packages to be sent out.\\
 The Transport Handler is responsible for extracting the payload from a wireless package and sending it out on device side by pushing the bytes to the correct DeviceTxBytes queue. Payload reordering should also be done in this task in case the packages arrive in the wrong order.\\
 There are several configuration possibilities that determine behavior of the Transport Handler. See \autoref{subsec:txtNewConfigOptions} for a detailed overview.
 \subsubsection{Next Steps for Transport Handler}
@@ -174,14 +182,13 @@ Note that not all configuration possibilities have been implemented yet. Current
 %
 \subsubsection{SEND\_ACK\_PER\_WIRELESS\_CONN}
 With this parameter, the use of acknowledges can be enabled/disabled. Only when enabled for one particular wireless connection will the package be stored internally for possible resending in case no acknowledge is received within the timeout.\\
-All configuration parameters listed below are only applicable if acknowledges are enabled.\\
-Currently, the application does not work correctly with this parameter enabled.
+Currently, the application does not work correctly with this parameter enabled. The source of this issue is still to be found.
 %
 \subsubsection{LOAD\_BALANCING\_MODE}
 This configuration parameter has been introduced in the scope of this project. It can possibly hold three values:
 \begin{enumerate}
-    \item The wireless connection for the (re)send attempt is chosen according to the configuration file, first x attempts on the wireless connection with priority 1 , then y attempts on wireless connection with priority 2, etc. This is the behavior as implemented in the previous project.
-    \item The wireless connection for the (re)send attempt is chosen according to received acknowledges. Once an acknowledge is not received on one wireless connection, the next send attempts will be done with an other wireless connection. The memory of which wireless connection is currently reliable is done per device input. E.g. if one package generated from device input X does not get acknowledged on wireless connection with priority 1, all later packages from this device will be sent over wireless connection with priority 2 until one package fails to get acknowledged there, then it is back to wireless connection with priority 1. Note that this load balancing mode will only take wireless connections with priority 1 and 2 into account.
+    \item The wireless connection for the (re)send attempt is chosen according to the configuration file, first x attempts on the wireless connection with priority 1 , then y attempts on wireless connection with priority 2, etc. This is the behavior as implemented in the previous project. If acknowledges are disabled, send attempts are only done on the first priority wireless connection.
+    \item The wireless connection for the (re)send attempt is chosen according to received acknowledges. Once an acknowledge is not received on one wireless connection, the next send attempts will be done with an other wireless connection. The memory of which wireless connection is currently reliable is done per device input. E.g. if one package generated from device input X does not get acknowledged on wireless connection with priority 1, all later packages from this device will be sent over wireless connection with priority 2 until one package fails to get acknowledged there, then it is back to wireless connection with priority 1. Note that this load balancing mode will only take wireless connections with priority 1 and 2 into account. This load balancing scenario can only be chosen if acknowledges are enabled.
     \item Smart Wireless Selection: The wireless connection for the (re)send attempt is chosen according to an algorithm that takes various aspects into account. More information in \autoref{sec:txtSmartWirelessSelection}.
 \end{enumerate}
 Currently, load balancing can only be set to 1 as the other two options have not been implemented yet. Software refactoring and improvements have been done to soon support the other two load balancing options.
@@ -191,13 +198,13 @@ This parameter determines the order at which wireless connections are used for r
 It can be configured for each device and must hold values within the range 0...4. The wireless connection with highest priority has the value 1, second highest priority has the value 2 etc. Unused wireless connections for this device stream need to be configured to the value 0.\\
 Priorities need to be configured continuously, starting with priority value 1 up to the desired maximum priority. No value can be skipped between 1 and the maximum.\\
 If load balancing is set to 1 then resending is done on wireless connections in the order configured by this parameter. When configuring the same priority to multiple wireless connections, the same package will be sent out on multiple modems when (re)sending is done on this priority.\\
-If load balancing is set to 2 then all resend attempts are done on wireless connections with priority 1 and 2, alternating only if a send attempt is unsuccessful.\\
+If load balancing is set to 2 then all resend attempts are done on wireless connections with priority 1 and 2, alternating only if a send attempt is unsuccessful. If acknowledges are disabled, packages are sent out on the first priority wireless connection(s) only.\\
 If load balancing is set to 3 then this parameter is not used.\\
 This parameter is currently only supported when load balancing is set to 1.
 %
 \subsubsection{SEND\_CNT\_WIRELESS\_CONN\_DEV\_X}
 This parameter determines the number of transmission retries per wireless connection for each device data stream.\\
-If load balancing is set to 1 then the priority order of wireless connections is traversed where SEND\_CNT\_WIRELESS\_CONN\_DEV\_X determines how many times a package is retransmitted on each wireless connection.\\
+If load balancing is set to 1 and acknowledges are enabled, then the priority order of wireless connections is traversed where SEND\_CNT\_WIRELESS\_CONN\_DEV\_X determines how many times a package is retransmitted on each wireless connection.\\
 If load balancing is set to 2 then this parameter is not applicable because the wireless connection is switched upon first absence of an acknowledge.\\
 If load balancing is set to 3 then this parameter is not used.\\
 This parameter is currently only supported when load balancing is set to 1.
@@ -205,9 +212,9 @@ This parameter is currently only supported when load balancing is set to 1.
 \subsubsection{RESEND\_DELAY\_WIRELESS\_CONN}
 Each generated package holds the payload from one device and is then sent out on wireless side. For each connected device, the user can configure over which wireless connection the generated package should be sent out first and the backup wireless connections used in case the package does not get acknowledged by the receiver.\\
 This parameter specifies the acknowledge timeout for each wireless connection, how long the application waits for an acknowledge on a particular connection before retransmitting or discarding the package.\\
-If load balancing is set to 1, the data stream will be forwarded to one wireless connection as long as the acknowledge is received within this timeout. If no acknowledge is received within this timeout, the data stream will switch to the other wireless connection.
-If load balancing is set to 2, the data stream of one device will be routed to one wireless side as long as the acknowledges arrive within this timeout. If a package is not acknowledged, the data stream will be forewarded to the other wireless connection configured.\\
-If load balancing is set to 3 then this parameter is not used.\\
+If load balancing is set to 1 and acknowledges are enabled, the data stream will be forwarded to one wireless connection as long as the acknowledge is received within this timeout. If no acknowledge is received within this timeout, the data stream will switch to the other wireless connection.\\
+If load balancing is set to 2, the data stream of one device will be routed to one wireless side as long as the acknowledges arrive within this timeout. If a package is not acknowledged, the data stream will be forwarded to the other wireless connection configured.\\
+If load balancing is set to 3 then this parameter determines how long the sender waits for an acknowledge before resending the package (in case acknowledges are enabled).\\
 This parameter is currently only supported when load balancing is set to 1.
 
 %
@@ -223,30 +230,7 @@ If load balancing is set to 2, then this parameter determines how long one packa
 If load balancing is set to 3 then this parameter is not used
 %
 \subsubsection{Configuration Validation}
-The Init task (see \autoref{sec:txtInitTask}) reads the configuration file on the SD card and sets the content of the global config variable. Afterwards, the configuration plausibility is verified and invalid parameter combinations are reset to their default value.
-\begin{lstlisting}
-void validateSwConfiguration(void)
-{
-    for(int devNr=0; devNr < NUMBER_OF_UARTS; devNr++)
-    {
-        // todo: validate software configuration!
-        if(!config.SendAckPerWirelessConn[devNr])
-        {
-            config.SyncMessagingModeEnabledPerWlConn[devNr] = 0;
-        }
-    }
-    /* constrain task execution intervals */
-    UTIL1_constrain(config.SdCardSyncInterval_s, 1, 1000); /* 1sec...1000sec */
-    UTIL1_constrain(config.SpiHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
-    UTIL1_constrain(config.PackageHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
-    UTIL1_constrain(config.NetworkHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
-    UTIL1_constrain(config.TransportHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
-    UTIL1_constrain(config.ShellTaskInterval, 1, 1000); /* 1ms...1sec */
-    UTIL1_constrain(config.LoggerTaskInterval, 1, 1000); /* 1ms...1sec */
-    UTIL1_constrain(config.ThroughputPrintoutTaskInterval_s, 1, 1000); /* 1sec...1000sec */
-    UTIL1_constrain(config.ToggleGreenLedInterval, 1, 1000); /* 1ms...1sec */
-}
-\end{lstlisting} \todo{expand and copy latest code}
+The Init task (see \autoref{subsec:txtInitTask}) reads the configuration file on the SD card and sets the content of the global config variable. Afterwards, the configuration plausibility is verified and invalid parameter combinations are reset to their default value. This has only been done in a basic manner, the verification should be expanded in a next step.
 %
 %
 %
@@ -262,7 +246,7 @@ void validateSwConfiguration(void)
 All tests have been carried out with QGroundControl and the Pixhawk autopilot set up as in \autoref{fig:picQGCSetup} and with load balancing configured to 1 because this is the only load balancing option that has been implemented so far.
 %
 \subsubsection{Resending when Wireless Connection Lost}
-\spicv{TestSetupWithQGroundControl_2WlSidesConnected.png}{Setup for testing}{\label{fig:picTestingSetup}}{100}%
+\spicv{TestSetupWithQGroundControl_2WlSidesConnected.png}{Setup for testing}{\label{fig:picTestingSetup}}{120}%
 When load balancing is set to 1, the application handles retransmission as configured. Depending on the retransmission delay and the number of retries for each configured priority, the package is sent out again. All wireless connections are traversed in order of their configured priority, starting with the wireless connection priority 1.\\
 The first test scenario was with the Pixhawk connected to serial interface 0 and two cable connections between wireless 0 and wireless 1, see \autoref{fig:picTestingSetup}.The resend behavior was configured as follows:
 \begin{lstlisting}
@@ -274,8 +258,8 @@ RESEND_DELAY_WIRELESS_CONN =		100, 100, 0, 0
 DELAY_DISMISS_OLD_PACK_PER_DEV =	1000, 0, 0, 0
 \end{lstlisting}
 Four send attempts will therefore be done on wireless connection 0 before retrying four times on wireless connection 1.\\
-When disconnecting the cable on wireless connection 0, the application first tried to resend the packages on wireless connection 0 and then switched to wireless connection 1 where they were received and acknowledges successfully.\\
-When disconnecting both wireless 0 and wireless 1, the packages were dropped after the last unsuccessful send attempt.\\
+When disconnecting the cable on wireless connection 0, the application first tries to resend the packages on wireless connection 0 and then switches to wireless connection 1 where the packages are received and acknowledges successfully.\\
+When disconnecting both wireless 0 and wireless 1, the packages are dropped after the last unsuccessful send attempt.\\
 When wireless connection 0 was only unplugged shortly and payload reordering was disabled in the configuration file, the link between QGroundControl and the autopilot was never dropped. The payload on receiver side was not in proper order (according to the log file) due to the resending of old packages with new packages arriving as well. QGroundControl seems to handle this error internally by reordering the data stream itself or just discards any data that cannot be processed.
 %
 \subsubsection{Redundant Data Transmission}
@@ -289,10 +273,10 @@ RESEND_DELAY_WIRELESS_CONN =		100, 100, 0, 0
 DELAY_DISMISS_OLD_PACK_PER_DEV =	1000, 0, 0, 0
 \end{lstlisting}
 Unlike in the first test scenario, duplicate packages are sent out on wireless connection 0 and 1. The receiver will acknowledge both packages but should only stream out the payload once on device side.\\
-This has been tested first with serial terminals connected to both Serial Switches and only string characters exchanged and should later be tested the setup of Pixhawk and QGroundControl.
+This has been tested first with serial terminals connected to both Serial Switches and only string characters exchanged. Later it has also successfully been tested with the setup of Pixhawk and QGroundControl.
 %
 \subsection{Conclusion}
-Retransmission behavior is a very complex feature to implement. Because the software concept was expanded by one main task (Transport Handler), there was not enough time to implement reliability to completion. This second round of software refactoring was even more time consuming than the first round as the complexity of the application increased.\\
+Retransmission behavior is a very complex feature to implement. Because the software concept was expanded by one main task (Transport Handler), there was not enough time to implement reliability to completion. This second round of software refactoring was even more time consuming than the first round (see \autoref{sec:txtAddedFeatures}) as the complexity of the application increased.\\
 The entire software concept is still manageable and easy to understand but the implementation is growing more complex.\\
 Nevertheless, the outcome of the retransmission refactoring is a better software concept with better separation of responsibilities of each task. Furthermore, retransmission behavior has been improved and redundant package transmission is now possible. More transmission options are configurable but not implemented yet.\\
 There is a major bug with acknowledges but this will hopefully be fixed soon after this documentation is handed in.
@@ -311,41 +295,34 @@ According to \cite{RouterMetrics_Wiki}, metrics are cost values used by routers 
     \item \textbf{Traffic-Based Metrics:} Bandwidth, latency, package loss ratio, package reordering ratio, number of retransmissions required, maximum transmission unit (MTU), etc
     \item \textbf{Radio Information:} Signal strength, energy needed for transmission, transmission cost
 \end{itemize}
-Metrics in information technology use additional parameters such as hop count, path cost, communication cost etc. These are not used within this paper as we always look at the direct connection between two Serial Switches without any other devices in the middle.\\
+Metrics in information technology use additional parameters such as hop count or path cost. These are not used within this paper as we always look at the direct connection between two Serial Switches without any other devices in the middle.\\
 Traditionally, routing metrics are calculated only from information available directly on the network layer. Today, however, many researchers acknowledge the need for cross-layer approaches for designing routing metrics.\\
-According to \cite{SurveyOnRoutingMetrics}, when all paths are prone to failures, the mere existence of alternate paths is important for sending redundant data on multiple paths to facilitate timely data delivery for crucial Internet applications, e.g. sending video/audio streams. According to \cite{AlternativeInternetPaths}, alternate paths can be chosen according to criteria such as:
-\begin{itemize}
-    \item Latency
-    \item Throughput
-    \item Packet Loss
-    \item Select the most disjoint  paths in the hope that a failure on the primary Internet path will not affect the alternate path
-\end{itemize}
 The criteria controlling the metric depend on the optimization goal, e.g. minimize delay or maximize average end-to-end throughput.\\
-The following sections give an overview on how data for metrics calculation can be acquired and the challenges of implementing traffic-based metric parameters and radio information into a metric algorithm.
+The following sections give an overview on how data for metrics calculation can be acquired and the challenges of implementing traffic-based metric parameters and radio information into an algorithm.
 %
 \subsubsection{Information Acquiring Method} \label{subsec:txtInformationAcquiringMethod}
 According to \cite{SurveyOnRoutingMetrics}, there are various ways how metrics acquire the information they need. The following classes are defined:
 \begin{itemize}
-    \item \textbf{Node-related:} Information for the metric is acquired from a node without high effort. This may be fixed values like the number of interfaces of a node, configured values like the financial communication costs or variable values like the length of input and output queues.
+    \item \textbf{Node-related:} Information for the metric is acquired from a node without high effort. This may be fixed values like the number of interfaces of a node, configured values like the financial communication costs per byte exchanged or variable values like the length of input and output queues.
     \item \textbf{Passive Monitoring:} Information for the metric is gathered by observing the traffic coming in and going out of a node. In combination with other measurements, this can be used e.g. to estimate the available bandwidth.
-    \item \textbf{Piggy-back Probing:}  Measurements are done by including probing information into regular traffic or routing protocol packets without creating own packets for metric measurement. This is a common method to measure delay.
+    \item \textbf{Piggy-back Probing:}  Measurements are done by including probing information into regular traffic without creating own packets for metric measurement. This is a common method to measure delay.
     \item \textbf{Active Probing:} For this technique, special packets are generated to measure the properties of a link.
 \end{itemize}
 %
 \subsubsection{Traffic Based Metrics}
-According to \cite{SurveyOnRoutingMetrics}, when using wireless networks for Internet or other communication applications, many design goals are related to network traffic: High throughput, small delay, or limited variance of the connection quality. It is an obvious idea to incorporate traffic indicators into routing algorithms. Many metrics were proposed that attempt to do this. However, measuring traffic variables is a sophisticated challenge and the risk of obtaining unstable network behavior is high. Many metrics require some kind of probing messages in order to measure the quality of a link or a path.\\
+According to \cite{SurveyOnRoutingMetrics}, when using wireless networks for Internet or other communication applications, many design goals are related to network traffic: High throughput, small delay, or limited variance of the connection quality. It is an obvious idea to incorporate traffic indicators into routing algorithms. Many metrics were proposed that attempt to do this. However, measuring traffic variables is a sophisticated challenge and the risk of obtaining unstable network behavior is high. Many metrics require some kind of active probing messages in order to measure the quality of a link or a path.\\
 Certain traffic based metrics tend to provoke oscillating traffic patterns. This effect can be explained as follows: Once a link is recognized as good, it attracts a lot of traffic. Consequently, the link becomes jammed and it is assigned with a worse metric value.\\
 Traffic based metrics normally take the \textbf{latency} of the connection into account, which is subject to considerable variance. For this reason, most protocols do not use only the currently measured latency value to determine the metric for a link, but they utilize a weighted average and its variation (e.g. in the form of a statistical variance).\\
 \textbf{Bandwidth} routing metrics indicate the capacity of data which can be sent over a link within a given time. From the perspective of a node, this is equal to the transfer rate of a link.\\
-\textbf{Packet Loss Ratio (PLR)} is a crucial variable for all applications. A high loss ratio degrades the communication quality of non-reliable protocols (e.g. for voice or video applications). With reliable transfer protocols, it potentially forces a high number of retransmissions, slows down communication and reduces the usable bandwidth.
+\textbf{Packet Loss Ratio (PLR)} is a crucial variable for all applications. A high loss ratio degrades the communication quality of non-reliable protocols (e.g. for voice or video applications). With reliable transfer protocols, it potentially forces a high number of retransmissions, slows down communication and reduces the usable bandwidth.\\
 \textbf{Package reordering} is required if a package arrives before its predecessor. The frequency of such reordering events can be interpreted as routing metric. This variable is of special interest for real-time applications or video and voice communication. For the latter tasks, the packet reordering ratio is one of the factors that determines the delay and delay variation experienced by the user.\\
-Minimizing the number of \textbf{package retransmissions} does not only optimize the overall throughput, it does also minimize the total consumed energy if we assume constant transmission power levels.
+Minimizing the number of \textbf{package retransmissions} does not only optimize the overall throughput, it does also minimize the total consumed energy if we assume constant transmission power levels.\\
+Traffic based metrics can also take \textbf{packet size} into account as larger packets are more prone to failure.
 % 
 \subsubsection{Radio Information}
-Many wireless technologies – among them IEEE 802.11 – use beacon packets in order to detect neighbouring hosts. Through these beacons, network devices can measure the \textbf{signal strength} at which a packet is received. Signal strength can be considered as an indication for the link quality and the distance between two nodes.\\
-Unlike in wired networks, energy efficiency is a major concern in mobile networks. Sensor networks
-as well as portable communication devices only have restricted battery lifetime. This is why \textbf{transmission energy per package} should be taken into account.\\
-Furthermore, transmission cost can play a significant role. While there are no additional \textbf{costs} when using a wireless modem, sending data over GSM or even satellite can be expensive and should be taken into account.
+Many wireless technologies use beacon packets in order to detect neighbouring hosts. Beacon packets are periodically transmitted management frames containing network information. Through these beacons, network devices can measure the \textbf{signal strength} at which a packet is received. Signal strength can be considered as an indication for the link quality and the distance between two nodes. In wireless connections, local / remote RSSI and SNR are often available as signal strength parameters.\\
+Unlike in wired networks, energy efficiency is a major concern in mobile networks. Sensor networks as well as portable communication devices only have restricted battery lifetime. This is why \textbf{transmission energy per package} should be taken into account.\\
+Furthermore, \textbf{transmission cost} can play a significant role. While there are no additional data costs when using a wireless modem, sending data over GSM or even satellite can be expensive and should be taken into account.
 %
 \subsubsection{Filtering Method} \label{subsec:txtFilteringMethod}
 According to \cite{SurveyOnRoutingMetrics}, metric measurements should be filtered over time. There are three methods proposed:
@@ -361,52 +338,72 @@ According to \cite{SurveyOnRoutingMetrics}, metric measurements should be filter
 This section focuses on developing an algorithm that can be used to determine the optimal modem to use for package transmission on wireless side. The algorithm should use both traffic-related metrics and radio information.
 %
 \subsubsection{Information Acquiring Method}
-Any method mentioned in \autoref{subsec:txtInformationAcquiringMethod} can be used but easiest to implement for the Network Handler is the Piggy-back Probing where the task could add probing information to the header of a wireless packet.
+Active Probing as mentioned in \autoref{subsec:txtInformationAcquiringMethod} should be used to ensure that each wireless connection is constantly tested and all its parameters that are required in the algorithm are updated. If other information acquiring methods are used, there is a possibility that some modems are not used for traffic at all and therefore no recent information about their reliability is available.\\
+Any traffic generated by the Serial Switch itself in form of wireless packets can also be analyzed and included in the calculation to increase the sample size.\\
+Active Probing packets should be as small as possible and contain only essential probing information. 
 %
 \subsubsection{Traffic Based Metrics}
-We are interested in the short term performance of a channel to ensure that the currently most reliable modem is chosen. A simple routing algorithm could take only the Package Loss Ratio of the last five seconds into account. \\
-The algorithm could do filtering according to a Fixed History Interval (see \autoref{subsec:txtFilteringMethod}) to determine the short term performance of a channel. \\
-Information about the package loss ratio can be acquired in both cases, with acknowledges enabled and disabled without having to insert additional information into wireless packages in the following ways:
+We are interested in the short term performance of a channel to ensure that the currently most reliable modem is chosen. A simple traffic based routing algorithm could take only the Package Loss Ratio of the last five seconds into account. \\
+Information about the package loss ratio can be acquired from probing packets and by analyzing the data traffic generated by the Serial Switch. Application related traffic can be analyzed with both acknowledges disabled and enabled: 
 \begin{itemize}
-    \item \textbf{Acknowledges disabled:} The application can extract package loss information from incoming packages by evaluating if the package numbers are consecutive. Missing incoming package numbers indicate package loss.
-    \item \textbf{Acknowledges enabled:} The application can extract package loss information from both incoming packages and outgoing packages by evaluating the package number of incoming packages (they should be consecutively numbered) and taking the number of retransmissions of outgoing packages into account before an acknowledge is received.
+    \item \textbf{Acknowledges disabled:} The application can extract package loss information from incoming packages by evaluating if the package numbers are consecutive. Missing incoming package numbers indicate package loss. Note that a lack of incoming packages can both be caused by the sender not transmitting any data or packages being lost during transmission. Solely relying on information about incoming packages and not using active probing may result in faulty assumptions about a channels reliability.
+    \item \textbf{Acknowledges enabled:} The application can extract package loss information from both incoming packages and outgoing packages by evaluating the package number of incoming packages (they should be consecutively numbered) and taking the number of retransmissions of outgoing packages into account before an acknowledge is received. As with disabled acknowledges, a lack of incoming packages can both be caused by the sender not transmitting any data or packages being lost during transmission. Note that with synchronous transmission enabled, the incoming packages provide no information about the channels reliability and only the active probing packets and the outgoing packets should be included in the measurement.
 \end{itemize}
 %
 \subsubsection{Radio Information}
 As mentioned in \autoref{ch:txtModems}, both used modems support radio status reporting. With the ARF868URL, RSSI, remote RSSI, local noise and remote noise can be retrieved by entering command mode and interpreting the string returned. This requires the software to be customized to a particular modem which contradicts the idea of the Serial Switch as a universal and flexible platform.\\
-The RFD90x does radio status reporting not only in command mode but can also add this information to the MAVLink protocol. The latter requires the software to analyze the MAVLink protocol, which would again contradict the idea of the Serial Switch as a universal and flexible platform but could be useful for retrieving other information from the protocol used to exchange data.\\
-The easiest way to take the used modem into account is by adding a cost function to the algorithm so the user can assure that satellite and GSM connections are not used excessively. This could be done by an additional configuration parameter in the config file, limited to values in the range 0 to 100 with low values being used for modems that should only be used as a back up, zero if they should not be used at all.
+The RFD900x does radio status reporting not only in command mode but can also add this information to the MAVLink protocol. Acquiring radio information from the latter requires the software to analyze the MAVLink protocol, which would again contradict the idea of the Serial Switch as a universal and flexible platform but could be useful for retrieving other information from the protocol.\\
+The easiest way to take the used modem into account is by adding a cost function to the algorithm so the user can assure that satellite and GSM connections are not used excessively which would results in high data transfer expenses. This could be done by an additional configuration parameter in the config file (COST\_PER\_MODEM), limited to values in the range 0 to 100 with low values for modems that should only be used as a back up, zero if they should not be used at all. The sum of all cost values of all modems should be 100. This cost value not only represents data transfer expenses but can also be proportional to reliability and bandwidth of a used modem.\\
+\textbf{Example 1:} If two identical modems are connected on serial interfaces 0 and 1, then the cost value in the config file would be set to:\\
+COST\_PER\_MODEM = 50, 50, 0, 0\\
+\textbf{Example 2:} If a reliable wireless modem is connected on serial interface 0, a slightly less reliable modem is connected on serial interface 1 and an expensive GSM data transfer is used on serial interface 2, then the cost value in the config file could be set to:\\
+COST\_PER\_MODEM = 50, 40, 10, 0
+%
+\subsubsection{Filtering Method}
+\spicv{FilteringMethod.png}{Delay caused by filtering the samples over 5 seconds}{\label{fig:picFilteringMethod}}{140}%
+The algorithm could do filtering according to a Fixed History Interval (see \autoref{subsec:txtFilteringMethod}) to determine the short term performance of a channel. \\
+Filtering could be done over an interval of 5 seconds so that the amount of data lost when transmission over the chosen channel fails is kept relatively small.\\
+Generally, when filtering is introduced, the system response will be delayed. This is also the case with a Fixed History Interval. Consider a Serial Switch with two modems attached, modem 1 experiences no package loss at first while about half the packages are lost during transmission on modem 2 (see \autoref{fig:picFilteringMethod}). At time t0, transmission with modem 1 fails completely while modem 2 still has a package loss ration of about 50\%. Ideally, the algorithm would immediately route all traffic through modem 2 as this route is now more reliable. But because of the delay introduced by filtering, data will continue to be routed through modem 1 until time t1. Only at time t1 does the algorithm consider modem 2 as more reliable than modem 1. The delay introduced by the Smart Wireless Selection algorithm is therefore $t1 - t0$.\\
+At time t2, transmission with modem 1 is again successful while the package loss ratio of modem 2 is still about 50\%. The algorithm would now ideally route traffic through modem 2 again but because of filtering, the Smart Wireless Selection algorithm will only regard modem 1 as more reliable than modem 2 at time t3.
 %
 \subsubsection{Algorithm}
-Package Loss Ratio should be filtered over time with a Fixed History Interval and multiplied with the cost function of the modem. The following equation could be implemented if \textbf{no acknowledges} are configured:
+Package Loss Ratio should be filtered over time with a Fixed History Interval and multiplied by the cost function of the modem. The following equation could be implemented if \textbf{no acknowledges} are configured:
 \begin{equation}
-Z = \frac{s_R}{n_R} * c 
-\end{equation}
-$Z$ = output of weighting function per wireless modem\\
-$n_R$ = number of packages that should have been received within the last 5 seconds, highest package number - lowest package number\\
-$s_R$ = number of packages that were received with consecutive package numbering\\
-$c$ = cost function per modem, $c \in [0, 100]$\\\\
-%
-The following equation could be implemented if \textbf{acknowledges} are configured and synchronous transmission is disabled:
-\begin{equation}
-Z = \frac{s_R}{n_R} * \frac{s_T}{n_T} * c
+Z = \frac{s_R}{n_R} * \frac{s_P}{n_P} * c 
 \end{equation}
 where\\
 $Z$ = output of weighting function per wireless modem\\
-$n_R$ = number of packages that should have been received within the last 5 seconds, highest package number - lowest package number\\
-$s_R$ = number of packages that were received with consecutive package numbering\\
-$n_T$ = number of packages sent within the last 5 seconds\\
-$s_T$ = number of packages that were acknowledged within the last 5 seconds\\
-$c$ = cost function per modem, $c \in [0, 100]$\\\\
+$n_R$ = number of application packages that should have been received within the last 5 seconds, highest package number - lowest package number\\
+$s_R$ = number of application packages that were received with consecutive package numbering\\
+$n_P$ = number of active probing frames sent within the last 5 seconds\\
+$s_P$ = number of active probing frames successfully acknowledged within the last 5 seconds\\
+$c_i$ = cost function for modem i, $c_i \in [0, 100]$\\\\
+%
+The following equation could be implemented if \textbf{acknowledges} are configured and synchronous transmission is disabled:
+\begin{equation}
+Z = \frac{s_R}{n_R} * \frac{s_T}{n_T} * \frac{s_P}{n_P} * c
+\end{equation}
+where\\
+$Z$ = output of weighting function per wireless modem\\
+$n_R$ = number of application packages that should have been received within the last 5 seconds, highest package number - lowest package number\\
+$s_R$ = number of application packages that were received with consecutive package numbering\\
+$n_T$ = number of application packages sent within the last 5 seconds\\
+$s_T$ = number of application packages that were acknowledged within the last 5 seconds\\
+$n_P$ = number of active probing frames sent within the last 5 seconds\\
+$s_P$ = number of active probing frames successfully acknowledged within the last 5 seconds\\
+$c_i$ = cost function for modem i, $c_i \in [0, 100]$\\\\
 %
 If \textbf{acknowledges and synchronous transmission} are enabled, the sender should only extract information from outgoing packages as the incoming packages are ideally in order. The following equation could be implemented:
 \begin{equation}
-Z = \frac{s_R}{n_R} * c 
+Z = \frac{s_R}{n_R} * \frac{s_P}{n_P} * c 
 \end{equation}
+where \\
 $Z$ = output of weighting function per wireless modem\\
-$n_T$ = number of packages sent within the last 5 seconds\\
-$s_T$ = number of packages successfully acknowledged within the last 5 seconds\\
-$c$ = cost function per modem, $c \in [0, 100]$\\
+$n_T$ = number of application packages sent within the last 5 seconds\\
+$s_T$ = number of application packages successfully acknowledged within the last 5 seconds\\
+$n_P$ = number of active probing frames sent within the last 5 seconds\\
+$s_P$ = number of active probing frames successfully acknowledged within the last 5 seconds\\
+$c_i$ = cost function for modem i, $c_i \in [0, 100]$\\
 %
 %
 %

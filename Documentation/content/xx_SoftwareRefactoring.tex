@@ -1,6 +1,6 @@
 % Software Refactoring
 %
-In the scope of a previous project, the basic functionalites of the Serial Switch were implemented. The end product was working but never tested throughly. Not all features were implemented that are needed for this next project phase. So in order to continue, the application first needed some refactoring and clean up before starting with the implementation of data security and reliability of data exchange.\\
+In the scope of a previous project (title ``UAV Serial Switch``), the basic functionalites of the Serial Switch were implemented. The end product was working but never tested throughly. Not all features were implemented that are needed for this next project phase. So in order to continue, the application first needed some refactoring and clean up before starting with the implementation of data security and reliability of data exchange.\\
 This chapter focuses on the improvements made on the UAV Serial Switch software that was developed in the previous project. As mentioned in the requirements in \autoref{sec:txtAufgabenstellung}, an order for Teensy adapter boards needs to be placed and an overview of the task and interrupt priorities given. The refactoring shall at least include an added logging task and improved debug output.\\
 The status of the software and hardware at the start of the project are described in more detail below, followed by the improvements made in the scope of this project.
 %
@@ -9,7 +9,7 @@ The status of the software and hardware at the start of the project are describe
 %
 %
 %
-\section{Outcome of Previous Project}
+\section{Status of Previous Project}
 In previous projects, the basic functionalities of the Serial Switch were implemented. A hardware was designed and software was written for it. More details about the components provided can be taken from the sections below.
 %
 %
@@ -26,25 +26,25 @@ The SPI to UART converter is needed as an interface between the serial interface
 %
 \subsubsection{Microcontroller}
 \spicv{Teensy35.png}{Teensy 3.5}{\label{fig:picTeensy35}}{80}%
-In a first version of the Serial Switch, the Teensy 3.2 development board was used as a main microcontroller unit but was soon replaced by the Teensy 3.5 development board which is still used today. The Teensy 3.5 can be seen in \autoref{fig:picTeensy35}. The Teensy 3.5 features a more powerful microcontroller, more memory and a hardware encryption unit which the Teensy 3.2 does not have. It is therefore more suitable for data encryption implemented in the scope of this project.
+In a first version of the Serial Switch, the Teensy 3.2 development board was used as a main microcontroller unit but was soon replaced by the Teensy 3.5 development board which is still used today. The Teensy 3.5 can be seen in \autoref{fig:picTeensy35}. It features a more powerful microcontroller, more memory and a hardware encryption unit which the Teensy 3.2 does not have. It is therefore more suitable for the implementation of a secure data link, as listed in the requirements (see \autoref{sec:txtAufgabenstellung}).
 %
 \subsubsection{Adapter Board}
 \spicv{TeensyAdapterBoard.png}{Adapter board from Teensy 3.2 to Teensy 3.5 footprint}{\label{fig:picAdapterBoard}}{80}%
-Because the baseboard has originally been designed for the less powerful and slightly smaller Teensy 3.2, an adapter board was developed to map the pins of the Teensy 3.5 to the footprint of the Teensy 3.2. The adapter board can be seen in \autoref{fig:picAdapterBoard}.\\
+Because the baseboard has originally been designed for the less powerful and slightly smaller Teensy 3.2, an adapter board was developed to map the pins of the Teensy 3.5 to the footprint of the Teensy 3.2 development board. The adapter board can be seen in \autoref{fig:picAdapterBoard}.\\
 In the scope of the UAV Serial Switch project, the adapter board has been ordered at the interal production at HSLU several times but all boards came back with  multiple production errors (due to no silk overlay). The previous project was finished with only one functional adapter board and more were ordered externally in the scope of this project. The new Teensy adapter boards now have a yellow silk overlay and were assembled and tested successfully.
 %
 %
 %
 \subsection{Software} \label{sec:txtSwOutcomeVa1}
 \spic{UnsuccessfulPackageTransmission.png}{Package retransmission in case of no acknowledge received}{\label{fig:picPackageTransmission}}
-The Teensy 3.5 development board acts as the main microcontroller and runs with the operating system FreeRtos V9.0.1.\\
+The Teensy 3.5 development board acts as the main microcontroller and runs with the operating system FreeRTOS V9.0.1.\\
 The main functionality of the software is data transmission on wireless side. For this, bytes read on device side are collected and put into packages for transmission. Received packages are checked for validity and their payload extracted and pushed out on device side.\\
 Acknowledges can be configured to make the data transmission more reliable. If acknowledges are enabled, a package is resent in case no acknowledge is received within the specified timeout. A visualization of this can be seen in \autoref{fig:picPackageTransmission}.\\
-\spic{SwConceptVa1.png}{Simplified software concept at the beginning of this project, showing only the three main tasks}{\label{fig:picSimplifiedSwConceptVa1}}%
+\spicv{SwConceptVa1.png}{Simplified software concept at the beginning of this project, showing only the three main tasks}{\label{fig:picSimplifiedSwConceptVa1}}{120}%
 \spicv{IsoOsiModel.png}{ISO OSI Model}{\label{fig:picIsoOsiModel}}{60}%
 \spic{ExpandedSwConceptVa1.png}{Full software concept at the beginning of this project, showing all tasks}{\label{fig:picFullSwConceptVa1}}%
 The software can be configured by modifying the configuration ini file saved on the SD card located on the Teensy 3.5 development board.\\
-The main functionality of the software is provided by three tasks, a simplified software concept can be seen in \autoref{fig:picSimplifiedSwConceptVa1}. Task intercommunication is done with queues. Data is pushed onto the queue by one task and popped from the queue by another task for processing. The ISO-OSI model is taken as a reference guide for the responsibilities of each task. The ISO-OSI Model is a representation of a communication standard, as seen in \autoref{fig:picIsoOsiModel}. According to \cite{IsoOsiModel_Wikipedia}, the 7 layers have the following responsibilities:\begin{enumerate}
+The main functionality of the software is provided by three tasks, a simplified software concept can be seen in \autoref{fig:picSimplifiedSwConceptVa1}. Task intercommunication is done with queues. Data is pushed onto the queue by one task and popped from the queue by another task for processing. The ISO-OSI model is taken as a reference guide for the responsibilities of each task. The ISO-OSI Model is a representation of a communication standard, as seen in \autoref{fig:picIsoOsiModel}. According to \cite{IsoOsiModel_Wikipedia}, the seven layers have the following responsibilities:\begin{enumerate}
     \item Physical Layer: This layer is responsible for the relationship between the application and the physical transmission medium.
     \item Data Link Layer: This layer is responsible for error detection and correction, determines the protocol to establish and does network layer protocol encapsulation
     \item Network Layer: This layer handles data routing. Message delivery at this layer is not necessarily guaranteed to be reliable
@@ -53,7 +53,7 @@ The main functionality of the software is provided by three tasks, a simplified 
     \item Presentation Layer: This layer is responsible for the delivery and formatting of information to the application layer for further processing or display
     \item Application Layer: This layer standardizes communication and interfaces used in a network
 \end{enumerate}
-The SPI Handler represents ISO-OSI Layer 1, the Package Handler represents ISO-OSI Layer 2 and the Network Handler represents layer 3 and all upper layers in the ISO-OSI model.\\
+In the software concept implemented (see \autoref{fig:picSimplifiedSwConceptVa1}), the SPI Handler represents ISO-OSI Layer 1, the Package Handler represents ISO-OSI Layer 2 and the Network Handler represents layer 3 and all upper layers in the ISO-OSI model.\\
 Additional tasks such as the ThroughputPrintout task, the Blinky task or the Shell task are for debug purposes only. There is also an Init task which reads the configuration file saved on the SD card, creates all other tasks and afterwards kills itself. A diagram with the full overview of all tasks and their interfacing queues can be seen in \autoref{fig:picFullSwConceptVa1}.\\
 Details about the purpose of each task can be taken from below. For a full insight into each task, suggested improvements and implementation details, please consult the documentation of the UAV Serial Switch project.
 %
@@ -71,13 +71,13 @@ The Network Handler collects data bytes from the RxDeviceBytes queues, generates
 %
 \subsubsection{Shell}
 The Shell task is responsible for the RTT interface. As long as there is an J-Link connection to the target, even with no ongoing debug session, either the RTT Viewer or RTT Client can be started on the connecting computer to access the information provided by the Shell task.\\
-The Shell task reads and parses commands supported by the Processor Expert components used. For a list of supported commands, type "help" into the RTT terminal. Components that currently support commands from the Shell are:\begin{itemize}
+The Shell task reads and parses commands supported by the Processor Expert components used. For a list of supported commands, type ``help`` into the RTT terminal. Components that currently support commands from the Shell are:\begin{itemize}
     \item FreeRTOS
     \item FAT File System
     \item Green LED pin
     \item TimeDate component
 \end{itemize}
-The same terminal of the Shell task is also used by the Throughput Printout task to provide information about the performance of the application. The Throughput Printout task pushes debug information onto the interfacing shell queue and upon every execution, the Shell task prints all strings found inside that queue.
+The same terminal of the Shell task is also used by the Throughput Printout task (and all other tasks) to periodically provide information about the performance of the application. For this, the Throughput Printout task pushes debug information onto the interfacing shell queue and upon every execution, the Shell task prints all strings found inside that queue.
 %
 \subsubsection{Throughput Printout}
 This task provides information about the bytes read from and written to the hardware buffer. It also provides information about the packages sent and received on wireless side, bytes lost and general errors and warnings of by the application.\\
@@ -86,12 +86,12 @@ All debug information is printed out on the RTT interface and is therefore only 
 \subsubsection{Blinky}
 This task periodically toggles the green LED on the baseboard.
 %
-\subsubsection{Init} \label{subsubsec:txtInitTask}
+\subsubsection{Init} \label{subsec:txtInitTask}
 This task is the only task created upon startup of the application and runs as soon as the scheduler is started. It reads the configuration file on the SD card and fills the global config variable that is later accessed by all other tasks. Only when the configuration file is read and the content of the config variable verified does this task create all other tasks and afterwards kills itself.\\
 It is not possible to read the SD card without the scheduler being started beforehand as the Init task accessed the FatFs file system which requires the scheduler to be running. Furthermore, because all other tasks access the global config variable which is filled within the Init task, the other tasks are created and started later by the Init task.
 %
 \subsubsection{Idle}
-This task is running when no other task is. It is provided by the FreeRtos and no changes have been made to it. It is only listed here for completeness and for the reader to have a full overview of all tasks running.
+This task is running when no other task is executing. It is provided by the FreeRTOS and no changes have been made to it. It is only listed here for completeness and for the reader to have a full overview of all tasks running.
 %
 \subsubsection{Task Priorities} \label{subsec:txtTaskPriorities}
 The application consists of the tasks mentioned above where each task runs with the following priority:
@@ -103,13 +103,14 @@ The application consists of the tasks mentioned above where each task runs with 
     \item Throughput Printout:	\tab tskIDLE\_PRIORITY+1
     \item Blinky:				\tab tskIDLE\_PRIORITY+1
     \item Init:					\tab tskIDLE\_PRIORITY+2
+    \item Idle:					\tab tskIDLE\_PRIORITY
 \end{itemize}
-Logically high priority tasks have a high priority number and logically low priority tasks have a low priority number. The maximum priority is configurable in the FreeRtos Processor Expert component and is set to 6. The highest priority task can therefore run with priority tskIDLE\_PRIORITY+5, because the lowest priority number is 0 which is tskIDLE\_PRIORITY. Only the Idle task should be running with tskIDLE\_PRIORITY as it is the fallback task for the scheduler when no other task is ready for execution.
+Logically high priority tasks have a high priority number and logically low priority tasks have a low priority number. The maximum priority is configurable in the FreeRTOS Processor Expert component and is set to 6. The highest priority task can therefore run with priority tskIDLE\_PRIORITY+5, because the lowest priority number is 0 which is tskIDLE\_PRIORITY. Only the Idle task should be running with tskIDLE\_PRIORITY as it is the fallback task for the scheduler when no other task is ready for execution.
 %
 \subsubsection{Interrupt Priorities}
-The FreeRtos used allows for 16 interrupt priority levels, with 0 being the logically highest priority and 15 being the logically lowest priority. These priorities are have been implemented with four bits, resulting in the following possible interrupt values:
+The FreeRTOS used allows for 16 interrupt priority levels, with 0 being the logically highest priority and 15 being the logically lowest priority. These possible priorities are have been implemented with four bits, resulting in the following possible interrupt values:
 \begin{itemize}
-    \item Hexadecimal: 0x00, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90 0xA0, 0xB0 0xC0, 0xD0, 0xE0, 0xF0
+    \item Hexadecimal: 0x00, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xA0, 0xB0, 0xC0, 0xD0, 0xE0, 0xF0
     \item Decimal: 0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240
 \end{itemize}
 These values map to priority level 0 to 15.\\
@@ -118,7 +119,7 @@ The following components within this project use hardware interrupts:
 \begin{itemize}
     \item RNG: Random Number Generator, used to create session number for Package Handler task
     \item SPI: Serial interface, used by SPI Handler task to communicate with hardware buffers
-    \item SPI2: Serial interface, used by FatFs which is again used by the Logging task to communicate with SD card 
+    \item SPI2: Serial interface, used by FatFs which is again used by the Logging task to store data on the SD card 
     \item RTC: Real Time Clock, used by the FatFS but no RTC hardware component or battery attached so the RTC is not consistend across reboots and power outs
 \end{itemize}
 The interrupt priorities set inside this application can be see in the file Vector\_Config.h and have the following values:
@@ -129,17 +130,17 @@ The interrupt priorities set inside this application can be see in the file Vect
     \item RTC: 112 or 0x70
 \end{itemize}
 %
-\subsubsection{Known Issues and Missing Features}
+\subsubsection{Known Issues and Missing Features} \label{subsec:txtIssuesAndMissingFeatures}
 Detailed information about the issues with the provided application can be taken from the documentation of the previous project UAV Serial Switch. Major issues that need to be fixed or added are the following: \begin{itemize}
     \item Packages are not numbered consecutively so there is no way for the receiver to know if a package is missing.
-    \item Package reordering is not implemented, the payload of each received package is pushed out immediately. If packages are not received in correct order, e.g. because a package was lost and then retransmitted but in the meanwhile a newer package arrived, the payload sent out on device side is in a wrong order and may therefore be useless for the connected device
-    \item The CRC check of both header and payload is implemented but still commented out because of some issues. Currently, with CRC check enabled, most packages get discarded because of a faulty header.
+    \item Package reordering is not implemented, the payload of each received package is pushed out immediately. If packages are not received in correct order, e.g. because a package was lost and then retransmitted but in the meanwhile a newer package arrived, the payload sent out on device side is in a wrong order and may therefore be useless for the receiver.
+    \item The CRC check of both header and payload is implemented but still commented out because of some issues. Currently, with CRC check enabled, most packages get discarded because of a faulty header. The cause of this problem is a currently unknown software bug.
     \item It is not possible to transmit redundant data over several modems because only packages are numbered and the payload is not. The receiver would not know when the received payload is redundant and could be discarded because package numbering is handled per wireless connection and the same package receives different package numbers when being sent out over multiple modems.
     \item Logging has not been implemented yet.
 \end{itemize}
 %
 \subsection{Conclusion}
-With two Teensy adapter boards successfully assembled and tested, work on the software can be started. In this section, all interrupt and task priorities have been analyzed and are configured correctly.
+With two Teensy adapter boards successfully assembled and tested, work on the software can now be started. In this section, an overview of all interrupt and task priorities has been given.
 %
 %
 %
@@ -151,16 +152,16 @@ With two Teensy adapter boards successfully assembled and tested, work on the so
 %
 \section{Added Features} \label{sec:txtAddedFeatures}
 \spic{ExpandedSwConceptVa2_BeforeOverhaul.png}{Software concept after added features}{\label{fig:picExpandedSwConceptVa2_BeforeOverhaul}}
-Before starting with the implementation of data security and reliability of data exchange, the current software needs to undergo refactoring and some features need to be added. The resulting software concept looks as in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}. Details about the added features can be found below.
+Before starting with the implementation of data security and reliability of data exchange, the current software needs to undergo refactoring and the features mentioned above (\autoref{subsec:txtIssuesAndMissingFeatures}) need to be added. The resulting new software concept looks as in \autoref{fig:picExpandedSwConceptVa2_BeforeOverhaul}. Details about the added features can be found below.
 %
 %
 \subsection{Logging} \label{subsec:txtLoggingTask}
-All exchanged data has to be logged. This was in fact part of the requirements for the previous project but could not be implemented due to a lack of time. Therefore it was implemented in the scope of this project.\\
-A task was added to the software that handles data logging only. The Package Handler assembles packages out of received bytes and pushes the successfully assembled and valid packages to a queue for the Network Handler to process. When logging is enabled, the Package Handler also creates a copy of the assembled package and pushes it to the IncomingPackages queue of the Logger.\\
-The Network Handler puts bytes from the device byte stream into packages and pushes those onto the OutgoingPackages queue of the Package Handler for further processing. When logging is enabled, a copy of the package is created and pushed onto the OutgoingPackages queue of the Logger task.\\
+All exchanged data has to be logged. This was in fact part of the requirements for the previous UAV Serial Switch project but could not be implemented due to a lack of time. Therefore it was implemented in the scope of this project.\\
+A dedicated task was added that handles data logging only. The Package Handler assembles packages out of received bytes and pushes the successfully assembled and valid packages to a queue for the Network Handler to process. When logging is enabled, the Package Handler also creates a copy of the assembled package and pushes it to the IncomingPackages queue of the Logger.\\
+The Network Handler puts bytes from the device byte stream into packages and pushes those packages onto the OutgoingPackages queue of the Package Handler for further processing. When logging is enabled, a copy of the package is created and pushed onto the OutgoingPackages queue of the Logger task.\\
 Logging can be enabled by setting the LOGGING\_ENABLED parameter to 1 in the configuration file located on the SD card. There is also a LOGGER\_TASK\_INTERVAL parameter that determines the execution period of this task.\\
 When logging is enabled, each package in the interfacing queues is converted to a comma separated values string and written into the correct log file. The log files are named accordingly, e.g. all packages in the OutgoingPackages queue for wireless connection 2 are logged into the file txPakWl2.log and all packages in the IncomingPackages queue for wireless connection 1 are logged into the file rxPakWl1.log.\\
-Upon startup of the application, the Logger opens all existing log files, moves to the end of the files and adds the header. Periodically, the Logger task will pull packages from its interfacing queues, convert them into log strings and write them to the SD card. A sample log file could look as follows:
+Upon startup of the application, the Logger opens all existing log files, moves to the end of the files and adds the header. On every periodic task execution, the Logger task will pull packages from its interfacing queues, convert them into log strings and write them to the SD card. A sample log file could look as follows:
 %
 \begin{lstlisting}
 PackageType;DeviceNumber;SessionNumber;PackageNumber;PayloadNumber;PayloadSize;CRC8_Header;Payload;CRC16_Payload
@@ -181,7 +182,7 @@ PackageType;DeviceNumber;SessionNumber;PackageNumber;PayloadNumber;PayloadSize;C
 The log file output can easily be imported into an Excel file, the values separated and visualized.\\
 When the microcontroller writes data to the SD card, the write process does not necessarily take place right away. The main microcontroller on the Teensy has an internal buffer of 512 Bytes and only transfers the content of that buffer down to the SD card when this buffer is full. This write process can be forced by executing a FatFs flush command on the Teensy which results in the internal buffer content being written to the SD card immediately.\\
 To ensure that log data is saved on the SD card periodically and not only when the internal buffer is full, the interval at which the flush command is executed can be specified with the parameter SD\_CARD\_SYNC\_INTERVAL (in seconds) in the configuration file.\\
-The task interval at which elements inside the interfacing queues (OutgoingPackages and IncomingPackages) are processed and converted to a log string can be specified with the parameter LOGGER\_TASK\_INTERVAL in the configuration file on the SD card.
+The task interval at which elements inside the interfacing queues (OutgoingPackages and IncomingPackages) are processed and converted to a log string can be specified with the parameter LOGGER\_TASK\_INTERVAL in the configuration file on the SD card. An example of a full configuration file (including a description of all parameters) can be found in the Appendix \autoref{app:txtConfigFile}.
 %
 \subsubsection{Next Steps for Logging Task}
 The standard SD (Secure Digital) format was used inside this application for file access and storage on the memory card. According to \cite{SD_Wikipedia}, SD uses a 9-pin connector as an interface are there are three transfer modes supported:\begin{itemize}
@@ -189,16 +190,16 @@ The standard SD (Secure Digital) format was used inside this application for fil
     \item One-bit SD mode with separate command and (bidirectional) data channel and a proprietary transfer format
     \item Four-bit SD mode (uses extra pins plus some reassigned pins) to support four bit wide parallel transfers. The commands are the same as with one-bit SD mode
 \end{itemize}
-All 9 pins of the memory card slot are routed to the main microcontroller on the Teensy 3.5. For communication, the SPI mode is used because there is a byte-oriented hardware SPI component available on the microcontroller. This is the fastest mode for the Teensy because with the one-bit or four-bit SD mode, bits would have to be manually transferred one at a time in software (bit-banging) and bidirectionality of the data pins would have to handled in software as well.\\
+All 9 pins of the memory card slot are routed to the main microcontroller on the Teensy 3.5. For communication, the SPI mode is used because there is a byte-oriented hardware SPI component available on the microcontroller. This is the fastest mode for the Teensy because with the one-bit or four-bit SD mode, bits would have to be manually transferred one at a time in software (bit-banging) and bidirectionality of the data pins would have to be handled in software as well.\\
 Also, the SPI-bus interface mode is the only type that does not require a host license for accessing SD cards.\\
 Instead of using the SD format, the application could use the SHDC format. SHDC is an extension of SD, with the same physical connections and dimensions but an increased storage capacity and a FAT32 filesystem instead of FAT12 or FAT16 as supported by SD. According to \cite{SD_SiliconLabs}, SD supports data transfer speeds of 0.9 - 20MB/s while the SHDC supports data transfer speeds of 2 - 40MB/s.\\
 Because there was no ready to use Processor Expert component available for SHDC, SD was used. In a later project, the SD component should be replaced with the faster SHDC component to reduce CPU time of the logging task.
 %
 \subsection{CRC}
-The bug with the faulty CRC check has been found and fixed. Both header and payload CRC are now checked inside the Package Handler task.
+The bug with the faulty CRC check has been found and fixed. Both header and payload CRC are now checked inside the Package Handler task. If a package is faulty, it is discarded by this task.
 %
 \subsection{Debug Output}
-The periodic debug text is calculated and assembled by the Throughput Printout task, pushed onto the Shell queue and printed out to the terminal upon the next execution of the Shell task. By adjusting the THROUGHPUT\_PRINTOUT\_TASK\_INTERVAL (in seconds), the frequency of the debug output can be set.
+The periodic debug text is calculated and assembled by the Throughput Printout task, pushed onto the Shell queue and printed out to the terminal upon the next execution of the Shell task. By adjusting the THROUGHPUT\_PRINTOUT\_TASK\_INTERVAL (in seconds), the frequency of the debug output can be set. \newpage
 \begin{lstlisting}
 *******************************************************************************************
 Device 0 ------>   0 B/s -------> ================= ------->   0 B/s   -------> Wireless 0
@@ -228,13 +229,13 @@ SpiHandler: Total number of dropped bytes per wireless byte input: 0,0,0,0
 
 *******************************************************************************************
 \end{lstlisting}
-The ThroughputPrintout task does its calculations with float point arithmetics. If CPU occupancy becomes an issue, all variables should be changed to integers so the calculations become easier for the microcontroller.
+The ThroughputPrintout task does its calculations with float point arithmetics. If CPU occupancy becomes an issue, all variables should be changed to integers so the calculations are less resource-intensive for the microcontroller.
 %
 %
 \subsection{Package Numbering / Payload Numbering}
-In the previous implementation, the packages were not numbered consecutively but instead the system tick time (which is the software running time) was used as a package number. There was no means for the receiver to know if a package was missing.\\
-A continuous incrementing package number is now used that replaces the previous system time inside the package header. Each wireless connection now has a separate package counter.\\
-The package header was also expanded by a payload counter because it was not possible to send the same package out on multiple wireless interfaces and discard all redundant packages on receiving side. The receiver would not know if a package was duplicated because of the separate package numbering per wireless connection. Therefore, a payload counter was introduced as well. Now the Network Handler task can not only handle resending of unacknowledged packages and do payload reordering (thanks to the package number), but it can also discard duplicated packages because each device byte stream now has its own continuous payload counter. The wireless package structure now looks as follows:
+In the previous implementation, the packages were not numbered consecutively but instead the system tick time (which is the software running time) was used as a package number. There was no way for the receiver to know if a package was missing.\\
+A continuously incrementing package number is now used that replaces the previous system time inside the package header. Each wireless connection now has a separate package counter.\\
+The package header was also expanded by a payload counter because it was not possible to send the same package out on multiple wireless interfaces and discard all redundant packages on receiving side. The receiver would not know if a package was duplicated because of the separate package numbering per wireless connection. Therefore, a payload counter was introduced as well. Now the Network Handler task can not only handle resending of unacknowledged packages and do payload reordering (thanks to the package number), but it can also discard duplicated packages because each device byte stream now has its own continuous payload counter. The wireless package structure now looks as follows: \newpage
 \begin{lstlisting}
 /*! \enum ePackType
 *  \brief There are two types of packages: data packages and acknowledges.
@@ -266,9 +267,10 @@ typedef struct sWirelessPackage
     uint16_t crc16payload;
 } tWirelessPackage;
 \end{lstlisting}
+For simplicity, a stripped version of the structure is shown. In the software project, the wireless package structure also holds variables to store the retransmission behavior of a particular package.
 %
 \subsubsection{Next Steps for Package Numbering / Payload Numbering}
-Currently, the application allocates two bytes in the package header for package numbering and two bytes for payload numbering. It suffices to use one byte per parameter. This should be changed in the next software revision to keep the package header as small as possible.
+Currently, the application allocates two bytes in the package header for package numbering and two bytes for payload numbering. It suffices to use one byte per parameter as the software will not need keep track of more than 256 packages before the counter restarts at zero. This should be changed in the next software revision to keep the package header as small as possible.
 %
 %
 \subsection{Payload Reordering}
@@ -290,17 +292,18 @@ When acknowledges are configured on a wireless connection, there are two ways on
     \item \textbf{Synchronous transmission:} The next package is only sent out when the previous package has been acknowledged
     \item \textbf{Asynchronous transmission:} Packages are sent out continuously without waiting on the acknowledge of the previous package
 \end{itemize}
-Synchronous transmission can be enabled for each wireless interface with the parameter SYNC\_MESSAGING\_MODE\_ENABLED\_PER\_WL\_CONN. If no acknowledge is configured for a wireless connection, this parameter is ignored on that interface.
+Synchronous transmission can be enabled for each wireless interface with the parameter\\ 
+SYNC\_MESSAGING\_MODE\_ENABLED\_PER\_WL\_CONN. If no acknowledge is configured for a wireless connection, this parameter is ignored on that interface.
 %
 \subsubsection{Next Steps for Package Transmission Mode}
 There is no timeout implemented on this parameter. If a package is never acknowledged, that wireless channel will infinitely be blocked. A timeout should be implemented and the behavior tested with both packages that are acknowledged only after being resent and packages that are never received correctly and therefore never acknowledged.
 %
 %
 \subsection{Static Memory Allocation}
-Previously, memory for all tasks and queues was allocated dynamically which resulted in \todo{why????}.\\
-Static memory allocation can be enabled inside the FreeRtos Processor Expert component. Now only the Init tasks still uses dynamically allocated memory because it later deletes itself. All other tasks including their interfacing queues use static memory allocation.
+Previously, memory for all tasks and queues was allocated dynamically. Now, memory allocation for tasks and queues is done statically by default. Dyanmic memory allocation can be reenabled inside the FreeRTOS Processor Expert component.\\
+With static memory allocation, only the Init tasks still uses dynamically allocated memory because it later deletes itself. All other tasks including their interfacing queues allocate their memory statically.
 %
 %
 \subsection{Conclusion}
-Adding missing features is a very time consuming task. There is still lots of work to be done and most new features were implemented in a very basic manner. The functionality of the overall software has improved but should not be used in a end product as it is. Time should be invested in refactoring the application first.\\
-The refactored application is now ready to support payload reordering in case packages are not received in correct order. Both consecutive package and payload numbering have been introduced and a logger task has been added. The analysis of the runtime behavior of the logger (as requested in \autoref{sec:txtAufgabenstellung}) will be subject of \autoref{sec:SystemAnalysis}.
+Adding missing features is a very time consuming task. There is still lots of work to be done and most new features were implemented in a very basic manner. The functionality of the overall software has improved but should not be used in a end product as it is. Time should be invested in refactoring the application again.\\
+The current application is now ready to support payload reordering in case packages are not received in correct order. Both consecutive package and payload numbering have been introduced and a logger task has been added. The analysis of the runtime behavior of the logger (as requested in \autoref{sec:txtAufgabenstellung}) will be subject of \autoref{sec:SystemAnalysis}.

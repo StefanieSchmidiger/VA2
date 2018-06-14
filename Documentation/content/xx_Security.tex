@@ -31,7 +31,7 @@ A CRC is an example of a simple hash function and is used to check if the messag
 Integrity only does not provide security against tempering with the message itself. If someone knows the hash algorithm used, a message can be modified and its hash value recalculated without the receiver knowing about it.
 %
 \subsection{Implementation of Integrity in Data Exchange}
-Data integrity during communication is implemented with a CRC value in the package header and payload to detect bit errors (see \autoref{txtSwOutcomeVa1}). The main microcontroller (K64F) on the Teensy 3.5 has a hardware CRC module that was used for faster CRC calculations. There is a Processor Expert component that uses the hardware CRC module and this component can be configured and used for easier CRC calculation. In the source code, it looks as follows:
+Data integrity during communication is implemented with a CRC value in the package header and payload to detect bit errors (see \autoref{sec:txtSwOutcomeVa1}). The main microcontroller (K64F) on the Teensy 3.5 has a hardware CRC module that was used for faster CRC calculations. There is a Processor Expert component that uses the hardware CRC module and this component can be configured and used for easier CRC calculation. In the source code, it looks as follows:
 \begin{lstlisting}
 /* calculate CRC payload */
 uint32_t crc16;
@@ -65,20 +65,21 @@ CRC8_Header;Payload;CRC16_Payload;Hash
 01;00;45;01;01;0011;88;FE092DFF0000000000000608C004039640;AD7C;154987
 \end{lstlisting}
 The Hash value was simply added after the CRC16\_Payload entry.\\
-The problem is that, knowing the hash algorithm used, data can still be tempered with by adding or deleting log lines inside the log file. To detect this misusage, a hash value should not only be calculated for every package but also over the entire log file so that it becomes more difficult to modify log data undetected. But because it would again be easy for malusers to detect the hash algorithm applied, modify the log file and recalculate the hash not only over single log lines but also over the entire modified file, an additional item of security has to be added. Instead of only calculating the hash over the entire file (in addition to the hash calculation over single log lines), a secret random number is also put into the hash algorithm of the entire file before the final hash output is extracted and logged. It lies within the nature of a hash algorithm that the hash output changes drastically with just a small variation of the input value. It is therefore nearly impossible for unauthorized users to find the secret random number used by looking at other hash outputs that were calculated over the entire file.\\
+The problem is that, knowing the hash algorithm used, data can still be tempered with by adding or deleting log lines inside the log file. To detect this misusage, a hash value should not only be calculated for every package but also over the entire log file so that it becomes more difficult to modify log data undetected. But because it would again be easy for malusers to detect the hash algorithm applied, modify the log file and recalculate the hash not only over single log lines but also over the entire modified file, an additional item of security has to be added. Instead of only calculating the hash over the entire file (in addition to the hash calculation over single log lines), a secret random number is also put into the hash algorithm of the entire file before the final hash output is extracted and logged. It lies within the nature of a hash algorithm that the hash output changes drastically with just a small variation of the input value. It is therefore nearly impossible for unauthorized users to find the secret random number used by looking at other hash outputs that were calculated over the entire file. The same secret number could of course be added to the hash algorithm of each package as well.\\
 Each K64F microcontroller has a 128-bit unique identification number per chip. This number can be used as the secret random number to be put into the hash algorithm.\\
 There is a hardware encryption module on the K64F microcontroller that supports the following hash functions: \begin{itemize}
     \item \textbf{MD5:}\\
-    According to \cite{MD5_Wikipedia}, the MD5 algorithm is a widely used hash function producing a 128-bit hash value. Although MD5 was initially designed to be used as a cryptographic hash function, it has been found to suffer from extensive vulnerabilities. It can still be used as a checksum to verify data integrity, but only against unintentional corruption.Like most hash functions, MD5 is neither encryption nor encoding. It can be cracked by brute-force attack and suffers from extensive vulnerabilities.
+    According to \cite{MD5_Wikipedia}, the MD5 algorithm is a widely used hash function producing a 128-bit hash value. Although MD5 was initially designed to be used as a cryptographic hash function, it has been found to suffer from extensive vulnerabilities. It can still be used as a checksum to verify data integrity, but only against unintentional corruption. Like most hash functions, MD5 is neither encryption nor encoding. It can be cracked by a brute-force attack and suffers from extensive vulnerabilities.
     \item \textbf{SHA-1:}\\
-    According to \cite{SHA1_Wikipedia}, the Secure Hash Algorithm 1 (SHA-1) is a cryptographic hash function which takes an input and produces a 160-bit (20-byte) hash value as an output. Since 2005 SHA-1 has not been considered secure anymore and it is recommended to use SHA-2 or SHA-3 instead.
+    According to \cite{SHA1_Wikipedia}, the Secure Hash Algorithm 1 (SHA-1) is a cryptographic hash function which takes an input and produces a 160-bit (20-byte) hash value as an output. Since 2005 SHA-1 has not been considered secure anymore and it is recommended to use SHA-256 instead.
     \item \textbf{SHA-256:}\\
-    The Secure Hash Algorithm 256 (SHA-256) is, just like the SHA-1, a cryptographic hash function. It generates a fixed size 256-bit (32-byte) hash output.
+    The Secure Hash Algorithm 256 (SHA-256) is, just like the SHA-1, a cryptographic hash function. It generates a fixed size 256-bit (32-byte) hash output and is more secure than SHA-1.
 \end{itemize}
 %
 Although there are no Processor Expert components for either of these hash functions, there is a Crypto Acceleraction Unit (CAU) provided by NXP which is a encryption software library especially designed for the ARM Coretex-M4. The CAU is used for ColdFire and ColdFire+ devices while the mmCAU is for Kinetis devices (ARM Coretex-M4). For more information, consult the user guide and software API in \cite{CAU_UserGuide}.\\
-This library can be imported into the Kinetis Design Studio project and used inside the software.
-\todo{code snippet on how hash was calculated}
+This library is currenty imported into the Kinetis Design Studio project and ready to be used inside the software. Logging integrity has not been implemented yet, only integrity in data exchange by using a CRC check with data packages. Either of the hashing algorithms can be used for logging integrity, the real security is provided by feeding the UID into the hash algorithm. The choice should therefore be made according to the computation speed of the used algorithm. The same value should be fed into each algorithm and the computation times compared.
+%
+%
 %
 %
 %
@@ -103,10 +104,14 @@ The Teensy 3.5 uses the ARM Coretex-M4 microcontroller MK64FX512VMD12. In the MK
     \item \textbf{AES:}\\
     According to \cite{AES_Wikipedia}, the Advanced Encryption Standard is, just like the DES, a symmetric-key algorithm and has been established in 2001. It superseded the DES and is now one of the most widely used encryption protocols. Its key sizes can either be 128 bits, 192 bits or 256 bits. 
 \end{itemize}
-There is a Crypto Acceleraction Unit (CAU) provided by NXP which is a encryption software library especially designed for the ARM Coretex-M4. The CAU is used for ColdFire and ColdFire+ devices while the mmCAU is for Kinetis devices (ARM Coretex-M4). For more information, consult the user guide and software API in \cite{CAU_UserGuide}.\\
-Because the RF900x modem already supports encryption and uses the AES algorithm with a 128bit key, this algorithm was also implemented in the application. The encryption key can be stored inside a header file so it is only visible to anyone who has access to the source code. Aeroscout claimed that it is not necessary for them to have a unique encryption key per Serial Switch and that they do not require the key to be changeable during runtime.
+There is a Crypto Acceleraction Unit (CAU) provided by NXP which is a encryption software library especially designed for the ARM Coretex-M4. The CAU is used for ColdFire and ColdFire+ devices while the mmCAU is for Kinetis devices (ARM Coretex-M4). For more information, consult the user guide and software API in \cite{CAU_UserGuide}. The mmCAU library has been added to the software Kinetis project already and tested, but encryption is still not supported in the current application.\\
+Because the RF900x modem already supports encryption and uses the AES algorithm with a 128bit key, this algorithm should also be implemented in the application. The encryption key can be stored inside a header file so it is only visible to anyone who has access to the source code. Aeroscout claimed that it is not necessary for them to have a unique encryption key per Serial Switch and that they do not require the key to be changeable during runtime. If a change in encryption key is necessary, the header file would have to be changed and the application uploaded onto the two Serial Switches again.
 %
 %
+\section{Conclusion}
+Data integrity can be ensured by computing the hash value of the log file and adding a secret random number as the last input into the hash algorithm. The unique ID of the microcontroller could be used as this secret random number. Without adding a random number to the algorithm, the log file could easily be altered and the hash value recalculated simply by knowing the algorithm used.\\
+Data confidentiality can be ensured by encrypting the communication with the AES (Advanced Encryption Standard) and storing the encryption key in a header file.\\
+Both concepts have not been implemented yet in the current application but the required libraries have been added to the Kinetis Design Studio project and have successfully been tested.
 %
 %
 %

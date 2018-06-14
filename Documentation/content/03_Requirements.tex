@@ -9,20 +9,21 @@ So far, the switching between different transmission technologies could not be h
 In the previous project, a flexible platform was developed that acted as a Serial Switch with multiple input and output interfaces for connecting devices and transmitters. See a sample setup in \autoref{fig:picNewSetup}. The hardware has four UART interfaces for devices such as sensors and actors and four UART interfaces for modems. The software developed in the previous project provided basic functionalities such as routing data between devices and modems and retransmission in case of data loss due to interference or an unstable connection. The application was still in its first stage but mostly running stable and provided the basic functionalities correctly.\\
 In the scope of this project, the software should first be refactored and all pending requirements from the previous project that are necessary to proceed with the requirements for this project should be implemented. The  refactoring and implementation of pending features includes: \begin{itemize}
     \item Order and assemble at least two Teensy Adapter Boards with silk screen
-    \item Overview of task priorities and interrupt priorities
-    \item Logging of exchanged data
-    \item Improved debug output
+    \item Give an overview of task priorities and interrupt priorities
+    \item Add logging of exchanged data
+    \item Improve debug output
     \item Analysis of runtime behavior of application
     \item Analysis of memory usage of application
 \end{itemize}
 Only when the above mentioned tasks are completed can the next and most important phase of the project be started.\\
-The main goal of this project is to implement two more key features: Reliable data exchange and data security. Both items are elaborated in more detail below. They should not only be part of the software but the hardware used should also be analyzed for possible useful settings that enhance the data security and reliability behaviour.
+The main goal of this project is to implement two more key features: Reliability of data exchange and data security. Both items are elaborated in more detail below. They should not only be part of the software but the modems used should also be analyzed for possible useful settings that enhance the data security and reliability behavior.
 %
 %
 %
 \section{Reliable Data Exchange}
-Because unmanned aerial vehicles constantly change their position, transmission is not always reliable. About 10\% - 20\% of the transmitted data are lost and the received data might be corrupted due to interference. The application developed in the scope of this project should take this into account and ensure a reliable data stream.\\
-Reliability can be improved in various ways: \begin{itemize}
+Because unmanned aerial vehicles constantly change their position, transmission is not always reliable. About 10\% - 20\% of the transmitted data are lost and the received data might be corrupted due to interference. Numbers are estimated by Aeroscout GmbH and mentioned in Appendix \autoref{app:Aufgabestellung}. The application developed in the scope of this project should take this into account and ensure a reliable data stream.\\
+Reliability can be improved in various ways: 
+\begin{itemize}
     \item Recovery of lost bytes by adding redundancy
     \item Retransmission of lost packages
     \item Improving the algorithm that selects the wireless connection to be used
@@ -37,7 +38,7 @@ Data communication between the two Serial Switches should not be interceptable. 
     \item Chose a suitable encryption algorithm that requires little computational power and results in little additional data traffic
     \item Find a solution for encryption key generation and encryption key storage
 \end{itemize}
-Additionally, data transfer between the two serial switches should be logged, similar to the black box concept known from aviation. This results in the following requirements for logging security: \begin{itemize}
+Additionally, data transfer between the two Serial Switches should be logged, similar to the black box concept known from aviation. This results in the following requirements for logging security: \begin{itemize}
     \item A solution has to be found how tempering of the logged data can either be prevented or detected.
     \item Assure that logging does not use more than 10\% CPU capacity
 \end{itemize}
