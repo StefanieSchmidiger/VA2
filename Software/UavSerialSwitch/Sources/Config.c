@@ -309,7 +309,7 @@ void validateSwConfiguration(void)
 		{
 			if(config.LoadBalancingMode == LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED) /* check if there is a WL conn with priority 1 and 2 */
 			{
-				/* check priorities for load balancing setting */
+				/* check if priority 1 and 2 are configured for this load balancing setting */
 				for(int prio = 1; prio<=2; prio++)
 				{
 					uint8_t wlConnectionToUse = 0;
@@ -317,9 +317,9 @@ void validateSwConfiguration(void)
 					{
 						++wlConnectionToUse;
 					}
-					if(wlConnectionToUse >= NUMBER_OF_UARTS)
+					if(wlConnectionToUse >= NUMBER_OF_UARTS) /* priority not configured */
 					{
-						config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED;
+						config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED; /* set load balancing default */
 						// ToDo: print warning in shell
 					}
 				}
@@ -327,11 +327,16 @@ void validateSwConfiguration(void)
 		}
 		else
 		{
-			config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED;
+			/* load balancing not possible in mode 2 when no ACK configured */
+			if(config.LoadBalancingMode == LOAD_BALANCING_SWITCH_WL_CONN_WHEN_ACK_NOT_RECEIVED)
+			{
+				config.LoadBalancingMode = LOAD_BALANCING_AS_CONFIGURED; /* set load balancing default */
+				// ToDo: print warning in shell
+			}
 			config.SyncMessagingModeEnabledPerWlConn[devNr] = 0; /* no acknowledge sent -> synchoronous transmission mode disabled */
 		}
 	}
-	/* constrain execution intervals */
+	/* constrain task execution intervals */
 	UTIL1_constrain(config.SdCardSyncInterval_s, 1, 1000); /* 1sec...1000sec */
 	UTIL1_constrain(config.SpiHandlerTaskInterval, 1, 1000); /* 1ms...1sec */
 	UTIL1_constrain(config.PackageHandlerTaskInterval, 1, 1000); /* 1ms...1sec */

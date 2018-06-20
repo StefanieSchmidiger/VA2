@@ -1,0 +1,151 @@
+\documentclass{standalone}
+\usepackage{color}
+\usepackage{tikz}
+\usepackage{pgfgantt}
+
+%Some awesome new ganttchart elements:
+\newganttchartelement{orangebar}{
+    orangebar/.style={
+        inner sep=0pt,
+        draw=red!66!black,
+        very thick,
+        top color=white,
+        bottom color=orange!80
+    },
+    orangebar label font=\slshape,
+    orangebar left shift=.1,
+    orangebar right shift=-.1
+}
+
+\newganttchartelement{bluebar}{
+    bluebar/.style={
+        inner sep=0pt,
+        draw=purple!44!black,
+        very thick,
+        top color=white,
+        bottom color=blue!80
+    },
+    bluebar label font=\slshape,
+    bluebar left shift=.1,
+    bluebar right shift=-.1
+}
+
+\newganttchartelement{graybar}{
+    graybar/.style={
+        inner sep=0pt,
+        draw=gray!44!black,
+        very thick,
+        top color=white,
+        bottom color=gray!80
+    },
+    graybar label font=\slshape,
+    graybar left shift=.1,
+    graybar right shift=-.1
+}
+
+\newganttchartelement{greenbar}{
+    greenbar/.style={
+        inner sep=0pt,
+        draw=green!50!black,
+        very thick,
+        top color=white,
+        bottom color=green!80
+    },
+    greenbar label font=\slshape,
+    greenbar left shift=.1,
+    greenbar right shift=-.1
+}
+
+
+\newganttchartelement{yellowbar}{
+    greenbar/.style={
+        inner sep=0pt,
+        draw=yellow!50!black,
+        very thick,
+        top color=white,
+        bottom color=yellow!90
+    },
+    yellowbar label font=\slshape,
+    yellowbar left shift=.1,
+    yellowbar right shift=-.1
+}
+
+\newganttchartelement{milest}{
+milest/.style={
+  shape=isosceles triangle,
+  inner sep=0pt,
+  draw=cyan,
+  top color=white,
+  bottom color=cyan!50
+  }
+}
+
+% The GANTT chart itself:
+\begin{document}
+\begin{ganttchart}[
+    hgrid style/.style={black, dotted},
+    vgrid={*5{black,dotted}, *1{white, dotted}, *1{black, dashed}},
+    x unit=3mm,
+    y unit chart=9mm,
+    y unit title=12mm,
+    time slot format=isodate,
+    group label font=\bfseries \Large,
+    link/.style={->, thick}
+    ]{2018-02-05}{2018-06-15}
+    \gantttitlecalendar{year, month=name, week}\\
+    
+    
+    \ganttgroup[
+    group/.append style={fill=black}
+    ]{Documentation}{2018-02-5}{2018-06-15}\\ [grid] % \\ [grid] = neue linie
+    \ganttmilestone{Milestones}{2018-04-15} % SW Analysis fertig
+    \ganttmilestone{Milestones}{2018-02-11} % HW Ordered and assembled
+    \ganttmilestone{Milestones}{2018-06-03} % Keine SW Änderungen mehr
+    \ganttmilestone{Milestones}{2018-06-15}\ganttnewline[thick, black] % Abgabe Doku
+
+
+
+	% BLUE element
+    \ganttgroup[
+        group/.append style={fill=blue}
+    ]{Teensy Adapter Board}{2018-02-5}{2018-02-11}\\ [grid] % \\ [grid] = neue linie
+    \ganttbluebar{Order}{2018-02-05}{2018-02-11}\\ [grid]
+    \ganttbluebar{Assembly}{2018-02-05}{2018-02-11}\ganttnewline[thick, black]
+
+
+	% GRAY element
+    \ganttgroup[
+        group/.append style={fill=gray}
+    ]{Software Refactoring}{2018-02-12}{2018-03-18}\\ [grid] % \\ [grid] = neue linie
+    \ganttgraybar{Analysis}{2018-02-12}{2018-02-18}\\ [grid]
+    \ganttgraybar{Logging}{2018-02-19}{2018-03-04}\\ [grid]
+    \ganttgraybar{Package and Payload Numbering}{2018-03-05}{2018-03-11}\\ [grid]
+    \ganttgraybar{CRC Check}{2018-03-12}{2018-03-18}\\ [grid]
+    \ganttgraybar{Debug Output}{2018-03-12}{2018-03-18}\ganttnewline[thick, black]
+    
+    % GREEN element
+    \ganttgroup[
+        group/.append style={fill=yellow}
+    ]{Software Analysis}{2018-03-12}{2018-04-15}\\ [grid]
+    \ganttgreenbar{Software Analysis}{2018-03-12}{2018-04-15}\ganttnewline[thick, black]
+    
+    % ORANGE element
+    \ganttgroup[
+    group/.append style={fill=orange}
+    ]{Reliability}{2018-04-02}{2018-06-03}\\ [grid]
+    \ganttorangebar{Error Correction}{2018-04-02}{2018-04-15}\\ [grid]
+    \ganttorangebar{Retransmission}{2018-04-16}{2018-05-27}\\ [grid]
+    \ganttorangebar{Smart Wireless Selection}{2018-05-28}{2018-06-03}\ganttnewline[thick, black]
+    
+    % BROWN element
+    \ganttgroup[
+    group/.append style={fill=black}
+    ]{Security}{2018-04-02}{2018-05-20}\\ [grid]
+    \ganttyellowbar{Encryption}{2018-04-02}{2018-04-22}\\ [grid]
+    \ganttyellowbar{Logging Integrity}{2018-04-16}{2018-04-29}\\ [grid]
+    \ganttyellowbar{Smart Wireless Selection}{2018-05-14}{2018-05-20}\ganttnewline[thick, black]
+	
+
+   
+\end{ganttchart}
+\end{document}
